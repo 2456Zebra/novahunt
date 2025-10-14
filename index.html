@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NovaHunt - AI Lead Hunter</title>
-    <meta name="description" content="NovaHunt.ai: AI-powered lead generation to hunt emails, companies, and suppliers with precision.">
+    <meta name="description" content="NovaHunt.ai: AI-powered tool to hunt B2B leads, emails, and suppliers with precision.">
+    <meta name="keywords" content="AI lead generation, B2B leads, email hunter, supplier finder">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #4A90E2 0%, #7B2CBF 100%); color: #1A1A1A; overflow-x: hidden; line-height: 1.6; }
@@ -155,9 +156,9 @@
             console.log(`Switched to ${tabName} tab`);
         }
 
-        // Company Search (Static fallback)
-        function searchCompany() {
-            const query = document.getElementById('companyInput').value.toLowerCase().trim();
+        // Company Search with Hunter.io API
+        async function searchCompany() {
+            const query = document.getElementById('companyInput').value.trim();
             const results = document.getElementById('companyResults');
             results.innerHTML = '<div class="loading">Searching...</div>';
             if (!query) {
@@ -165,12 +166,29 @@
                 return;
             }
             try {
-                // Static fallback data
-                results.innerHTML = `<div class="result-item"><strong><a href="mailto:test@${query}">Test Contact</a></strong> | test@${query} | Role: N/A</div>`;
-                console.log('Using static fallback data for company search');
+                const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a'; // Your Hunter.io API key
+                const response = await fetch(`https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`);
+                const data = await response.json();
+                if (!response.ok || data.errors) {
+                    throw new Error(data.errors ? data.errors[0].message : 'API error');
+                }
+                results.innerHTML = '';
+                if (data.data.emails.length === 0) {
+                    results.innerHTML = '<div class="result-item">No emails found for this domain.</div>';
+                } else {
+                    data.data.emails.forEach(email => {
+                        const name = email.first_name || email.last_name ? `${email.first_name || ''} ${email.last_name || ''}`.trim() : 'N/A';
+                        const role = email.position || 'N/A';
+                        const confidence = email.confidence || 'N/A';
+                        results.innerHTML += `
+                            <div class="result-item">
+                                <strong><a href="mailto:${email.value}">${email.value}</a></strong> | ${name} | ${role} | Confidence: ${confidence}%
+                            </div>
+                        `;
+                    });
+                }
             } catch (err) {
-                results.innerHTML = '<div class="result-item">Error: Using static fallback data.</div>';
-                results.innerHTML += `<div class="result-item"><strong><a href="mailto:test@${query}">Test Contact</a></strong> | test@${query} | Role: N/A</div>`;
+                results.innerHTML = `<div class="result-item">Error: ${err.message}. Check domain or API limits (50 free searches/month).</div>`;
                 console.error('Company search failed:', err);
             }
         }
@@ -185,7 +203,7 @@
                 return;
             }
             try {
-                // Static fallback data
+                // Static fallback data (replace with API later if needed)
                 results.innerHTML = `<div class="result-item"><strong><a href="https://example.com" target="_blank">Sample Company</a></strong> (example.com) | Snippet: N/A</div>`;
                 console.log('Using static fallback data for AI search');
             } catch (err) {
@@ -205,7 +223,7 @@
                 return;
             }
             try {
-                // Static fallback data
+                // Static fallback data (replace with API later if needed)
                 results.innerHTML = '<div class="result-item"><strong>Sample Supplier</strong> (USA) | Trade Value: $1000 | Year: 2023</div>';
                 console.log('Using static fallback data for imports search');
             } catch (err) {
@@ -228,7 +246,7 @@
         document.getElementById('signupForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
-            fetch('https://formspree.io/f/YOUR_FORM_ID', {
+            fetch('https://formspree.io/f/YOUR_FORM_ID', { // Replace with your Formspree ID
                 method: 'POST',
                 body: formData,
                 headers: { 'Accept': 'application/json' }
