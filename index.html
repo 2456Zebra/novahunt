@@ -209,18 +209,23 @@
                     headers: { 'Authorization': 'Bearer xai-internal' }
                 }).then(res => res.json());
 
+                console.log('Search Results:', searchResults); // Debug: Log raw API response
                 results.innerHTML = '';
                 if (!searchResults || !searchResults.results || searchResults.results.length === 0) {
-                    throw new Error('No search results found');
+                    throw new Error('No search results returned from API');
                 }
 
                 const companies = [];
                 for (let result of searchResults.results.slice(0, 10)) {
-                    const titleMatch = result.title.match(/([A-Za-z\s&'-]+)(?:\s-\s)?(?:[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))?/i) || result.title.match(/[A-Za-z\s&'-]+/i);
+                    console.log('Processing result:', result.title, result.url); // Debug: Log each result
+                    const titleMatch = result.title.match(/([A-Za-z\s&'-]+)(?:\s-\s)?(?:[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))?/i) || 
+                                      result.title.match(/[A-Za-z\s&'-]+(?=\s-|\s\(|\s\[)/i) || 
+                                      result.title.match(/[A-Za-z\s&'-]+/i);
                     const urlMatch = result.url.match(/https?:\/\/(?:www\.)?([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))/)?.[1];
                     if (titleMatch && titleMatch[1] && !companies.some(c => c.name.toLowerCase() === titleMatch[1].trim().toLowerCase())) {
                         const name = titleMatch[1].trim();
                         const domain = urlMatch || name.replace(/\s+/g, '').toLowerCase() + '.com';
+                        console.log('Extracted:', { name, domain }); // Debug: Log extracted data
                         if (name && domain && companies.length < 5) {
                             companies.push({ name, domain });
                         }
@@ -229,7 +234,7 @@
                 }
 
                 if (companies.length === 0) {
-                    throw new Error('No companies or teams extracted');
+                    throw new Error('No companies or teams extracted from results');
                 }
 
                 companies.forEach(company => {
@@ -261,7 +266,7 @@
                     `;
                 });
             } catch (err) {
-                results.innerHTML = '<div class="result-item">Error: No companies or teams found. Try a different query or check back later.</div>';
+                results.innerHTML = `<div class="result-item">Error: ${err.message}. Check console for details.</div>`;
                 console.error('AI search failed:', err);
             }
         }
