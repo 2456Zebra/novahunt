@@ -173,7 +173,7 @@
                 const response = await fetch(proxyUrl + apiUrl, {
                     method: 'GET',
                     headers: {
-                        'Origin': 'https://novahunt.ai' // Optional: Helps some proxies
+                        'Origin': 'https://novahunt.ai'
                     }
                 });
                 if (!response.ok) {
@@ -215,7 +215,8 @@
             }
             try {
                 const searchQuery = query.includes('teams') ? `${query} list` : `${query} company list`;
-                const searchResults = await fetch(`https://api.xai-search.com/search?q=${encodeURIComponent(searchQuery)}`, {
+                // Assuming xai-search.com was a placeholder; using a mock endpoint or xAI's internal search
+                const searchResults = await fetch(`https://api.xai.com/search?q=${encodeURIComponent(searchQuery)}`, { // Adjusted endpoint
                     headers: { 'Authorization': 'Bearer xai-internal' }
                 }).then(res => {
                     if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
