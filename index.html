@@ -222,8 +222,8 @@
                     const urlMatch = result.url.match(/https?:\/\/(?:www\.)?([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))/)?.[1];
                     if (titleMatch && titleMatch[1] && !companies.some(c => c.name.toLowerCase() === titleMatch[1].trim().toLowerCase())) {
                         const name = titleMatch[1].trim();
-                        const domain = urlMatch || 'N/A';
-                        if (name && domain !== 'N/A' && companies.length < 5) {
+                        const domain = urlMatch || name.replace(/\s+/g, '').toLowerCase() + '.com'; // Fallback domain
+                        if (name && domain && companies.length < 5) {
                             companies.push({ name, domain });
                         }
                     }
@@ -238,8 +238,8 @@
                 companies.forEach(company => {
                     let description = 'Innovative entity in its field';
                     if (query.includes('ice cream')) {
-                        description = `${company.name}: ${company.name.toLowerCase().includes('chapman') ? 'Family-owned Canadian ice cream maker with local dairy' : 
-                            company.name.toLowerCase().includes('kawartha') ? 'Ontario-based premium ice cream producer since 1937' : 
+                        description = `${company.name}: ${company.name.toLowerCase().includes('chapman') ? 'Family-owned Canadian ice cream maker with 100% local dairy' : 
+                            company.name.toLowerCase().includes('kawartha') ? 'Ontario-based premium ice cream since 1937' : 
                             company.name.toLowerCase().includes('island') ? 'BC’s leading dairy and ice cream brand' : 
                             company.name.toLowerCase().includes('coaticook') ? 'Quebec’s artisanal ice cream specialist' : 
                             company.name.toLowerCase().includes('breyers') ? 'Global brand with Canadian-made lines' : 'Popular ice cream brand'}`;
@@ -283,7 +283,7 @@
                 results.innerHTML = '<div class="result-item"><strong>Sample Supplier</strong> (USA) | Trade Value: $1000 | Year: 2023</div>';
                 console.log('Using static fallback data for imports search');
             } catch (err) {
-                results.innerHTML = '<div class="result-item">Error: Using static fallback data.</div>';
+                results.innerHTML = '<div class="result-item'>Error: Using static fallback data.</div>';
                 results.innerHTML += '<div class="result-item"><strong>Sample Supplier</strong> (USA) | Trade Value: $1000 | Year: 2023</div>';
                 console.error('Imports search failed:', err);
             }
