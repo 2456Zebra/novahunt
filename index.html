@@ -204,8 +204,8 @@
             }
         }
 
-        // AI Industry Search with Web Search and Descriptions
-        async function searchAI() {
+        // AI Industry Search with Mock Data
+        function searchAI() {
             const query = document.getElementById('aiInput').value.trim().toLowerCase();
             const results = document.getElementById('aiResults');
             results.innerHTML = '<div class="loading">Generating leads...</div>';
@@ -214,71 +214,43 @@
                 return;
             }
             try {
-                const searchQuery = query.includes('teams') ? `${query} list` : `${query} company list`;
-                // Assuming xai-search.com was a placeholder; using a mock endpoint or xAI's internal search
-                const searchResults = await fetch(`https://api.xai.com/search?q=${encodeURIComponent(searchQuery)}`, { // Adjusted endpoint
-                    headers: { 'Authorization': 'Bearer xai-internal' }
-                }).then(res => {
-                    if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-                    return res.json();
-                });
-
-                console.log('Search Results:', searchResults); // Debug: Log raw API response
-                results.innerHTML = '';
-                if (!searchResults || !searchResults.results || searchResults.results.length === 0) {
-                    throw new Error('No search results returned from API');
-                }
-
-                const companies = [];
-                for (let result of searchResults.results.slice(0, 10)) {
-                    console.log('Processing result:', result.title, result.url); // Debug: Log each result
-                    let titleMatch = result.title.match(/([A-Za-z\s&'-]+)(?:\s-\s)?(?:[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))?/i) ||
-                                    result.title.match(/[A-Za-z\s&'-]+(?=\s-|\s\(|\s\[)/i) ||
-                                    result.title.match(/[A-Za-z\s&'-]+/i);
-                    if (!titleMatch && result.snippet) {
-                        titleMatch = result.snippet.match(/[A-Za-z\s&'-]+(?=\s-|\s\(|\s\[)/i) || result.snippet.match(/[A-Za-z\s&'-]+/i);
-                    }
-                    const urlMatch = result.url.match(/https?:\/\/(?:www\.)?([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))/)?.[1];
-                    if (titleMatch && titleMatch[1] && !companies.some(c => c.name.toLowerCase() === titleMatch[1].trim().toLowerCase())) {
-                        const name = titleMatch[1].trim();
-                        const domain = urlMatch || name.replace(/\s+/g, '').toLowerCase() + '.com';
-                        console.log('Extracted:', { name, domain }); // Debug: Log extracted data
-                        if (name && domain && companies.length < 5) {
-                            companies.push({ name, domain });
-                        }
-                    }
-                    if (companies.length >= 5) break;
+                let companies = [];
+                if (query.includes('ice cream')) {
+                    companies = [
+                        { name: "Chapman's", domain: "chapmans.ca", desc: "Family-owned Canadian ice cream maker with 100% local dairy" },
+                        { name: "Kawartha Dairy", domain: "kawarthadairy.com", desc: "Ontario-based premium ice cream since 1937" },
+                        { name: "Island Farms", domain: "islandfarms.com", desc: "BC’s leading dairy and ice cream brand" },
+                        { name: "Coaticook", domain: "coaticook.ca", desc: "Quebec’s artisanal ice cream specialist" },
+                        { name: "Breyers", domain: "breyers.com", desc: "Global brand with Canadian-made lines" }
+                    ];
+                } else if (query.includes('horse racing auctions')) {
+                    companies = [
+                        { name: "Fasig-Tipton", domain: "fasigtipton.com", desc: "Premier auction house for thoroughbreds" },
+                        { name: "Keeneland", domain: "keeneland.com", desc: "Historic Kentucky horse auction leader" },
+                        { name: "OBS Sales", domain: "obssales.com", desc: "Ocala-based yearling and 2YO sales" },
+                        { name: "Inglis Digital", domain: "inglis.com", desc: "Online horse auction platform" },
+                        { name: "Hoosier Classic", domain: "hoosierclassicsale.com", desc: "Indiana’s top horse sale event" }
+                    ];
+                } else if (query.includes('mlb baseball teams')) {
+                    companies = [
+                        { name: "Arizona Diamondbacks", domain: "mlb.com/dbacks", desc: "NL West team, 2001 World Series champs" },
+                        { name: "Atlanta Braves", domain: "mlb.com/braves", desc: "NL East team, 2021 World Series winners" },
+                        { name: "Baltimore Orioles", domain: "mlb.com/orioles", desc: "AL East team with a rich history" },
+                        { name: "Boston Red Sox", domain: "mlb.com/redsox", desc: "AL East team, 2018 World Series champs" },
+                        { name: "Chicago Cubs", domain: "mlb.com/cubs", desc: "NL Central team, 2016 World Series winners" }
+                    ];
                 }
 
                 if (companies.length === 0) {
-                    throw new Error('No companies or teams extracted from results');
+                    throw new Error('No matching industries found in mock data');
                 }
 
+                results.innerHTML = '';
                 companies.forEach(company => {
-                    let description = 'Innovative entity in its field';
-                    if (query.includes('ice cream')) {
-                        description = `${company.name}: ${company.name.toLowerCase().includes('chapman') ? 'Family-owned Canadian ice cream maker with 100% local dairy' : 
-                            company.name.toLowerCase().includes('kawartha') ? 'Ontario-based premium ice cream since 1937' : 
-                            company.name.toLowerCase().includes('island') ? 'BC’s leading dairy and ice cream brand' : 
-                            company.name.toLowerCase().includes('coaticook') ? 'Quebec’s artisanal ice cream specialist' : 
-                            company.name.toLowerCase().includes('breyers') ? 'Global brand with Canadian-made lines' : 'Popular ice cream brand'}`;
-                    } else if (query.includes('horse racing auctions')) {
-                        description = `${company.name}: ${company.name.toLowerCase().includes('fasig') ? 'Premier auction house for thoroughbreds' : 
-                            company.name.toLowerCase().includes('keeneland') ? 'Historic Kentucky horse auction leader' : 
-                            company.name.toLowerCase().includes('obs') ? 'Ocala-based yearling and 2YO sales' : 
-                            company.name.toLowerCase().includes('inglis') ? 'Online horse auction platform' : 
-                            company.name.toLowerCase().includes('hoosier') ? 'Indiana’s top horse sale event' : 'Horse auction specialist'}`;
-                    } else if (query.includes('mlb baseball teams')) {
-                        description = `${company.name}: ${company.name.toLowerCase().includes('diamondbacks') ? 'NL West team, 2001 World Series champs' : 
-                            company.name.toLowerCase().includes('braves') ? 'NL East team, 2021 World Series winners' : 
-                            company.name.toLowerCase().includes('orioles') ? 'AL East team with a rich history' : 
-                            company.name.toLowerCase().includes('red sox') ? 'AL East team, 2018 World Series champs' : 
-                            company.name.toLowerCase().includes('cubs') ? 'NL Central team, 2016 World Series winners' : 'MLB franchise'}`;
-                    }
                     results.innerHTML += `
                         <div class="result-item">
                             <strong><a href="https://${company.domain}" target="_blank">${company.name} - ${company.domain}</a></strong>
-                            <div class="result-desc">${description}</div>
+                            <div class="result-desc">${company.desc}</div>
                         </div>
                     `;
                 });
