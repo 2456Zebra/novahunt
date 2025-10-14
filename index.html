@@ -189,7 +189,7 @@
                     });
                 }
             } catch (err) {
-                results.innerHTML = `<div class="result-item">Error: ${err.message.includes('limit') ? 'API limit reached. Check Hunter.io for credits (50 free/month).' : err.message}</div>`;
+                results.innerHTML = `<div class="result-item">Error: ${err.message.includes('limit') ? 'API limit reached. Check Hunter.io for credits (50 free/month, 4 used).' : err.message}</div>`;
                 console.error('Company search failed:', err);
             }
         }
