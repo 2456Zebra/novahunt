@@ -170,7 +170,12 @@
                 const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a';
                 const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
                 const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
-                const response = await fetch(proxyUrl + apiUrl);
+                const response = await fetch(proxyUrl + apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': 'https://novahunt.ai' // Optional: Helps some proxies
+                    }
+                });
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
@@ -194,7 +199,7 @@
                     });
                 }
             } catch (err) {
-                results.innerHTML = `<div class="result-item">Error: ${err.message.includes('limit') ? 'API limit reached. Check Hunter.io for credits (50 free/month, 4 used).' : err.message}. Check console for details.</div>`;
+                results.innerHTML = `<div class="result-item">Error: ${err.message === 'HTTP error! Status: 403' ? 'CORS proxy blocked. Visit https://cors-anywhere.herokuapp.com/corsdemo, click "Request temporary access," then retry.' : err.message}. Check console for details.</div>`;
                 console.error('Company search failed:', err);
             }
         }
@@ -212,7 +217,10 @@
                 const searchQuery = query.includes('teams') ? `${query} list` : `${query} company list`;
                 const searchResults = await fetch(`https://api.xai-search.com/search?q=${encodeURIComponent(searchQuery)}`, {
                     headers: { 'Authorization': 'Bearer xai-internal' }
-                }).then(res => res.json());
+                }).then(res => {
+                    if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+                    return res.json();
+                });
 
                 console.log('Search Results:', searchResults); // Debug: Log raw API response
                 results.innerHTML = '';
@@ -223,9 +231,12 @@
                 const companies = [];
                 for (let result of searchResults.results.slice(0, 10)) {
                     console.log('Processing result:', result.title, result.url); // Debug: Log each result
-                    const titleMatch = result.title.match(/([A-Za-z\s&'-]+)(?:\s-\s)?(?:[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))?/i) || 
-                                      result.title.match(/[A-Za-z\s&'-]+(?=\s-|\s\(|\s\[)/i) || 
-                                      result.title.match(/[A-Za-z\s&'-]+/i);
+                    let titleMatch = result.title.match(/([A-Za-z\s&'-]+)(?:\s-\s)?(?:[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))?/i) ||
+                                    result.title.match(/[A-Za-z\s&'-]+(?=\s-|\s\(|\s\[)/i) ||
+                                    result.title.match(/[A-Za-z\s&'-]+/i);
+                    if (!titleMatch && result.snippet) {
+                        titleMatch = result.snippet.match(/[A-Za-z\s&'-]+(?=\s-|\s\(|\s\[)/i) || result.snippet.match(/[A-Za-z\s&'-]+/i);
+                    }
                     const urlMatch = result.url.match(/https?:\/\/(?:www\.)?([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))/)?.[1];
                     if (titleMatch && titleMatch[1] && !companies.some(c => c.name.toLowerCase() === titleMatch[1].trim().toLowerCase())) {
                         const name = titleMatch[1].trim();
