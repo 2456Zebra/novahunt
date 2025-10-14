@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaHunt - AI Lead Hunter</title>
+    <meta name="description" content="NovaHunt.ai: AI-powered lead generation to hunt emails, companies, and suppliers with precision.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #4A90E2 0%, #7B2CBF 100%); color: #1A1A1A; overflow-x: hidden; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .section { padding: 60px 0; }
+        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #FFFFFF; margin-bottom: 15px; }
+        h2 { font-size: 2em; font-weight: 700; color: #FFFFFF; margin-bottom: 20px; text-align: center; }
+        p { font-size: 1.1em; color: #E0E0E0; margin-bottom: 20px; text-align: center; }
+        .btn { background: #7B2CBF; color: #FFFFFF !important; padding: 12px 25px; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; transition: background 0.3s; display: inline-block; }
+        .btn:hover { background: #5F1A8D; }
+        .btn-primary { background: #7B2CBF; color: #FFFFFF !important; font-size: 1.2em; padding: 14px 30px; border-radius: 8px; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin-top: 30px; }
+        .card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+        .card h3 { font-size: 1.4em; color: #FFFFFF; margin-bottom: 10px; }
+        .card p { font-size: 1em; color: #D0D0D0; }
+        .stats { display: flex; justify-content: space-around; background: rgba(255,255,255,0.03); padding: 30px; border-radius: 12px; margin: 40px 0; }
+        .stat { text-align: center; }
+        .stat .value { font-size: 2.2em; font-weight: 700; color: #FFFFFF; }
+        .stat .label { font-size: 0.9em; color: #B0B0B0; }
+        form { max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+        input, select { padding: 12px; border: none; border-radius: 8px; background: #FFFFFF; color: #333; font-size: 1em; }
+        input::placeholder { color: #999; }
+        .login-link { text-align: center; font-size: 0.9em; color: #B0B0B0; margin-top: 10px; }
+        .login-link a { color: #4A90E2; text-decoration: none; }
+        .login-link a:hover { text-decoration: underline; }
+        .search-tabs { display: flex; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; background: transparent; color: #FFFFFF; border: none; cursor: pointer; font-size: 1em; }
+        .tab-btn.active { background: #7B2CBF; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .results { margin-top: 20px; }
+        .result-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin: 10px 0; color: #E0E0E0; font-weight: bold; }
+        .result-item a { color: #FFFFFF !important; text-decoration: none; }
+        .result-item a:hover { text-decoration: underline; }
+        .loading { color: #B0B0B0; font-style: italic; }
+        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .stats { flex-direction: column; gap: 20px; } .search-tabs { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="section" style="padding-top: 80px;">
+        <div class="container">
+            <h1>🥷 NovaHunt</h1>
+            <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
+            <p>Hunt thousands of qualified B2B leads instantly with cutting-edge AI.</p>
+            <div style="text-align: center; margin-top: 20px;"><button class="btn">Start Free Trial</button></div>
+            <p style="font-size: 0.9em; color: #B0B0B0;">100 free credits • No credit card required</p>
+        </div>
+    </section>
+
+    <!-- Multi-Mode Search Section -->
+    <section class="section">
+        <div class="container">
+            <h2>Search for Leads</h2>
+            <p>Choose a mode below to get started.</p>
+            <div class="search-tabs">
+                <button class="tab-btn active" onclick="switchTab('company', event)">Company/Domain Search</button>
+                <button class="tab-btn" onclick="switchTab('ai', event)">AI Industry Search</button>
+                <button class="tab-btn" onclick="switchTab('imports', event)">Import Records</button>
+            </div>
+            <div id="company-tab" class="tab-content active">
+                <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., apple.com).</p>
+                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
+                <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
+                <div id="companyResults" class="results"></div>
+            </div>
+            <div id="ai-tab" class="tab-content">
+                <p style="text-align: center; opacity: 0.8;">Enter a query like 'north american ice cream companies'</p>
+                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
+                <button class="btn" onclick="searchAI()">Generate Leads</button>
+                <div id="aiResults" class="results"></div>
+            </div>
+            <div id="imports-tab" class="tab-content">
+                <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
+                <p style="text-align: center; opacity: 0.8; font-weight: bold;">Import Competitors Supplier Records (e.g., acme imports)</p>
+                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
+                <button class="btn" onclick="searchImports()">Find Suppliers</button>
+                <div id="importsResults" class="results"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section">
+        <div class="container">
+            <h2>Key Features</h2>
+            <div class="card-grid">
+                <div class="card">
+                    <h3>🎯 Precision Targeting</h3>
+                    <p>Search by industry, location, company size, and keywords.</p>
+                </div>
+                <div class="card">
+                    <h3>✨ AI Enrichment</h3>
+                    <p>Discover emails, phone numbers, and decision-maker info.</p>
+                </div>
+                <div class="card">
+                    <h3>📥 Export & Integrate</h3>
+                    <p>Download leads as CSV or integrate with your CRM.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="section">
+        <div class="container">
+            <div class="stats">
+                <div class="stat"><div class="value">10k+</div><div class="label">Leads Generated</div></div>
+                <div class="stat"><div class="value">99%</div><div class="label">Accuracy Rate</div></div>
+                <div class="stat"><div class="value">24/7</div><div class="label">Automated</div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="section" style="background: rgba(255,255,255,0.03);">
+        <div class="container">
+            <h2>Ready to Scale Your Outreach?</h2>
+            <p>Join hundreds of businesses hunting leads on autopilot.</p>
+            <div style="text-align: center; margin-top: 20px;"><button class="btn">Get Started Now</button></div>
+        </div>
+    </section>
+
+    <!-- Signup Form Section -->
+    <section class="section">
+        <div class="container">
+            <h2>Create Your Account</h2>
+            <p style="opacity: 0.8;">Start hunting leads in minutes.</p>
+            <form id="signupForm">
+                <input type="text" placeholder="Full Name" required>
+                <input type="email" placeholder="Email Address" required>
+                <input type="password" placeholder="Password" required>
+                <button type="submit" class="btn">Sign Up</button>
+            </form>
+            <div class="login-link">Already have an account? <a href="#">Log in</a></div>
+        </div>
+    </section>
+
+    <script>
+        // Tab switching
+        function switchTab(tabName, event) {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.tab-content');
+            tabs.forEach(btn => btn.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+            console.log(`Switched to ${tabName} tab`);
+        }
+
+        // Company Search (Static fallback)
+        function searchCompany() {
+            const query = document.getElementById('companyInput').value.toLowerCase().trim();
+            const results = document.getElementById('companyResults');
+            results.innerHTML = '<div class="loading">Searching...</div>';
+            if (!query) {
+                results.innerHTML = '<div class="result-item">Enter a company or domain.</div>';
+                return;
+            }
+            try {
+                // Static fallback data
+                results.innerHTML = `<div class="result-item"><strong><a href="mailto:test@${query}">Test Contact</a></strong> | test@${query} | Role: N/A</div>`;
+                console.log('Using static fallback data for company search');
+            } catch (err) {
+                results.innerHTML = '<div class="result-item">Error: Using static fallback data.</div>';
+                results.innerHTML += `<div class="result-item"><strong><a href="mailto:test@${query}">Test Contact</a></strong> | test@${query} | Role: N/A</div>`;
+                console.error('Company search failed:', err);
+            }
+        }
+
+        // AI Industry Search (Static fallback)
+        function searchAI() {
+            const query = document.getElementById('aiInput').value.trim();
+            const results = document.getElementById('aiResults');
+            results.innerHTML = '<div class="loading">Generating leads...</div>';
+            if (!query) {
+                results.innerHTML = '<div class="result-item">Enter a query.</div>';
+                return;
+            }
+            try {
+                // Static fallback data
+                results.innerHTML = `<div class="result-item"><strong><a href="https://example.com" target="_blank">Sample Company</a></strong> (example.com) | Snippet: N/A</div>`;
+                console.log('Using static fallback data for AI search');
+            } catch (err) {
+                results.innerHTML = '<div class="result-item">Error: Using static fallback data.</div>';
+                results.innerHTML += `<div class="result-item"><strong><a href="https://example.com" target="_blank">Sample Company</a></strong> (example.com) | Snippet: N/A</div>`;
+                console.error('AI search failed:', err);
+            }
+        }
+
+        // Import Records Search (Static fallback)
+        function searchImports() {
+            const query = document.getElementById('importsInput').value.trim();
+            const results = document.getElementById('importsResults');
+            results.innerHTML = '<div class="loading">Finding suppliers...</div>';
+            if (!query) {
+                results.innerHTML = '<div class="result-item">Enter a company name.</div>';
+                return;
+            }
+            try {
+                // Static fallback data
+                results.innerHTML = '<div class="result-item"><strong>Sample Supplier</strong> (USA) | Trade Value: $1000 | Year: 2023</div>';
+                console.log('Using static fallback data for imports search');
+            } catch (err) {
+                results.innerHTML = '<div class="result-item">Error: Using static fallback data.</div>';
+                results.innerHTML += '<div class="result-item"><strong>Sample Supplier</strong> (USA) | Trade Value: $1000 | Year: 2023</div>';
+                console.error('Imports search failed:', err);
+            }
+        }
+
+        // Smooth scroll for CTAs
+        document.querySelectorAll('button').forEach(btn => {
+            if (btn.textContent.includes('Get Started') || btn.textContent.includes('Sign Up')) {
+                btn.addEventListener('click', () => {
+                    document.querySelector('section:last-of-type').scrollIntoView({ behavior: 'smooth' });
+                });
+            }
+        });
+
+        // Form submission (lead capture)
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch('https://formspree.io/f/YOUR_FORM_ID', {
+                method: 'POST',
+                body: formData,
+                headers: { 'Accept': 'application/json' }
+            }).then(response => {
+                if (response.ok) {
+                    alert('Signup successful! Welcome to NovaHunt.');
+                    this.reset();
+                } else {
+                    alert('Oops! Try again.');
+                }
+            }).catch(err => console.error('Error:', err));
+        });
+    </script>
+</body>
+</html>
