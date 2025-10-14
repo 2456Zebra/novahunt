@@ -63,9 +63,9 @@
             <h2>Search for Leads</h2>
             <p>Choose a mode below to get started.</p>
             <div class="search-tabs">
-                <button class="tab-btn active" onclick="switchTab('company', event)">Company/Domain Search</button>
-                <button class="tab-btn" onclick="switchTab('ai', event)">AI Industry Search</button>
-                <button class="tab-btn" onclick="switchTab('imports', event)">Import Records</button>
+                <button class="tab-btn active" onclick="switchTab('company', this)">Company/Domain Search</button>
+                <button class="tab-btn" onclick="switchTab('ai', this)">AI Industry Search</button>
+                <button class="tab-btn" onclick="switchTab('imports', this)">Import Records</button>
             </div>
             <div id="company-tab" class="tab-content active">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., apple.com).</p>
@@ -147,12 +147,12 @@
 
     <script>
         // Tab switching
-        function switchTab(tabName, event) {
+        function switchTab(tabName, button) {
             const tabs = document.querySelectorAll('.tab-btn');
             const contents = document.querySelectorAll('.tab-content');
             tabs.forEach(btn => btn.classList.remove('active'));
             contents.forEach(content => content.classList.remove('active'));
-            event.target.classList.add('active');
+            button.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
             console.log(`Switched to ${tabName} tab`);
         }
@@ -189,7 +189,7 @@
                     });
                 }
             } catch (err) {
-                results.innerHTML = `<div class="result-item">Error: ${err.message}. Check domain or API limits (50 free searches/month).</div>`;
+                results.innerHTML = `<div class="result-item">Error: ${err.message.includes('limit') ? 'API limit reached. Check Hunter.io for credits (50 free/month).' : err.message}</div>`;
                 console.error('Company search failed:', err);
             }
         }
@@ -204,7 +204,6 @@
                 return;
             }
             try {
-                // Perform web search for query + "company list" or "teams list"
                 const searchQuery = query.includes('teams') ? `${query} list` : `${query} company list`;
                 const searchResults = await fetch(`https://api.xai-search.com/search?q=${encodeURIComponent(searchQuery)}`, {
                     headers: { 'Authorization': 'Bearer xai-internal' }
@@ -215,14 +214,13 @@
                     throw new Error('No search results found');
                 }
 
-                // Parse companies or teams from search results
                 const companies = [];
-                for (let result of searchResults.results.slice(0, 10)) { // Top 10 results
+                for (let result of searchResults.results.slice(0, 10)) {
                     const titleMatch = result.title.match(/([A-Za-z\s&'-]+)(?:\s-\s)?(?:[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))?/i) || result.title.match(/[A-Za-z\s&'-]+/i);
                     const urlMatch = result.url.match(/https?:\/\/(?:www\.)?([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))/)?.[1];
                     if (titleMatch && titleMatch[1] && !companies.some(c => c.name.toLowerCase() === titleMatch[1].trim().toLowerCase())) {
                         const name = titleMatch[1].trim();
-                        const domain = urlMatch || name.replace(/\s+/g, '').toLowerCase() + '.com'; // Fallback domain
+                        const domain = urlMatch || name.replace(/\s+/g, '').toLowerCase() + '.com';
                         if (name && domain && companies.length < 5) {
                             companies.push({ name, domain });
                         }
@@ -234,7 +232,6 @@
                     throw new Error('No companies or teams extracted');
                 }
 
-                // Generate AI descriptions based on query context
                 companies.forEach(company => {
                     let description = 'Innovative entity in its field';
                     if (query.includes('ice cream')) {
@@ -279,11 +276,10 @@
                 return;
             }
             try {
-                // Static fallback data
                 results.innerHTML = '<div class="result-item"><strong>Sample Supplier</strong> (USA) | Trade Value: $1000 | Year: 2023</div>';
                 console.log('Using static fallback data for imports search');
             } catch (err) {
-                results.innerHTML = '<div class="result-item'>Error: Using static fallback data.</div>';
+                results.innerHTML = '<div class="result-item">Error: Using static fallback data.</div>';
                 results.innerHTML += '<div class="result-item"><strong>Sample Supplier</strong> (USA) | Trade Value: $1000 | Year: 2023</div>';
                 console.error('Imports search failed:', err);
             }
