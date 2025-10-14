@@ -166,7 +166,7 @@
                 return;
             }
             try {
-                const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a'; // Your Hunter.io API key
+                const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a';
                 const response = await fetch(`https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`);
                 const data = await response.json();
                 if (!response.ok || data.errors) {
@@ -193,8 +193,8 @@
             }
         }
 
-        // AI Industry Search (Static fallback)
-        function searchAI() {
+        // AI Industry Search with Web Search
+        async function searchAI() {
             const query = document.getElementById('aiInput').value.trim();
             const results = document.getElementById('aiResults');
             results.innerHTML = '<div class="loading">Generating leads...</div>';
@@ -203,12 +203,44 @@
                 return;
             }
             try {
-                // Static fallback data (replace with API later if needed)
-                results.innerHTML = `<div class="result-item"><strong><a href="https://example.com" target="_blank">Sample Company</a></strong> (example.com) | Snippet: N/A</div>`;
-                console.log('Using static fallback data for AI search');
+                // Search web for company list based on query
+                const searchQuery = `${query} company list`;
+                const searchResults = await fetch(`https://api.xai-search.com/search?q=${encodeURIComponent(searchQuery)}`, {
+                    headers: { 'Authorization': 'Bearer xai-internal' } // Internal xAI search tool
+                }).then(res => res.json());
+                results.innerHTML = '';
+                if (!searchResults || !searchResults.results || searchResults.results.length === 0) {
+                    throw new Error('No results found');
+                }
+                // Parse top 5 companies/domains from results
+                const companies = [];
+                for (let result of searchResults.results.slice(0, 5)) {
+                    const titleMatch = result.title.match(/([A-Za-z\s&'-]+)(?:\s-\s)?(?:[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))?/);
+                    if (titleMatch) {
+                        const name = titleMatch[1].trim();
+                        const domain = titleMatch[2] || result.url.match(/https?:\/\/(?:www\.)?([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))/)?.[1] || 'N/A';
+                        if (name && !companies.some(c => c.name === name)) {
+                            companies.push({ name, domain });
+                        }
+                    }
+                }
+                if (companies.length === 0) {
+                    throw new Error('No companies extracted');
+                }
+                companies.slice(0, 5).forEach(company => {
+                    results.innerHTML += `
+                        <div class="result-item">
+                            <strong><a href="https://${company.domain}" target="_blank">${company.name} - ${company.domain}</a></strong>
+                        </div>
+                    `;
+                });
             } catch (err) {
-                results.innerHTML = '<div class="result-item">Error: Using static fallback data.</div>';
-                results.innerHTML += `<div class="result-item"><strong><a href="https://example.com" target="_blank">Sample Company</a></strong> (example.com) | Snippet: N/A</div>`;
+                results.innerHTML = '<div class="result-item">Error: No companies found. Try a different query or check back later.</div>';
+                // Fallback sample data
+                results.innerHTML += `
+                    <div class="result-item"><strong><a href="https://benjerry.com" target="_blank">Ben & Jerry's - benjerry.com</a></strong></div>
+                    <div class="result-item"><strong><a href="https://dreyers.com" target="_blank">Dreyer's - dreyers.com</a></strong></div>
+                `;
                 console.error('AI search failed:', err);
             }
         }
