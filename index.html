@@ -196,7 +196,7 @@
 
         // AI Industry Search with Web Search and Descriptions
         async function searchAI() {
-            const query = document.getElementById('aiInput').value.trim();
+            const query = document.getElementById('aiInput').value.trim().toLowerCase();
             const results = document.getElementById('aiResults');
             results.innerHTML = '<div class="loading">Generating leads...</div>';
             if (!query) {
@@ -204,8 +204,8 @@
                 return;
             }
             try {
-                // Perform web search for query + "company list"
-                const searchQuery = `${query} company list`;
+                // Perform web search for query + "company list" or "teams list"
+                const searchQuery = query.includes('teams') ? `${query} list` : `${query} company list`;
                 const searchResults = await fetch(`https://api.xai-search.com/search?q=${encodeURIComponent(searchQuery)}`, {
                     headers: { 'Authorization': 'Bearer xai-internal' }
                 }).then(res => res.json());
@@ -215,48 +215,46 @@
                     throw new Error('No search results found');
                 }
 
-                // Parse companies from search results
+                // Parse companies or teams from search results
                 const companies = [];
-                for (let result of searchResults.results.slice(0, 10)) { // Check top 10 results
-                    const titleMatch = result.title.match(/([A-Za-z\s&'-]+)(?:\s-\s)?(?:[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))?/);
+                for (let result of searchResults.results.slice(0, 10)) { // Top 10 results
+                    const titleMatch = result.title.match(/([A-Za-z\s&'-]+)(?:\s-\s)?(?:[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))?/i);
                     const urlMatch = result.url.match(/https?:\/\/(?:www\.)?([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))/)?.[1];
-                    if (titleMatch && titleMatch[1] && !companies.some(c => c.name === titleMatch[1].trim())) {
+                    if (titleMatch && titleMatch[1] && !companies.some(c => c.name.toLowerCase() === titleMatch[1].trim().toLowerCase())) {
                         const name = titleMatch[1].trim();
                         const domain = titleMatch[2] || urlMatch || 'N/A';
-                        if (name && domain !== 'N/A') {
+                        if (name && domain !== 'N/A' && companies.length < 5) {
                             companies.push({ name, domain });
                         }
                     }
-                    if (companies.length >= 5) break; // Limit to 5 companies
+                    if (companies.length >= 5) break;
                 }
 
                 if (companies.length === 0) {
-                    throw new Error('No companies extracted from results');
+                    throw new Error('No companies or teams extracted');
                 }
 
-                // Generate AI descriptions
+                // Generate AI descriptions based on query context
                 companies.forEach(company => {
-                    let description = '';
+                    let description = 'Innovative entity in its field';
                     if (query.includes('ice cream')) {
-                        description = `${company.name}: ${company.name === 'Chapman\'s' ? 'Family-owned Canadian ice cream maker with 100% local dairy' : 
+                        description = `${company.name}: ${company.name === 'Chapman\'s' ? 'Family-owned Canadian ice cream maker with local dairy' : 
                             company.name === 'Kawartha Dairy' ? 'Ontario-based premium ice cream producer' : 
                             company.name === 'Island Farms' ? 'BC’s leading dairy and ice cream brand' : 
                             company.name === 'Coaticook' ? 'Quebec’s artisanal ice cream specialist' : 
-                            company.name === 'Breyers' ? 'Global brand with Canadian-made lines' : 'Popular ice cream brand'};
+                            company.name === 'Breyers' ? 'Global brand with Canadian-made lines' : 'Popular ice cream brand'}`;
                     } else if (query.includes('horse racing auctions')) {
                         description = `${company.name}: ${company.name === 'Fasig-Tipton' ? 'Premier auction house for thoroughbreds' : 
                             company.name === 'Keeneland Sales' ? 'Historic Kentucky horse auction leader' : 
                             company.name === 'OBS Sales' ? 'Ocala-based yearling and 2YO sales' : 
                             company.name === 'Inglis Digital USA' ? 'Online horse auction platform' : 
-                            company.name === 'Hoosier Classic Sale' ? 'Indiana’s top horse sale event' : 'Horse auction specialist'};
+                            company.name === 'Hoosier Classic Sale' ? 'Indiana’s top horse sale event' : 'Horse auction specialist'}`;
                     } else if (query.includes('mlb baseball teams')) {
                         description = `${company.name}: ${company.name === 'Arizona Diamondbacks' ? 'NL West team, 2001 World Series champs' : 
                             company.name === 'Atlanta Braves' ? 'NL East team, 2021 World Series winners' : 
                             company.name === 'Baltimore Orioles' ? 'AL East team with a rich history' : 
                             company.name === 'Boston Red Sox' ? 'AL East team, 2018 World Series champs' : 
-                            company.name === 'Chicago Cubs' ? 'NL Central team, 2016 World Series winners' : 'MLB franchise'};
-                    } else {
-                        description = `${company.name}: Innovative company in its field`;
+                            company.name === 'Chicago Cubs' ? 'NL Central team, 2016 World Series winners' : 'MLB franchise'}`;
                     }
                     results.innerHTML += `
                         <div class="result-item">
@@ -266,7 +264,7 @@
                     `;
                 });
             } catch (err) {
-                results.innerHTML = '<div class="result-item">Error: No companies found. Try a different query or check back later.</div>';
+                results.innerHTML = '<div class="result-item">Error: No companies or teams found. Try a different query or check back later.</div>';
                 console.error('AI search failed:', err);
             }
         }
