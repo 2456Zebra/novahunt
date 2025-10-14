@@ -238,23 +238,23 @@
                 companies.forEach(company => {
                     let description = 'Innovative entity in its field';
                     if (query.includes('ice cream')) {
-                        description = `${company.name}: ${company.name === 'Chapman\'s' ? 'Family-owned Canadian ice cream maker with local dairy' : 
-                            company.name === 'Kawartha Dairy' ? 'Ontario-based premium ice cream producer' : 
-                            company.name === 'Island Farms' ? 'BC’s leading dairy and ice cream brand' : 
-                            company.name === 'Coaticook' ? 'Quebec’s artisanal ice cream specialist' : 
-                            company.name === 'Breyers' ? 'Global brand with Canadian-made lines' : 'Popular ice cream brand'}`;
+                        description = `${company.name}: ${company.name.toLowerCase().includes('chapman') ? 'Family-owned Canadian ice cream maker with local dairy' : 
+                            company.name.toLowerCase().includes('kawartha') ? 'Ontario-based premium ice cream producer' : 
+                            company.name.toLowerCase().includes('island') ? 'BC’s leading dairy and ice cream brand' : 
+                            company.name.toLowerCase().includes('coaticook') ? 'Quebec’s artisanal ice cream specialist' : 
+                            company.name.toLowerCase().includes('breyers') ? 'Global brand with Canadian-made lines' : 'Popular ice cream brand'}`;
                     } else if (query.includes('horse racing auctions')) {
-                        description = `${company.name}: ${company.name === 'Fasig-Tipton' ? 'Premier auction house for thoroughbreds' : 
-                            company.name === 'Keeneland Sales' ? 'Historic Kentucky horse auction leader' : 
-                            company.name === 'OBS Sales' ? 'Ocala-based yearling and 2YO sales' : 
-                            company.name === 'Inglis Digital USA' ? 'Online horse auction platform' : 
-                            company.name === 'Hoosier Classic Sale' ? 'Indiana’s top horse sale event' : 'Horse auction specialist'}`;
+                        description = `${company.name}: ${company.name.toLowerCase().includes('fasig') ? 'Premier auction house for thoroughbreds' : 
+                            company.name.toLowerCase().includes('keeneland') ? 'Historic Kentucky horse auction leader' : 
+                            company.name.toLowerCase().includes('obs') ? 'Ocala-based yearling and 2YO sales' : 
+                            company.name.toLowerCase().includes('inglis') ? 'Online horse auction platform' : 
+                            company.name.toLowerCase().includes('hoosier') ? 'Indiana’s top horse sale event' : 'Horse auction specialist'}`;
                     } else if (query.includes('mlb baseball teams')) {
-                        description = `${company.name}: ${company.name === 'Arizona Diamondbacks' ? 'NL West team, 2001 World Series champs' : 
-                            company.name === 'Atlanta Braves' ? 'NL East team, 2021 World Series winners' : 
-                            company.name === 'Baltimore Orioles' ? 'AL East team with a rich history' : 
-                            company.name === 'Boston Red Sox' ? 'AL East team, 2018 World Series champs' : 
-                            company.name === 'Chicago Cubs' ? 'NL Central team, 2016 World Series winners' : 'MLB franchise'}`;
+                        description = `${company.name}: ${company.name.toLowerCase().includes('diamondbacks') ? 'NL West team, 2001 World Series champs' : 
+                            company.name.toLowerCase().includes('braves') ? 'NL East team, 2021 World Series winners' : 
+                            company.name.toLowerCase().includes('orioles') ? 'AL East team with a rich history' : 
+                            company.name.toLowerCase().includes('red sox') ? 'AL East team, 2018 World Series champs' : 
+                            company.name.toLowerCase().includes('cubs') ? 'NL Central team, 2016 World Series winners' : 'MLB franchise'}`;
                     }
                     results.innerHTML += `
                         <div class="result-item">
