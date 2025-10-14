@@ -21,7 +21,7 @@
         .card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
         .card h3 { font-size: 1.4em; color: #FFFFFF; margin-bottom: 10px; }
         .card p { font-size: 1em; color: #D0D0D0; }
-        .stats { display: flex; justify-content: space-around; background: rgba(255,255,255,0.03); padding: 30px; border-radius: 12px; margin: 40px 0; }
+        .stats { display: flex; justify-content: space-around; background: rgba(255,255,255,0.03); padding: 30px; border-radius: 12px; margin: 20px 0; }
         .stat { text-align: center; }
         .stat .value { font-size: 2.2em; font-weight: 700; color: #FFFFFF; }
         .stat .label { font-size: 0.9em; color: #B0B0B0; }
@@ -42,6 +42,7 @@
         .result-item a:hover { text-decoration: underline; }
         .result-desc { font-size: 0.9em; color: #B0B0B0; margin-top: 5px; }
         .loading { color: #B0B0B0; font-style: italic; }
+        .see-more-btn { margin: 10px auto; display: block; }
         @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .stats { flex-direction: column; gap: 20px; } .search-tabs { flex-direction: column; } }
     </style>
 </head>
@@ -204,7 +205,7 @@
             }
         }
 
-        // AI Industry Search with Mock Data
+        // AI Industry Search with Mock Data and See More
         function searchAI() {
             const query = document.getElementById('aiInput').value.trim().toLowerCase();
             const results = document.getElementById('aiResults');
@@ -213,40 +214,61 @@
                 results.innerHTML = '<div class="result-item">Enter a query.</div>';
                 return;
             }
-            try {
-                let companies = [];
-                if (query.includes('ice cream')) {
-                    companies = [
-                        { name: "Chapman's", domain: "chapmans.ca", desc: "Family-owned Canadian ice cream maker with 100% local dairy" },
-                        { name: "Kawartha Dairy", domain: "kawarthadairy.com", desc: "Ontario-based premium ice cream since 1937" },
-                        { name: "Island Farms", domain: "islandfarms.com", desc: "BC’s leading dairy and ice cream brand" },
-                        { name: "Coaticook", domain: "coaticook.ca", desc: "Quebec’s artisanal ice cream specialist" },
-                        { name: "Breyers", domain: "breyers.com", desc: "Global brand with Canadian-made lines" }
-                    ];
-                } else if (query.includes('horse racing auctions')) {
-                    companies = [
-                        { name: "Fasig-Tipton", domain: "fasigtipton.com", desc: "Premier auction house for thoroughbreds" },
-                        { name: "Keeneland", domain: "keeneland.com", desc: "Historic Kentucky horse auction leader" },
-                        { name: "OBS Sales", domain: "obssales.com", desc: "Ocala-based yearling and 2YO sales" },
-                        { name: "Inglis Digital", domain: "inglis.com", desc: "Online horse auction platform" },
-                        { name: "Hoosier Classic", domain: "hoosierclassicsale.com", desc: "Indiana’s top horse sale event" }
-                    ];
-                } else if (query.includes('mlb baseball teams')) {
-                    companies = [
-                        { name: "Arizona Diamondbacks", domain: "mlb.com/dbacks", desc: "NL West team, 2001 World Series champs" },
-                        { name: "Atlanta Braves", domain: "mlb.com/braves", desc: "NL East team, 2021 World Series winners" },
-                        { name: "Baltimore Orioles", domain: "mlb.com/orioles", desc: "AL East team with a rich history" },
-                        { name: "Boston Red Sox", domain: "mlb.com/redsox", desc: "AL East team, 2018 World Series champs" },
-                        { name: "Chicago Cubs", domain: "mlb.com/cubs", desc: "NL Central team, 2016 World Series winners" }
-                    ];
-                }
 
-                if (companies.length === 0) {
-                    throw new Error('No matching industries found in mock data');
-                }
+            let allCompanies = [];
+            if (query.includes('ice cream')) {
+                allCompanies = [
+                    { name: "Chapman's", domain: "chapmans.ca", desc: "Family-owned Canadian ice cream maker with 100% local dairy" },
+                    { name: "Kawartha Dairy", domain: "kawarthadairy.com", desc: "Ontario-based premium ice cream since 1937" },
+                    { name: "Island Farms", domain: "islandfarms.com", desc: "BC’s leading dairy and ice cream brand" },
+                    { name: "Coaticook", domain: "coaticook.ca", desc: "Quebec’s artisanal ice cream specialist" },
+                    { name: "Breyers", domain: "breyers.com", desc: "Global brand with Canadian-made lines" },
+                    { name: "Nestlé", domain: "nestle.ca", desc: "Multinational with popular ice cream brands in Canada" },
+                    { name: "President's Choice", domain: "pc.ca", desc: "Loblaw’s private-label ice cream offerings" },
+                    { name: "Dairy Queen", domain: "dairyqueen.ca", desc: "Iconic soft-serve and ice cream chain" },
+                    { name: "Magnum", domain: "mymagnum.ca", desc: "Premium ice cream bars from Unilever" },
+                    { name: "La Diperie", domain: "ladiperie.com", desc: "Montreal-based artisanal dipped ice cream" }
+                ];
+            } else if (query.includes('horse racing auctions')) {
+                allCompanies = [
+                    { name: "Fasig-Tipton", domain: "fasigtipton.com", desc: "Premier auction house for thoroughbreds" },
+                    { name: "Keeneland", domain: "keeneland.com", desc: "Historic Kentucky horse auction leader" },
+                    { name: "OBS Sales", domain: "obssales.com", desc: "Ocala-based yearling and 2YO sales" },
+                    { name: "Inglis Digital", domain: "inglis.com", desc: "Online horse auction platform" },
+                    { name: "Hoosier Classic", domain: "hoosierclassicsale.com", desc: "Indiana’s top horse sale event" },
+                    { name: "Tattersalls", domain: "tattersalls.com", desc: "UK’s leading bloodstock auctioneer" },
+                    { name: "Arqana", domain: "arqana.com", desc: "French thoroughbred auction specialists" },
+                    { name: "Goffs", domain: "goffs.com", desc: "Ireland’s premier horse auction house" },
+                    { name: "Doncaster Bloodstock", domain: "doncasterbloodstock.com", desc: "UK yearling and breeding stock sales" },
+                    { name: "Magic Millions", domain: "magicmillions.com", desc: "Australian thoroughbred auction leader" }
+                ];
+            } else if (query.includes('mlb baseball teams')) {
+                allCompanies = [
+                    { name: "Arizona Diamondbacks", domain: "mlb.com/dbacks", desc: "NL West team, 2001 World Series champs" },
+                    { name: "Atlanta Braves", domain: "mlb.com/braves", desc: "NL East team, 2021 World Series winners" },
+                    { name: "Baltimore Orioles", domain: "mlb.com/orioles", desc: "AL East team with a rich history" },
+                    { name: "Boston Red Sox", domain: "mlb.com/redsox", desc: "AL East team, 2018 World Series champs" },
+                    { name: "Chicago Cubs", domain: "mlb.com/cubs", desc: "NL Central team, 2016 World Series winners" },
+                    { name: "Cincinnati Reds", domain: "mlb.com/reds", desc: "NL Central team, first pro baseball club" },
+                    { name: "Cleveland Guardians", domain: "mlb.com/guardians", desc: "AL Central team, 1948 World Series champs" },
+                    { name: "Colorado Rockies", domain: "mlb.com/rockies", desc: "NL West team, high-altitude play" },
+                    { name: "Detroit Tigers", domain: "mlb.com/tigers", desc: "AL Central team, 1984 World Series winners" },
+                    { name: "Houston Astros", domain: "mlb.com/astros", desc: "AL West team, 2022 World Series champs" }
+                ];
+            }
 
+            if (allCompanies.length === 0) {
+                results.innerHTML = '<div class="result-item">Error: No matching industries found in mock data. Check console for details.</div>';
+                console.error('AI search failed: No matching industries');
+                return;
+            }
+
+            let offset = 0;
+            const limit = 5;
+            function displayResults() {
                 results.innerHTML = '';
-                companies.forEach(company => {
+                const displayedCompanies = allCompanies.slice(offset, offset + limit);
+                displayedCompanies.forEach(company => {
                     results.innerHTML += `
                         <div class="result-item">
                             <strong><a href="https://${company.domain}" target="_blank">${company.name} - ${company.domain}</a></strong>
@@ -254,10 +276,22 @@
                         </div>
                     `;
                 });
-            } catch (err) {
-                results.innerHTML = `<div class="result-item">Error: ${err.message}. Check console for details.</div>`;
-                console.error('AI search failed:', err);
+                offset += limit;
+                if (offset >= allCompanies.length) {
+                    document.getElementById('seeMoreBtn')?.remove();
+                } else {
+                    if (!document.getElementById('seeMoreBtn')) {
+                        const seeMoreBtn = document.createElement('button');
+                        seeMoreBtn.id = 'seeMoreBtn';
+                        seeMoreBtn.className = 'btn see-more-btn';
+                        seeMoreBtn.textContent = 'See More';
+                        seeMoreBtn.onclick = displayResults;
+                        results.appendChild(seeMoreBtn);
+                    }
+                }
             }
+
+            displayResults();
         }
 
         // Import Records Search (Static fallback)
