@@ -218,11 +218,11 @@
                 // Parse companies or teams from search results
                 const companies = [];
                 for (let result of searchResults.results.slice(0, 10)) { // Top 10 results
-                    const titleMatch = result.title.match(/([A-Za-z\s&'-]+)(?:\s-\s)?(?:[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))?/i);
+                    const titleMatch = result.title.match(/([A-Za-z\s&'-]+)(?:\s-\s)?(?:[a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))?/i) || result.title.match(/[A-Za-z\s&'-]+/i);
                     const urlMatch = result.url.match(/https?:\/\/(?:www\.)?([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}))/)?.[1];
                     if (titleMatch && titleMatch[1] && !companies.some(c => c.name.toLowerCase() === titleMatch[1].trim().toLowerCase())) {
                         const name = titleMatch[1].trim();
-                        const domain = titleMatch[2] || urlMatch || 'N/A';
+                        const domain = urlMatch || 'N/A';
                         if (name && domain !== 'N/A' && companies.length < 5) {
                             companies.push({ name, domain });
                         }
@@ -239,7 +239,7 @@
                     let description = 'Innovative entity in its field';
                     if (query.includes('ice cream')) {
                         description = `${company.name}: ${company.name.toLowerCase().includes('chapman') ? 'Family-owned Canadian ice cream maker with local dairy' : 
-                            company.name.toLowerCase().includes('kawartha') ? 'Ontario-based premium ice cream producer' : 
+                            company.name.toLowerCase().includes('kawartha') ? 'Ontario-based premium ice cream producer since 1937' : 
                             company.name.toLowerCase().includes('island') ? 'BC’s leading dairy and ice cream brand' : 
                             company.name.toLowerCase().includes('coaticook') ? 'Quebec’s artisanal ice cream specialist' : 
                             company.name.toLowerCase().includes('breyers') ? 'Global brand with Canadian-made lines' : 'Popular ice cream brand'}`;
