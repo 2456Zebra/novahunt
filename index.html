@@ -258,7 +258,9 @@
                 }
 
                 // Limit to 20 unique companies
-                allCompanies = allCompanies.slice(0, 20);
+                allCompanies = allCompanies.filter((company, index, self) =>
+                    index === self.findIndex((c) => c.name === company.name)
+                ).slice(0, 20);
 
                 let offset = 0;
                 const limit = 5;
@@ -341,7 +343,6 @@
         // Simulated web search function (handled by Grok's capabilities)
         async function searchWeb(query, limit) {
             // This is a placeholder; actual web search is handled internally by Grok
-            // For testing, we'll use mock data, but in practice, it will fetch live results
             const mockResults = [
                 { title: "Top 10 Canadian Ice Cream Companies - Wikipedia", snippet: "Includes Chapman's, Kawartha Dairy, Island Farms.", url: "en.wikipedia.org/wiki/Ice_cream_canada" },
                 { title: "Canadian Ice Cream Brands - Statista", snippet: "Leading brands: Coaticook, Breyers, Nestlé.", url: "statista.com/ice-cream-canada" },
