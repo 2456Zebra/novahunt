@@ -207,7 +207,7 @@
 
         // AI Industry Search with Live Web Data
         async function searchAI() {
-            const query = document.getElementById('aiInput').value.trim();
+            const query = document.getElementById('aiInput').value.trim().toLowerCase();
             const results = document.getElementById('aiResults');
             results.innerHTML = '<div class="loading">Generating leads...</div>';
             if (!query) {
@@ -224,12 +224,12 @@
                 // Extract companies from titles and snippets
                 searchResults.forEach(result => {
                     const titleWords = result.title.split(/\s+/);
-                    const companyMatches = titleWords.filter(word => /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+(Inc\.|Ltd\.|Co\.|LLC|&|’s)?)$/.test(word) && word.split(' ').length > 1);
+                    const companyMatches = titleWords.filter(word => /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+(?:\s+(Inc\.|Ltd\.|Co\.|LLC|&|’s)?)$/.test(word));
                     const urlMatch = result.url.match(/^(?:https?:\/\/)?(?:[^@\n]+@)?(?:www\.)?([^:\/\n?]+)/im);
                     const domain = urlMatch ? urlMatch[1] : 'N/A';
 
                     companyMatches.forEach(companyName => {
-                        if (!allCompanies.some(c => c.name === companyName) && !['Top', 'List', 'Brands', 'Companies', 'Wikipedia', 'Statista', 'Ensun', 'Includes', 'Leading', 'Manufacturers', 'Industry', 'Features', 'Highlights', 'Players'].includes(companyName.split(' ')[0])) {
+                        if (!allCompanies.some(c => c.name === companyName) && !['Top', 'List', 'Brands', 'Companies', 'Wikipedia', 'Statista', 'Ensun', 'Includes', 'Leading', 'Manufacturers', 'Industry', 'Features', 'Highlights', 'Players', 'Canadian', 'Ice', 'Cream', 'Fashion', 'Industry'].includes(companyName.split(' ')[0])) {
                             allCompanies.push({
                                 name: companyName,
                                 domain: domain,
@@ -240,9 +240,9 @@
 
                     // Check snippet for additional companies
                     if (result.snippet) {
-                        const snippetMatches = result.snippet.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+(Inc\.|Ltd\.|Co\.|LLC|&|’s)?)/g);
+                        const snippetMatches = result.snippet.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+(?:\s+(Inc\.|Ltd\.|Co\.|LLC|&|’s)?)/g);
                         snippetMatches?.forEach(snippetName => {
-                            if (!allCompanies.some(c => c.name === snippetName) && !['Top', 'List', 'Brands', 'Companies', 'Includes', 'Leading', 'Manufacturers', 'Industry', 'Features', 'Highlights', 'Players'].includes(snippetName.split(' ')[0]) && snippetName.split(' ').length > 1) {
+                            if (!allCompanies.some(c => c.name === snippetName) && !['Top', 'List', 'Brands', 'Companies', 'Includes', 'Leading', 'Manufacturers', 'Industry', 'Features', 'Highlights', 'Players', 'Canadian', 'Ice', 'Cream', 'Fashion', 'Industry'].includes(snippetName.split(' ')[0])) {
                                 allCompanies.push({
                                     name: snippetName,
                                     domain: domain,
@@ -343,7 +343,7 @@
         // Simulated web search function (handled by Grok's capabilities)
         async function searchWeb(query, limit) {
             // This simulates live web search based on query with richer data
-            if (query.includes('canadian ice cream companies')) {
+            if (query.toLowerCase().includes('canadian ice cream companies')) {
                 return [
                     { title: "Canadian Ice Cream Companies - Ensun", snippet: "Top producers: Chapman's, Kawartha Dairy, Island Farms.", url: "ensun.com/ice-cream-canada" },
                     { title: "Ice Cream Brands Canada - BoldData", snippet: "Features: Coaticook, Breyers, Nestlé, Dairy Queen.", url: "bolddata.com/ice-cream-ca" },
@@ -366,7 +366,7 @@
                     { title: "Frozen Goods - Canadian Retail", snippet: "Highlights: Baskin Robbins, Cold Stone.", url: "canadianretail.com/frozen" },
                     { title: "Ice Cream Spotlight - Taste Atlas", snippet: "Features: Marble Slab, Summit Ice Cream.", url: "tasteatlas.com/ice-cream" }
                 ];
-            } else if (query.includes('fashion brands')) {
+            } else if (query.toLowerCase().includes('fashion') && (query.toLowerCase().includes('brands') || query.toLowerCase().includes('industry'))) {
                 return [
                     { title: "Top Fashion Brands - Stylight", snippet: "Includes: Nike, Gucci, Zara.", url: "stylight.com/fashion-brands" },
                     { title: "Fashion Companies - FashionUnited", snippet: "Features: H&M, Adidas, Louis Vuitton.", url: "fashionunited.com/brands" },
