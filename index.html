@@ -227,7 +227,17 @@
                     { name: "President's Choice", domain: "pc.ca", desc: "Loblaw’s private-label ice cream offerings" },
                     { name: "Dairy Queen", domain: "dairyqueen.ca", desc: "Iconic soft-serve and ice cream chain" },
                     { name: "Magnum", domain: "mymagnum.ca", desc: "Premium ice cream bars from Unilever" },
-                    { name: "La Diperie", domain: "ladiperie.com", desc: "Montreal-based artisanal dipped ice cream" }
+                    { name: "La Diperie", domain: "ladiperie.com", desc: "Montreal-based artisanal dipped ice cream" },
+                    { name: "Ben & Jerry’s", domain: "benjerry.ca", desc: "US brand with a Canadian presence" },
+                    { name: "Häagen-Dazs", domain: "haagendazs.ca", desc: "Luxury ice cream available in Canada" },
+                    { name: "Marble Slab", domain: "marbleslab.ca", desc: "Custom ice cream with Canadian stores" },
+                    { name: "Cows", domain: "eatcows.com", desc: "PEI-based ice cream with unique flavors" },
+                    { name: "Summit Ice Cream", domain: "summiticecream.com", desc: "Alberta’s artisan ice cream producer" },
+                    { name: "Sweet Jesus", domain: "sweetjesus.ca", desc: "Toronto-based creative ice cream shop" },
+                    { name: "Gigi’s", domain: "gigisicecream.com", desc: "Vancouver’s small-batch ice cream maker" },
+                    { name: "Ed’s Real Scoop", domain: "edsrealscoop.com", desc: "Toronto’s classic ice cream parlor" },
+                    { name: "Soft Peaks", domain: "softpeaks.ca", desc: "Ottawa’s artisanal ice cream specialist" },
+                    { name: "Moose Tracks", domain: "moosetracks.com", desc: "Popular flavor brand in Canada" }
                 ];
             } else if (query.includes('horse racing auctions')) {
                 allCompanies = [
@@ -240,7 +250,17 @@
                     { name: "Arqana", domain: "arqana.com", desc: "French thoroughbred auction specialists" },
                     { name: "Goffs", domain: "goffs.com", desc: "Ireland’s premier horse auction house" },
                     { name: "Doncaster Bloodstock", domain: "doncasterbloodstock.com", desc: "UK yearling and breeding stock sales" },
-                    { name: "Magic Millions", domain: "magicmillions.com", desc: "Australian thoroughbred auction leader" }
+                    { name: "Magic Millions", domain: "magicmillions.com", desc: "Australian thoroughbred auction leader" },
+                    { name: "BBA Ireland", domain: "bba.ie", desc: "Irish bloodstock sales organization" },
+                    { name: "Saratoga Sale", domain: "saratogasale.com", desc: "NY-based elite horse auctions" },
+                    { name: "Canadian Thoroughbred", domain: "canadianthoroughbred.com", desc: "Canada’s horse auction hub" },
+                    { name: "Newmarket Sales", domain: "newmarketsales.com", desc: "UK’s historic auction venue" },
+                    { name: "Barretts Sales", domain: "barretts.com", desc: "California thoroughbred auctions" },
+                    { name: "Ascot Sales", domain: "ascot.com", desc: "UK racing and auction events" },
+                    { name: "Woodbine Sales", domain: "woodbinesales.com", desc: "Toronto-area horse auctions" },
+                    { name: "Kempton Sales", domain: "kemptonsales.co.uk", desc: "UK point-to-point auction leader" },
+                    { name: "Gulfstream Sales", domain: "gulfstreampark.com", desc: "Florida horse auction events" },
+                    { name: "Santa Anita Sales", domain: "santaanita.com", desc: "California racing auctions" }
                 ];
             } else if (query.includes('mlb baseball teams')) {
                 allCompanies = [
@@ -253,7 +273,17 @@
                     { name: "Cleveland Guardians", domain: "mlb.com/guardians", desc: "AL Central team, 1948 World Series champs" },
                     { name: "Colorado Rockies", domain: "mlb.com/rockies", desc: "NL West team, high-altitude play" },
                     { name: "Detroit Tigers", domain: "mlb.com/tigers", desc: "AL Central team, 1984 World Series winners" },
-                    { name: "Houston Astros", domain: "mlb.com/astros", desc: "AL West team, 2022 World Series champs" }
+                    { name: "Houston Astros", domain: "mlb.com/astros", desc: "AL West team, 2022 World Series champs" },
+                    { name: "Kansas City Royals", domain: "mlb.com/royals", desc: "AL Central team, 2015 World Series winners" },
+                    { name: "Los Angeles Angels", domain: "mlb.com/angels", desc: "AL West team, 2002 World Series champs" },
+                    { name: "Los Angeles Dodgers", domain: "mlb.com/dodgers", desc: "NL West team, 2020 World Series winners" },
+                    { name: "Miami Marlins", domain: "mlb.com/marlins", desc: "NL East team, 2003 World Series champs" },
+                    { name: "Milwaukee Brewers", domain: "mlb.com/brewers", desc: "NL Central team, strong playoff history" },
+                    { name: "Minnesota Twins", domain: "mlb.com/twins", desc: "AL Central team, 1991 World Series champs" },
+                    { name: "New York Mets", domain: "mlb.com/mets", desc: "NL East team, 1986 World Series winners" },
+                    { name: "New York Yankees", domain: "mlb.com/yankees", desc: "AL East team, 27 World Series titles" },
+                    { name: "Oakland Athletics", domain: "mlb.com/athletics", desc: "AL West team, 1989 World Series champs" },
+                    { name: "Philadelphia Phillies", domain: "mlb.com/phillies", desc: "NL East team, 2008 World Series winners" }
                 ];
             }
 
@@ -266,7 +296,6 @@
             let offset = 0;
             const limit = 5;
             function displayResults() {
-                results.innerHTML = '';
                 const displayedCompanies = allCompanies.slice(offset, offset + limit);
                 displayedCompanies.forEach(company => {
                     results.innerHTML += `
@@ -291,6 +320,7 @@
                 }
             }
 
+            results.innerHTML = ''; // Clear loading message
             displayResults();
         }
 
