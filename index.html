@@ -224,7 +224,7 @@
                 // Extract companies from titles and snippets
                 searchResults.forEach(result => {
                     const titleWords = result.title.split(/\s+/);
-                    const companyMatches = titleWords.filter(word => /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+(?:\s+(Inc\.|Ltd\.|Co\.|LLC|&|’s)?)$/.test(word));
+                    const companyMatches = titleWords.filter(word => /^[A-Z][a-z]+(?:\s+[A-Z][a-z]*)*(?:\s+(Inc\.|Ltd\.|Co\.|LLC|&|’s)?)$/.test(word));
                     const urlMatch = result.url.match(/^(?:https?:\/\/)?(?:[^@\n]+@)?(?:www\.)?([^:\/\n?]+)/im);
                     const domain = urlMatch ? urlMatch[1] : 'N/A';
 
@@ -233,20 +233,20 @@
                             allCompanies.push({
                                 name: companyName,
                                 domain: domain,
-                                desc: `AI-generated description for ${companyName} in ${query} industry`
+                                desc: `AI-generated description for ${companyName} in ${document.getElementById('aiInput').value.trim()} industry`
                             });
                         }
                     });
 
                     // Check snippet for additional companies
                     if (result.snippet) {
-                        const snippetMatches = result.snippet.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+(?:\s+(Inc\.|Ltd\.|Co\.|LLC|&|’s)?)/g);
+                        const snippetMatches = result.snippet.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]*)*(?:\s+(Inc\.|Ltd\.|Co\.|LLC|&|’s)?)/g);
                         snippetMatches?.forEach(snippetName => {
                             if (!allCompanies.some(c => c.name === snippetName) && !['Top', 'List', 'Brands', 'Companies', 'Includes', 'Leading', 'Manufacturers', 'Industry', 'Features', 'Highlights', 'Players', 'Canadian', 'Ice', 'Cream', 'Fashion', 'Industry'].includes(snippetName.split(' ')[0])) {
                                 allCompanies.push({
                                     name: snippetName,
                                     domain: domain,
-                                    desc: `AI-generated description for ${snippetName} in ${query} industry`
+                                    desc: `AI-generated description for ${snippetName} in ${document.getElementById('aiInput').value.trim()} industry`
                                 });
                             }
                         });
@@ -342,6 +342,7 @@
 
         // Simulated web search function (handled by Grok's capabilities)
         async function searchWeb(query, limit) {
+            console.log('Searching for:', query); // Debug log
             // This simulates live web search based on query with richer data
             if (query.toLowerCase().includes('canadian ice cream companies')) {
                 return [
