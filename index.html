@@ -158,7 +158,7 @@
             console.log(`Switched to ${tabName} tab`);
         }
 
-        // Company Search with Hunter.io API via CORS.SH
+        // Company Search with Hunter.io API via CORS.lol
         async function searchCompany() {
             const query = document.getElementById('companyInput').value.trim();
             const results = document.getElementById('companyResults');
@@ -169,9 +169,9 @@
             }
             try {
                 const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a';
-                const proxyUrl = 'https://cors.sh/';
+                const proxyUrl = 'https://cors.lol/?url=';
                 const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
-                const response = await fetch(proxyUrl + apiUrl);
+                const response = await fetch(proxyUrl + encodeURIComponent(apiUrl));
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
@@ -200,7 +200,7 @@
             }
         }
 
-        // AI Industry Search with Brave Search API
+        // AI Industry Search with OpenCorporates API
         async function searchAI() {
             const query = document.getElementById('aiInput').value.trim();
             const results = document.getElementById('aiResults');
@@ -210,31 +210,27 @@
                 return;
             }
             try {
-                const apiUrl = `https://api.brave.com/search?q=${encodeURIComponent(query + ' company list')}&count=5`;
-                const response = await fetch(apiUrl, {
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
+                const apiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
+                const response = await fetch(apiUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
                 const data = await response.json();
                 results.innerHTML = '';
-                if (!data.web || data.web.results.length === 0) {
+                if (!data.results || data.results.companies.length === 0) {
                     results.innerHTML = '<div class="result-item">No companies found.</div>';
                 } else {
-                    data.web.results.slice(0, 5).forEach(result => {
-                        const title = result.title || 'N/A';
-                        const url = result.url || '#';
+                    data.results.companies.slice(0, 5).forEach(company => {
+                        const name = company.name || 'N/A';
+                        const url = company.url || '#';
                         results.innerHTML += `
                             <div class="result-item">
-                                <strong><a href="${url}" target="_blank">${title}</a></strong>
-                                <div class="result-desc">${result.description || 'No description available.'}</div>
+                                <strong><a href="${url}" target="_blank">${name}</a></strong>
+                                <div class="result-desc">${company.description || 'No description available.'}</div>
                             </div>
                         `;
                     });
-                    results.innerHTML += '<button class="see-more-btn" onclick="window.open(`https://search.brave.com/search?q=${encodeURIComponent(query + \' company list\')}`, \'_blank\')">See More</button>';
+                    results.innerHTML += '<button class="see-more-btn" onclick="window.open(`https://opencorporates.com/companies/search?q=${encodeURIComponent(query)}`, \'_blank\')">See More</button>';
                 }
             } catch (err) {
                 results.innerHTML = `<div class="result-item">Error: ${err.message}. Check console for details.</div>`;
