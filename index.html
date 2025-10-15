@@ -75,15 +75,10 @@
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
-                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Canadian ice cream companies' and explore on Grok.com for instant results.</p>
+                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Canadian ice cream companies' for live results.</p>
                 <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
-                <button class="btn" onclick="searchAI()">Search on Grok.com</button>
+                <button class="btn" onclick="searchAI()">Generate Leads</button>
                 <div id="aiResults" class="results"></div>
-                <!-- Hidden form for redirect -->
-                <form id="grokSearchForm" target="grokIframe" method="GET" style="display: none;">
-                    <input type="text" name="q" id="grokQueryInput">
-                </form>
-                <iframe name="grokIframe" style="display: none;"></iframe>
             </div>
             <div id="imports-tab" class="tab-content">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
@@ -163,7 +158,7 @@
             console.log(`Switched to ${tabName} tab`);
         }
 
-        // Company Search with Hunter.io API via CORS Proxy
+        // Company Search with Hunter.io API via CORS.SH
         async function searchCompany() {
             const query = document.getElementById('companyInput').value.trim();
             const results = document.getElementById('companyResults');
@@ -174,14 +169,9 @@
             }
             try {
                 const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a';
-                const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+                const proxyUrl = 'https://cors.sh/';
                 const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
-                const response = await fetch(proxyUrl + apiUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Origin': 'https://novahunt.ai'
-                    }
-                });
+                const response = await fetch(proxyUrl + apiUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
@@ -205,27 +195,51 @@
                     });
                 }
             } catch (err) {
-                results.innerHTML = `<div class="result-item">Error: ${err.message === 'HTTP error! Status: 403' ? 'CORS proxy blocked. Visit https://cors-anywhere.herokuapp.com/corsdemo, click "Request temporary access," then retry.' : err.message}. Check console for details.</div>`;
+                results.innerHTML = `<div class="result-item">Error: ${err.message}. Check console for details.</div>`;
                 console.error('Company search failed:', err);
             }
         }
 
-        // AI Industry Search with Form Submission to Grok.com
-        function searchAI() {
+        // AI Industry Search with Brave Search API
+        async function searchAI() {
             const query = document.getElementById('aiInput').value.trim();
             const results = document.getElementById('aiResults');
+            results.innerHTML = '<div class="loading">Searching...</div>';
             if (!query) {
                 results.innerHTML = '<div class="result-item">Enter a query.</div>';
                 return;
             }
-            const grokQuery = `${query} company list`;
-            const form = document.getElementById('grokSearchForm');
-            const input = document.getElementById('grokQueryInput');
-            input.value = grokQuery;
-            form.action = `https://grok.com/search`;
-            form.target = 'grokIframe';
-            form.submit();
-            results.innerHTML = '<div class="result-item">Opened search on Grok.com for instant, live results.<br><small>Powered by xAI Grok - <a href="https://x.ai/grok" target="_blank">Learn more</a></small></div>';
+            try {
+                const apiUrl = `https://api.brave.com/search?q=${encodeURIComponent(query + ' company list')}&count=5`;
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const data = await response.json();
+                results.innerHTML = '';
+                if (!data.web || data.web.results.length === 0) {
+                    results.innerHTML = '<div class="result-item">No companies found.</div>';
+                } else {
+                    data.web.results.slice(0, 5).forEach(result => {
+                        const title = result.title || 'N/A';
+                        const url = result.url || '#';
+                        results.innerHTML += `
+                            <div class="result-item">
+                                <strong><a href="${url}" target="_blank">${title}</a></strong>
+                                <div class="result-desc">${result.description || 'No description available.'}</div>
+                            </div>
+                        `;
+                    });
+                    results.innerHTML += '<button class="see-more-btn" onclick="window.open(`https://search.brave.com/search?q=${encodeURIComponent(query + \' company list\')}`, \'_blank\')">See More</button>';
+                }
+            } catch (err) {
+                results.innerHTML = `<div class="result-item">Error: ${err.message}. Check console for details.</div>`;
+                console.error('AI search failed:', err);
+            }
         }
 
         // Import Records Search (Static fallback)
