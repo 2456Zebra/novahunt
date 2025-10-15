@@ -205,7 +205,7 @@
             }
         }
 
-        // AI Industry Search with Mock Data and See More
+        // AI Industry Search with Mock Data and Dynamic See More
         function searchAI() {
             const query = document.getElementById('aiInput').value.trim().toLowerCase();
             const results = document.getElementById('aiResults');
@@ -306,17 +306,15 @@
                     `;
                 });
                 offset += limit;
-                if (offset >= allCompanies.length) {
-                    document.getElementById('seeMoreBtn')?.remove();
-                } else {
-                    if (!document.getElementById('seeMoreBtn')) {
-                        const seeMoreBtn = document.createElement('button');
-                        seeMoreBtn.id = 'seeMoreBtn';
-                        seeMoreBtn.className = 'btn see-more-btn';
-                        seeMoreBtn.textContent = 'See More';
-                        seeMoreBtn.onclick = displayResults;
-                        results.appendChild(seeMoreBtn);
-                    }
+                // Remove existing button if present
+                document.getElementById('seeMoreBtn')?.remove();
+                if (offset < allCompanies.length) {
+                    const seeMoreBtn = document.createElement('button');
+                    seeMoreBtn.id = 'seeMoreBtn';
+                    seeMoreBtn.className = 'btn see-more-btn';
+                    seeMoreBtn.textContent = 'See More';
+                    seeMoreBtn.onclick = displayResults;
+                    results.appendChild(seeMoreBtn);
                 }
             }
 
