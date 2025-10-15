@@ -52,7 +52,7 @@
         <div class="container">
             <h1>🥷 NovaHunt</h1>
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
-            <p>Find thousands of qualified B2B leads instantly with cutting-edge AI.</p>
+            <p>Hunt thousands of qualified B2B leads instantly with cutting-edge AI.</p>
             <div style="text-align: center; margin-top: 20px;"><button class="btn">Start Free Trial</button></div>
             <p style="font-size: 0.9em; color: #B0B0B0;">100 free credits • No credit card required</p>
         </div>
@@ -75,10 +75,15 @@
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
-                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Canadian ice cream companies' and explore on Grok.com for instant, live results.</p>
+                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Canadian ice cream companies' and explore on Grok.com for instant results.</p>
                 <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
                 <button class="btn" onclick="searchAI()">Search on Grok.com</button>
                 <div id="aiResults" class="results"></div>
+                <!-- Hidden form for redirect -->
+                <form id="grokSearchForm" target="grokIframe" method="GET" style="display: none;">
+                    <input type="text" name="q" id="grokQueryInput">
+                </form>
+                <iframe name="grokIframe" style="display: none;"></iframe>
             </div>
             <div id="imports-tab" class="tab-content">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
@@ -115,7 +120,7 @@
     <section class="section">
         <div class="container">
             <div class="stats">
-                <div class="stat"><div class="value">10k+</div><div class="label">Leads Found</div></div>
+                <div class="stat"><div class="value">10k+</div><div class="label">Leads Generated</div></div>
                 <div class="stat"><div class="value">99%</div><div class="label">Accuracy Rate</div></div>
                 <div class="stat"><div class="value">24/7</div><div class="label">Automated</div></div>
             </div>
@@ -205,7 +210,7 @@
             }
         }
 
-        // AI Industry Search with Grok.com Integration
+        // AI Industry Search with Form Submission to Grok.com
         function searchAI() {
             const query = document.getElementById('aiInput').value.trim();
             const results = document.getElementById('aiResults');
@@ -214,8 +219,12 @@
                 return;
             }
             const grokQuery = `${query} company list`;
-            const grokUrl = `https://grok.com/search?q=${encodeURIComponent(grokQuery)}`;
-            window.open(grokUrl, '_blank');
+            const form = document.getElementById('grokSearchForm');
+            const input = document.getElementById('grokQueryInput');
+            input.value = grokQuery;
+            form.action = `https://grok.com/search`;
+            form.target = 'grokIframe';
+            form.submit();
             results.innerHTML = '<div class="result-item">Opened search on Grok.com for instant, live results.<br><small>Powered by xAI Grok - <a href="https://x.ai/grok" target="_blank">Learn more</a></small></div>';
         }
 
