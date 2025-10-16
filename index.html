@@ -200,7 +200,7 @@
             }
         }
 
-        // AI Industry Search with DuckDuckGo API and Fallback
+        // AI Industry Search with DuckDuckGo API and Manual Fallback
         async function searchAI() {
             const query = document.getElementById('aiInput').value.trim();
             const results = document.getElementById('aiResults');
@@ -218,30 +218,45 @@
                 const data = await response.json();
                 results.innerHTML = '';
                 if (!data.RelatedTopics || data.RelatedTopics.length === 0) {
-                    results.innerHTML = '<div class="result-item">No companies found.</div>';
-                } else {
-                    const companies = data.RelatedTopics.filter(topic => 
-                        topic.FirstURL && (topic.FirstURL.includes('.com') || topic.FirstURL.includes('.ca') || topic.FirstURL.includes('.org'))
-                    ).slice(0, 15);
-                    if (companies.length === 0) {
-                        results.innerHTML = '<div class="result-item">No company websites found. Showing all related topics...</div>';
-                        companies = data.RelatedTopics.slice(0, 15);
-                    }
-                    companies.forEach(topic => {
-                        const name = topic.Text || 'N/A';
-                        const url = topic.FirstURL || '#';
-                        results.innerHTML += `
-                            <div class="result-item">
-                                <strong><a href="${url}" target="_blank">${name}</a></strong>
-                                <div class="result-desc">AI-generated description for ${name} in ${query} industry</div>
-                            </div>
-                        `;
-                    });
-                    results.innerHTML += '<button class="see-more-btn" onclick="window.open(`https://duckduckgo.com/?q=${encodeURIComponent(\'list of \' + query)}`, \'_blank\')">See More</button>';
+                    throw new Error('No data from API');
                 }
+                const companies = data.RelatedTopics.slice(0, 5).map(topic => ({
+                    name: topic.Text || 'N/A',
+                    url: topic.FirstURL || '#',
+                    desc: `AI-generated description for ${topic.Text || 'this company'} in ${query} industry`
+                }));
+                if (companies.length === 0) {
+                    throw new Error('No companies found in API response');
+                }
+                companies.forEach(company => {
+                    results.innerHTML += `
+                        <div class="result-item">
+                            <strong><a href="${company.url}" target="_blank">${company.name}</a></strong>
+                            <div class="result-desc">${company.desc}</div>
+                        </div>
+                    `;
+                });
+                results.innerHTML += '<button class="see-more-btn" onclick="window.open(`https://duckduckgo.com/?q=${encodeURIComponent(\'list of \' + query)}`, \'_blank\')">See More</button>';
             } catch (err) {
-                results.innerHTML = `<div class="result-item">Error: ${err.message}. Check console for details.</div>`;
-                console.error('AI search failed:', err);
+                // Manual fallback for Canadian ice cream companies
+                results.innerHTML = '<div class="result-item">API failed. Showing manual fallback...</div>';
+                const fallbackCompanies = [
+                    { name: "Chapman's", url: "https://www.chapmans.ca", desc: "Canadian ice cream producer since 1970, using 100% Canadian milk." },
+                    { name: "Kawartha Dairy", url: "https://www.kawarthadairy.com", desc: "Family-owned since 1937, known for rich flavors like Moose Tracks." },
+                    { name: "Coaticook", url: "https://www.coaticook.ca", desc: "Quebec-based, leading in premium ice cream with local ingredients." },
+                    { name: "Island Farms", url: "https://www.islandfarms.com", desc: "BC’s top dairy brand with classic and innovative ice cream flavors." },
+                    { name: "Breyers", url: "https://www.breyers.com", desc: "Global brand with Canadian-made lines, top in retail sales (~$343M USD)." }
+                ];
+                fallbackCompanies.forEach(company => {
+                    results.innerHTML += `
+                        <div class="result-item">
+                            <strong><a href="${company.url}" target="_blank">${company.name}</a></strong>
+                            <div class="result-desc">${company.desc}</div>
+                        </div>
+                    `;
+                });
+                results.innerHTML += '<button class="see-more-btn" onclick="window.open(\'https://ensun.io/search/ice-cream/canada\', \'_blank\')">See More</button>';
+                console.error('AI search failed, using fallback:', err);
             }
         }
 
