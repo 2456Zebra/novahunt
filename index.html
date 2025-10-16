@@ -75,7 +75,7 @@
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
-                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Canadian ice cream companies' for sample results.</p>
+                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Canadian ice cream companies' for live results.</p>
                 <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
                 <button class="btn" onclick="searchAI()">Generate Leads</button>
                 <div id="aiResults" class="results"></div>
@@ -158,7 +158,7 @@
             console.log(`Switched to ${tabName} tab`);
         }
 
-        // Company Search with Hunter.io API via Netlify Proxy
+        // Company Search with Hunter.io API via AllOrigins Proxy
         async function searchCompany() {
             const query = document.getElementById('companyInput').value.trim();
             const results = document.getElementById('companyResults');
@@ -169,11 +169,9 @@
             }
             try {
                 const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a';
-                const proxyUrl = 'https://novahunt-ai.netlify.app/.netlify/functions/proxy?url='; // Update with your Netlify URL
+                const proxyUrl = 'https://api.allorigins.win/raw?url=';
                 const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
-                const response = await fetch(proxyUrl + encodeURIComponent(apiUrl), {
-                    headers: { 'Origin': 'https://novahunt.ai' }
-                });
+                const response = await fetch(proxyUrl + encodeURIComponent(apiUrl));
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
@@ -197,103 +195,42 @@
                     });
                 }
             } catch (err) {
-                // Fallback to mock data if API fails
-                results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data...</div>`;
-                const mockEmails = [
-                    { value: `${query.replace('.com', '')}@example.com`, first_name: 'John', last_name: 'Doe', position: 'CEO', confidence: '75' }
-                ];
-                mockEmails.forEach(email => {
-                    const name = email.first_name || email.last_name ? `${email.first_name || ''} ${email.last_name || ''}`.trim() : 'N/A';
-                    results.innerHTML += `
-                        <div class="result-item">
-                            <strong><a href="mailto:${email.value}">${email.value}</a></strong> | ${name} | ${email.position} | Confidence: ${email.confidence}%
-                        </div>
-                    `;
-                });
+                results.innerHTML = `<div class="result-item">Error: ${err.message}. Check console for details.</div>`;
                 console.error('Company search failed:', err);
             }
         }
 
-        // AI Industry Search with Static Mock Data (15 results)
-        function searchAI() {
-            const query = document.getElementById('aiInput').value.trim().toLowerCase();
+        // AI Industry Search with DuckDuckGo API
+        async function searchAI() {
+            const query = document.getElementById('aiInput').value.trim();
             const results = document.getElementById('aiResults');
             results.innerHTML = '<div class="loading">Searching...</div>';
             if (!query) {
                 results.innerHTML = '<div class="result-item">Enter a query.</div>';
                 return;
             }
-
-            // Mock data for different industries with 15 results each
-            const mockData = {
-                'canadian ice cream companies': [
-                    { name: "Chapman's", url: "https://www.chapmans.ca", description: "Canadian ice cream producer since 1970." },
-                    { name: "Kawartha Dairy", url: "https://www.kawarthadairy.com", description: "Family-owned ice cream maker." },
-                    { name: "Moo Shu Ice Cream", url: "https://www.mooshuicecream.com", description: "Artisanal ice cream from Canada." },
-                    { name: "Summit Ice Cream", url: "https://www.summiticecream.com", description: "Premium ice cream brand." },
-                    { name: "Cold Stone Creamery Canada", url: "https://www.coldstonecreamery.ca", description: "Popular ice cream chain." },
-                    { name: "Breyers Canada", url: "https://www.breyers.com/ca", description: "Classic ice cream brand." },
-                    { name: "Nestlé Canada Ice Cream", url: "https://www.nestle.ca", description: "Global ice cream offerings." },
-                    { name: "Marble Slab Creamery", url: "https://www.marbleslab.ca", description: "Custom ice cream experiences." },
-                    { name: "La Diperie", url: "https://www.ladiperie.com", description: "Hand-rolled ice cream specialty." },
-                    { name: "Soft Scoop Canada", url: "https://www.softscoop.ca", description: "Soft serve innovator." },
-                    { name: "Sweet Jesus", url: "https://www.sweetjesus.ca", description: "Trendy ice cream desserts." },
-                    { name: "Vanille Montréal", url: "https://www.vanillemtl.com", description: "Artisanal ice cream shop." },
-                    { name: "Gelato La Paloma", url: "https://www.gelatolab.com", description: "Italian-style gelato." },
-                    { name: "Bovetti Ice Cream", url: "https://www.bovetti.ca", description: "Organic ice cream options." },
-                    { name: "Arctic Ice Cream", url: "https://www.arcticicecream.ca", description: "Northern-inspired flavors." }
-                ],
-                'fashion industry': [
-                    { name: "Canada Goose", url: "https://www.canadagoose.com", description: "Luxury outerwear brand." },
-                    { name: "Aritzia", url: "https://www.aritzia.com", description: "Canadian women’s fashion retailer." },
-                    { name: "Lululemon", url: "https://www.lululemon.com", description: "Athleisure and yoga apparel." },
-                    { name: "Aldo", url: "https://www.aldoshoes.com", description: "Footwear and accessories." },
-                    { name: "Joe Fresh", url: "https://www.joefresh.com", description: "Affordable fashion brand." },
-                    { name: "Roots", url: "https://www.roots.com", description: "Canadian lifestyle apparel." },
-                    { name: "Reitmans", url: "https://www.reitmans.com", description: "Women’s clothing retailer." },
-                    { name: "Le Chateau", url: "https://www.lechateau.com", description: "Trendy fashion outlet." },
-                    { name: "Mackage", url: "https://www.mackage.com", description: "High-end outerwear." },
-                    { name: "Holt Renfrew", url: "https://www.holtrenfrew.com", description: "Luxury department store." },
-                    { name: "Simons", url: "https://www.simons.ca", description: "Canadian fashion and home goods." },
-                    { name: "Harry Rosen", url: "https://www.harryrosen.com", description: "Men’s luxury fashion." },
-                    { name: "Smythe", url: "https://www.smythe.com", description: "Premium women’s blazers." },
-                    { name: "Danier", url: "https://www.danier.com", description: "Leather fashion specialist." },
-                    { name: "Kensie", url: "https://www.kensie.com", description: "Contemporary women’s wear." }
-                ],
-                'mlb baseball teams': [
-                    { name: "Toronto Blue Jays", url: "https://www.mlb.com/bluejays", description: "Canada's MLB team." },
-                    { name: "New York Yankees", url: "https://www.mlb.com/yankees", description: "Historic American League team." },
-                    { name: "Boston Red Sox", url: "https://www.mlb.com/redsox", description: "Rival to Yankees." },
-                    { name: "Chicago Cubs", url: "https://www.mlb.com/cubs", description: "National League icon." },
-                    { name: "Los Angeles Dodgers", url: "https://www.mlb.com/dodgers", description: "West Coast powerhouse." },
-                    { name: "San Francisco Giants", url: "https://www.mlb.com/giants", description: "Rival to Dodgers." },
-                    { name: "Atlanta Braves", url: "https://www.mlb.com/braves", description: "NL East champions." },
-                    { name: "Houston Astros", url: "https://www.mlb.com/astros", description: "AL West contenders." },
-                    { name: "Philadelphia Phillies", url: "https://www.mlb.com/phillies", description: "NL East team." },
-                    { name: "St. Louis Cardinals", url: "https://www.mlb.com/cardinals", description: "NL Central staple." },
-                    { name: "New York Mets", url: "https://www.mlb.com/mets", description: "NL East competitor." },
-                    { name: "Chicago White Sox", url: "https://www.mlb.com/whitesox", description: "AL Central team." },
-                    { name: "Seattle Mariners", url: "https://www.mlb.com/mariners", description: "AL West team." },
-                    { name: "Colorado Rockies", url: "https://www.mlb.com/rockies", description: "NL West team." },
-                    { name: "San Diego Padres", url: "https://www.mlb.com/padres", description: "NL West contender." }
-                ]
-            };
-
             try {
+                const apiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query + ' company list')}&format=json`;
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const data = await response.json();
                 results.innerHTML = '';
-                const data = mockData[query] || mockData['fashion industry']; // Default to fashion if no match
-                if (!data || data.length === 0) {
-                    results.innerHTML = '<div class="result-item">No companies found for this query.</div>';
+                if (!data.RelatedTopics || data.RelatedTopics.length === 0) {
+                    results.innerHTML = '<div class="result-item">No companies found.</div>';
                 } else {
-                    data.slice(0, 15).forEach(company => {
+                    data.RelatedTopics.slice(0, 15).forEach(topic => {
+                        const name = topic.Text || 'N/A';
+                        const url = topic.FirstURL || '#';
                         results.innerHTML += `
                             <div class="result-item">
-                                <strong><a href="${company.url}" target="_blank">${company.name}</a></strong>
-                                <div class="result-desc">${company.description}</div>
+                                <strong><a href="${url}" target="_blank">${name}</a></strong>
+                                <div class="result-desc">AI-generated description for ${name} in ${query} industry</div>
                             </div>
                         `;
                     });
-                    results.innerHTML += '<button class="see-more-btn" onclick="alert(\'Add more companies manually or revisit API options later!\')">See More</button>';
+                    results.innerHTML += '<button class="see-more-btn" onclick="window.open(`https://duckduckgo.com/?q=${encodeURIComponent(query + \' company list\')}`, \'_blank\')">See More</button>';
                 }
             } catch (err) {
                 results.innerHTML = `<div class="result-item">Error: ${err.message}. Check console for details.</div>`;
