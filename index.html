@@ -17,10 +17,12 @@
         .btn { background: #7B2CBF; color: #FFFFFF !important; padding: 12px 25px; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; transition: background 0.3s; display: inline-block; }
         .btn:hover { background: #5F1A8D; }
         .btn-primary { background: #7B2CBF; color: #FFFFFF !important; font-size: 1.2em; padding: 14px 30px; border-radius: 8px; }
-        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin-top: 30px; }
-        .card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
-        .card h3 { font-size: 1.4em; color: #FFFFFF; margin-bottom: 10px; }
-        .card p { font-size: 1em; color: #D0D0D0; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+        .card { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; text-align: left; border: 1px solid rgba(255,255,255,0.2); }
+        .card-logo { width: 60px; height: 60px; border-radius: 8px; margin-bottom: 10px; }
+        .card h3 { font-size: 1.3em; color: #FFFFFF; margin-bottom: 5px; }
+        .card p { font-size: 0.9em; color: #D0D0D0; margin-bottom: 5px; }
+        .card-metric { font-size: 0.85em; color: #B0B0B0; }
         .stats { display: flex; justify-content: space-around; background: rgba(255,255,255,0.03); padding: 30px; border-radius: 12px; margin: 20px 0; }
         .stat { text-align: center; }
         .stat .value { font-size: 2.2em; font-weight: 700; color: #FFFFFF; }
@@ -40,7 +42,6 @@
         .result-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin: 10px 0; color: #E0E0E0; font-weight: bold; }
         .result-item a { color: #FFFFFF !important; text-decoration: none; }
         .result-item a:hover { text-decoration: underline; }
-        .result-desc { font-size: 0.9em; color: #B0B0B0; margin-top: 5px; }
         .loading { color: #B0B0B0; font-style: italic; }
         .see-more-btn { margin: 10px auto; display: block; }
         @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .stats { flex-direction: column; gap: 20px; } .search-tabs { flex-direction: column; } }
@@ -76,7 +77,7 @@
             </div>
             <div id="ai-tab" class="tab-content">
                 <p style="text-align: center; opacity: 0.8;">Enter a query like 'Canadian ice cream companies' for live results.</p>
-                <input type="text" id="aiInput"placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
+                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
                 <button class="btn" onclick="searchAI()">Generate Leads</button>
                 <div id="aiResults" class="results"></div>
             </div>
@@ -200,86 +201,37 @@
             }
         }
 
-        // AI Industry Search with Static Mock Data (15 results)
-        function searchAI() {
-            const query = document.getElementById('aiInput').value.trim().toLowerCase();
+        // AI Industry Search with DuckDuckGo API
+        async function searchAI() {
+            const query = document.getElementById('aiInput').value.trim();
             const results = document.getElementById('aiResults');
             results.innerHTML = '<div class="loading">Searching...</div>';
             if (!query) {
                 results.innerHTML = '<div class="result-item">Enter a query.</div>';
                 return;
             }
-
-            // Mock data for different industries with 15 results each
-            const mockData = {
-                'canadian ice cream companies': [
-                    { name: "Chapman's", url: "https://www.chapmans.ca", description: "Canadian ice cream producer since 1970." },
-                    { name: "Kawartha Dairy", url: "https://www.kawarthadairy.com", description: "Family-owned ice cream maker." },
-                    { name: "Moo Shu Ice Cream", url: "https://www.mooshuicecream.com", description: "Artisanal ice cream from Canada." },
-                    { name: "Summit Ice Cream", url: "https://www.summiticecream.com", description: "Premium ice cream brand." },
-                    { name: "Cold Stone Creamery Canada", url: "https://www.coldstonecreamery.ca", description: "Popular ice cream chain." },
-                    { name: "Breyers Canada", url: "https://www.breyers.com/ca", description: "Classic ice cream brand." },
-                    { name: "Nestlé Canada Ice Cream", url: "https://www.nestle.ca", description: "Global ice cream offerings." },
-                    { name: "Marble Slab Creamery", url: "https://www.marbleslab.ca", description: "Custom ice cream experiences." },
-                    { name: "La Diperie", url: "https://www.ladiperie.com", description: "Hand-rolled ice cream specialty." },
-                    { name: "Soft Scoop Canada", url: "https://www.softscoop.ca", description: "Soft serve innovator." },
-                    { name: "Sweet Jesus", url: "https://www.sweetjesus.ca", description: "Trendy ice cream desserts." },
-                    { name: "Vanille Montréal", url: "https://www.vanillemtl.com", description: "Artisanal ice cream shop." },
-                    { name: "Gelato La Paloma", url: "https://www.gelatolab.com", description: "Italian-style gelato." },
-                    { name: "Bovetti Ice Cream", url: "https://www.bovetti.ca", description: "Organic ice cream options." },
-                    { name: "Arctic Ice Cream", url: "https://www.arcticicecream.ca", description: "Northern-inspired flavors." }
-                ],
-                'fashion industry': [
-                    { name: "Canada Goose", url: "https://www.canadagoose.com", description: "Luxury outerwear brand." },
-                    { name: "Aritzia", url: "https://www.aritzia.com", description: "Canadian women’s fashion retailer." },
-                    { name: "Lululemon", url: "https://www.lululemon.com", description: "Athleisure and yoga apparel." },
-                    { name: "Aldo", url: "https://www.aldoshoes.com", description: "Footwear and accessories." },
-                    { name: "Joe Fresh", url: "https://www.joefresh.com", description: "Affordable fashion brand." },
-                    { name: "Roots", url: "https://www.roots.com", description: "Canadian lifestyle apparel." },
-                    { name: "Reitmans", url: "https://www.reitmans.com", description: "Women’s clothing retailer." },
-                    { name: "Le Chateau", url: "https://www.lechateau.com", description: "Trendy fashion outlet." },
-                    { name: "Mackage", url: "https://www.mackage.com", description: "High-end outerwear." },
-                    { name: "Holt Renfrew", url: "https://www.holtrenfrew.com", description: "Luxury department store." },
-                    { name: "Simons", url: "https://www.simons.ca", description: "Canadian fashion and home goods." },
-                    { name: "Harry Rosen", url: "https://www.harryrosen.com", description: "Men’s luxury fashion." },
-                    { name: "Smythe", url: "https://www.smythe.com", description: "Premium women’s blazers." },
-                    { name: "Danier", url: "https://www.danier.com", description: "Leather fashion specialist." },
-                    { name: "Kensie", url: "https://www.kensie.com", description: "Contemporary women’s wear." }
-                ],
-                'mlb baseball teams': [
-                    { name: "Toronto Blue Jays", url: "https://www.mlb.com/bluejays", description: "Canada's MLB team." },
-                    { name: "New York Yankees", url: "https://www.mlb.com/yankees", description: "Historic American League team." },
-                    { name: "Boston Red Sox", url: "https://www.mlb.com/redsox", description: "Rival to Yankees." },
-                    { name: "Chicago Cubs", url: "https://www.mlb.com/cubs", description: "National League icon." },
-                    { name: "Los Angeles Dodgers", url: "https://www.mlb.com/dodgers", description: "West Coast powerhouse." },
-                    { name: "San Francisco Giants", url: "https://www.mlb.com/giants", description: "Rival to Dodgers." },
-                    { name: "Atlanta Braves", url: "https://www.mlb.com/braves", description: "NL East champions." },
-                    { name: "Houston Astros", url: "https://www.mlb.com/astros", description: "AL West contenders." },
-                    { name: "Philadelphia Phillies", url: "https://www.mlb.com/phillies", description: "NL East team." },
-                    { name: "St. Louis Cardinals", url: "https://www.mlb.com/cardinals", description: "NL Central staple." },
-                    { name: "New York Mets", url: "https://www.mlb.com/mets", description: "NL East competitor." },
-                    { name: "Chicago White Sox", url: "https://www.mlb.com/whitesox", description: "AL Central team." },
-                    { name: "Seattle Mariners", url: "https://www.mlb.com/mariners", description: "AL West team." },
-                    { name: "Colorado Rockies", url: "https://www.mlb.com/rockies", description: "NL West team." },
-                    { name: "San Diego Padres", url: "https://www.mlb.com/padres", description: "NL West contender." }
-                ]
-            };
-
             try {
+                const apiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent('list of ' + query)}&format=json`;
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const data = await response.json();
                 results.innerHTML = '';
-                const data = mockData[query] || mockData['fashion industry']; // Default to fashion if no match
-                if (!data || data.length === 0) {
-                    results.innerHTML = '<div class="result-item">No companies found for this query.</div>';
+                if (!data.RelatedTopics || data.RelatedTopics.length === 0) {
+                    results.innerHTML = '<div class="result-item">No companies found.</div>';
                 } else {
-                    data.slice(0, 15).forEach(company => {
+                    data.RelatedTopics.slice(0, 15).forEach(topic => {
+                        const name = topic.Text || 'N/A';
+                        const url = topic.FirstURL || '#';
                         results.innerHTML += `
                             <div class="result-item">
-                                <strong><a href="${company.url}" target="_blank">${company.name}</a></strong>
-                                <div class="result-desc">${company.description}</div>
+                                <strong><a href="${url}" target="_blank">${name}</a></strong>
+                                <div class="result-desc">AI-generated description for ${name} in ${query} industry</div>
                             </div>
                         `;
                     });
-                    results.innerHTML += '<button class="see-more-btn" onclick="alert(\'Add more companies manually or revisit API options later!\')">See More</button>';
+                    results.innerHTML += '<button class="see-more-btn" onclick="window.open(`https://duckduckgo.com/?q=${encodeURIComponent('list of ' + query)}`, '_blank')">See More</button>';
                 }
             } catch (err) {
                 results.innerHTML = `<div class="result-item">Error: ${err.message}. Check console for details.</div>`;
