@@ -9,43 +9,28 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #4A90E2 0%, #7B2CBF 100%); color: #1A1A1A; overflow-x: hidden; line-height: 1.6; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #FFFFFF; color: #1A1A1A; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
         .section { padding: 60px 0; }
-        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #FFFFFF; margin-bottom: 15px; }
-        h2 { font-size: 2em; font-weight: 700; color: #FFFFFF; margin-bottom: 20px; text-align: center; }
-        p { font-size: 1.1em; color: #E0E0E0; margin-bottom: 20px; text-align: center; }
-        .btn { background: #7B2CBF; color: #FFFFFF !important; padding: 12px 25px; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; transition: background 0.3s; display: inline-block; }
-        .btn:hover { background: #5F1A8D; }
-        .btn-primary { background: #7B2CBF; color: #FFFFFF !important; font-size: 1.2em; padding: 14px 30px; border-radius: 8px; }
-        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
-        .card { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; text-align: left; border: 1px solid rgba(255,255,255,0.2); }
-        .card-logo { width: 60px; height: 60px; border-radius: 8px; margin-bottom: 10px; background: #4A90E2; display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-size: 20px; }
-        .card h3 { font-size: 1.3em; color: #FFFFFF; margin-bottom: 5px; }
-        .card p { font-size: 0.9em; color: #D0D0D0; margin-bottom: 5px; }
-        .card-metric { font-size: 0.85em; color: #B0B0B0; }
-        .stats { display: flex; justify-content: space-around; background: rgba(255,255,255,0.03); padding: 30px; border-radius: 12px; margin: 20px 0; }
-        .stat { text-align: center; }
-        .stat .value { font-size: 2.2em; font-weight: 700; color: #FFFFFF; }
-        .stat .label { font-size: 0.9em; color: #B0B0B0; }
-        form { max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
-        input, select { padding: 12px; border: none; border-radius: 8px; background: #FFFFFF; color: #333; font-size: 1em; }
-        input::placeholder { color: #999; }
-        .login-link { text-align: center; font-size: 0.9em; color: #B0B0B0; margin-top: 10px; }
-        .login-link a { color: #4A90E2; text-decoration: none; }
-        .login-link a:hover { text-decoration: underline; }
-        .search-tabs { display: flex; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 12px; background: transparent; color: #FFFFFF; border: none; cursor: pointer; font-size: 1em; }
-        .tab-btn.active { background: #7B2CBF; }
+        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #1A1A1A; margin-bottom: 15px; }
+        h2 { font-size: 2em; font-weight: 700; color: #1A1A1A; margin-bottom: 20px; text-align: center; }
+        p { font-size: 1.1em; color: #4A4A4A; margin-bottom: 20px; text-align: center; }
+        .btn { background: #007BFF; color: #FFFFFF; padding: 8px 15px; border: none; border-radius: 4px; font-size: 0.9em; cursor: pointer; transition: background 0.3s; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #0056b3; }
+        .btn-primary { background: #007BFF; color: #FFFFFF; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
+        .search-tabs { display: flex; background: #F8F9FA; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; background: transparent; color: #1A1A1A; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
+        .tab-btn.active { background: #007BFF; color: #FFFFFF; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .results { margin-top: 20px; }
-        .result-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin: 10px 0; color: #E0E0E0; font-weight: bold; }
-        .result-item a { color: #FFFFFF !important; text-decoration: none; }
-        .result-item a:hover { text-decoration: underline; }
-        .loading { color: #B0B0B0; font-style: italic; }
-        .see-more-btn { margin: 10px auto; display: block; }
-        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .stats { flex-direction: column; gap: 20px; } .search-tabs { flex-direction: column; } }
+        .result-item { background: #FFFFFF; padding: 10px; border: 1px solid #E0E0E0; border-radius: 4px; margin: 5px 0; color: #4A4A4A; font-weight: 500; }
+        .result-item h3 { font-size: 1.1em; color: #1A1A1A; margin-bottom: 5px; }
+        .result-item p { font-size: 0.85em; color: #666666; margin: 2px 0; }
+        .result-item .email { font-weight: bold; }
+        .loading { color: #888888; font-style: italic; }
+        .department-header { font-size: 1.2em; font-weight: 600; color: #1A1A1A; margin: 10px 0 5px; }
+        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } }
     </style>
 </head>
 <body>
@@ -55,8 +40,8 @@
             <h1>🥷 NovaHunt</h1>
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
             <p>Hunt thousands of qualified B2B leads instantly with cutting-edge AI.</p>
-            <div style="text-align: center; margin-top: 20px;"><button class="btn">Start Free Trial</button></div>
-            <p style="font-size: 0.9em; color: #B0B0B0;">100 free credits • No credit card required</p>
+            <div style="text-align: center; margin-top: 20px;"><a href="#" class="btn">Start Free Trial</a></div>
+            <p style="font-size: 0.9em; color: #666666;">100 free credits • No credit card required</p>
         </div>
     </section>
 
@@ -72,79 +57,23 @@
             </div>
             <div id="company-tab" class="tab-content active">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., coca-cola.com).</p>
-                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
+                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E0E0E0; border-radius: 4px;">
                 <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
-                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Stores USA' for live results.</p>
-                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
+                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Companies USA' for live results.</p>
+                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E0E0E0; border-radius: 4px;">
                 <button class="btn" onclick="searchAI()">Generate Leads</button>
                 <div id="aiResults" class="results"></div>
             </div>
             <div id="imports-tab" class="tab-content">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
-                <p style="text-align: center; opacity: 0.8; font-weight: bold;">Import Competitors Supplier Records (e.g., acme imports) - ImportYeti integration planned</p>
-                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
+                <p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports) - ImportYeti integration planned</p>
+                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E0E0E0; border-radius: 4px;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
                 <div id="importsResults" class="results"></div>
             </div>
-        </div>
-    </section>
-
-    <!-- Features Section -->
-    <section class="section">
-        <div class="container">
-            <h2>Key Features</h2>
-            <div class="card-grid">
-                <div class="card">
-                    <h3>🎯 Precision Targeting</h3>
-                    <p>Search by industry, location, company size, and keywords.</p>
-                </div>
-                <div class="card">
-                    <h3>✨ AI Enrichment</h3>
-                    <p>Discover emails, phone numbers, and decision-maker info.</p>
-                </div>
-                <div class="card">
-                    <h3>📥 Export & Integrate</h3>
-                    <p>Download leads as CSV or integrate with your CRM.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Stats Section -->
-    <section class="section">
-        <div class="container">
-            <div class="stats">
-                <div class="stat"><div class="value">10k+</div><div class="label">Leads Generated</div></div>
-                <div class="stat"><div class="value">99%</div><div class="label">Accuracy Rate</div></div>
-                <div class="stat"><div class="value">24/7</div><div class="label">Automated</div></div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Final CTA -->
-    <section class="section" style="background: rgba(255,255,255,0.03);">
-        <div class="container">
-            <h2>Ready to Scale Your Outreach?</h2>
-            <p>Join hundreds of businesses hunting leads on autopilot.</p>
-            <div style="text-align: center; margin-top: 20px;"><button class="btn">Get Started Now</button></div>
-        </div>
-    </section>
-
-    <!-- Signup Form Section -->
-    <section class="section">
-        <div class="container">
-            <h2>Create Your Account</h2>
-            <p style="opacity: 0.8;">Start hunting leads in minutes.</p>
-            <form id="signupForm">
-                <input type="text" placeholder="Full Name" required>
-                <input type="email" placeholder="Email Address" required>
-                <input type="password" placeholder="Password" required>
-                <button type="submit" class="btn">Sign Up</button>
-            </form>
-            <div class="login-link">Already have an account? <a href="#">Log in</a></div>
         </div>
     </section>
 
@@ -184,57 +113,55 @@
                 if (data.errors) {
                     throw new Error(data.errors[0].message);
                 }
-                results.innerHTML = `<p style="color: #E0E0E0;">Found ${data.data.emails.length} emails, showing top 10 for free plan.</p>`;
-                const emails = data.data.emails.slice(0, 10); // Limit to 10 for free
-                if (emails.length === 0) {
-                    results.innerHTML = '<div class="result-item">No emails found for this domain.</div>';
-                } else {
+                const totalEmails = data.data.emails.length;
+                results.innerHTML = `<p style="color: #4A4A4A;">Found ${totalEmails} emails across departments.</p>`;
+
+                // Group emails by department
+                const emailsByDept = {};
+                data.data.emails.forEach(email => {
+                    const dept = email.department || 'Unknown';
+                    if (!emailsByDept[dept]) emailsByDept[dept] = [];
+                    emailsByDept[dept].push(email);
+                });
+
+                for (const [dept, emails] of Object.entries(emailsByDept)) {
+                    results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
                     emails.forEach(email => {
                         const name = email.first_name || email.last_name ? `${email.first_name || ''} ${email.last_name || ''}`.trim() : 'N/A';
                         const role = email.position || 'N/A';
                         const confidence = email.confidence || 'N/A';
-                        const maskedEmail = userCredits > 0 ? email.value : email.value.replace(/(.{1})(.*)(@.*)/, '$1***$3');
+                        const maskedEmail = `********@${query.split('.')[0]}.com`;
                         results.innerHTML += `
-                            <div class="card">
-                                <div class="card-logo">🏢</div>
+                            <div class="result-item">
                                 <h3>${name}</h3>
                                 <p class="result-desc">Role: ${role}</p>
-                                <p class="card-metric">Email: ${maskedEmail} | Confidence: ${confidence}%</p>
-                                ${data.data.emails.length > 10 ? '<button class="btn" onclick="buyCredits()">Buy Credits to See More</button>' : ''}
+                                <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.value}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${confidence}%</p>
                             </div>
                         `;
                     });
-                    if (data.data.emails.length > 10 && userCredits > 0) {
-                        results.innerHTML += '<button class="btn" onclick="seeAllEmails(\'' + query + '\')">See All Emails</button>';
-                    }
                 }
             } catch (err) {
                 results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data...</div>`;
-                results.innerHTML += '<div class="card"><div class="card-logo">🏢</div><h3>John Doe</h3><p class="result-desc">Role: CEO</p><p class="card-metric">Email: a***@example.com | Confidence: 75%</p></div>';
+                results.innerHTML += '<div class="result-item"><h3>John Doe</h3><p class="result-desc">Role: CEO</p><p class="email">********@example.com <button class="btn" onclick="revealEmail(\'john.doe@example.com\', this, 1)">Reveal (1 Credit)</button> | Confidence: 75%</p></div>';
                 console.error('Company search failed:', err);
             }
         }
 
-        // Mock credit purchase (replace with real payment integration later)
-        function buyCredits() {
-            userCredits += 10;
-            alert('Purchased 10 credits! Refresh to see full emails and more.');
-            location.reload();
-        }
-
-        // Redirect to see all emails with delay
-        function seeAllEmails(domain) {
-            alert('Redirecting to see all emails...');
-            setTimeout(() => {
-                document.getElementById('companyInput').value = domain;
-                switchTab('company', document.querySelector('.tab-btn:nth-child(1)'));
-                searchCompany();
-            }, 500); // 500ms delay
+        // Reveal email function
+        function revealEmail(email, button, cost) {
+            if (userCredits >= cost) {
+                userCredits -= cost;
+                button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
+                alert(`Email revealed! ${userCredits} credits remaining.`);
+            } else {
+                alert('Not enough credits. Buy more to reveal emails.');
+                window.open('https://stripe.com', '_blank');
+            }
         }
 
         // AI Industry Search with OpenCorporates and DuckDuckGo Fallback
         async function searchAI() {
-            const query = document.getElementById('aiInput').value.trim().toLowerCase().replace('stores', 'companies'); // Normalize query
+            const query = document.getElementById('aiInput').value.trim().toLowerCase().replace('stores', 'companies');
             const results = document.getElementById('aiResults');
             results.innerHTML = '<div class="loading">Searching...</div>';
             if (!query) {
@@ -255,28 +182,12 @@
                 ocData.results.companies.forEach(company => {
                     const name = company.company.name || 'N/A';
                     const url = company.company.company_number ? `https://opencorporates.com/companies/${company.company.jurisdiction_code}/${company.company.company_number}` : '#';
-                    const description = company.company.description || 'No description available.';
-                    const location = company.company.current_status || 'N/A';
-                    const employees = company.company.number_of_employees || 'N/A';
-                    const revenue = company.company.annual_return || 'N/A';
-                    results.innerHTML += `
-                        <div class="card">
-                            <div class="card-logo">🏢</div>
-                            <h3>${name}</h3>
-                            <p class="result-desc">${description}</p>
-                            <p class="card-metric">Location: ${location}</p>
-                            <p class="card-metric">Employees: ${employees}</p>
-                            <p class="card-metric">Revenue: ${revenue}</p>
-                            <a href="${url}" target="_blank" style="color: #4A90E2; text-decoration: none;">View Profile</a>
-                            <button class="btn" onclick="seeAllEmailsFromIndustry('${name}')">See All Emails</button>
-                        </div>
-                    `;
+                    results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                 });
-                results.innerHTML += '<button class="btn" onclick="window.open(\'https://ensun.io/search?query=' + encodeURIComponent(query) + '\', \'_blank\')">See More on Ensun</button>';
             } catch (err) {
                 console.error('OpenCorporates failed, falling back to DuckDuckGo:', err);
                 try {
-                    const ddApiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent('list of ' + query)}&format=json`;
+                    const ddApiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent('list of ' + query + ' site:*.com -inurl:(signup | login)')}&format=json`;
                     const ddResponse = await fetch(ddApiUrl);
                     if (!ddResponse.ok) {
                         throw new Error(`DuckDuckGo error! Status: ${ddResponse.status}`);
@@ -289,29 +200,14 @@
                         ddData.RelatedTopics.slice(0, 5).forEach(topic => {
                             const name = topic.Text || 'N/A';
                             const url = topic.FirstURL || '#';
-                            results.innerHTML += `
-                                <div class="card">
-                                    <div class="card-logo">🏢</div>
-                                    <h3>${name}</h3>
-                                    <p class="result-desc">AI-generated description for ${name} in ${query} industry</p>
-                                    <a href="${url}" target="_blank" style="color: #4A90E2; text-decoration: none;">View Profile</a>
-                                    <button class="btn" onclick="seeAllEmailsFromIndustry('${name}')">See All Emails</button>
-                                </div>
-                            `;
+                            results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                         });
-                        results.innerHTML += '<button class="btn" onclick="window.open(\'https://ensun.io/search?query=' + encodeURIComponent(query) + '\', \'_blank\')">See More on Ensun</button>';
                     }
                 } catch (ddErr) {
                     results.innerHTML = '<div class="result-item">Error: Both APIs failed. Check console for details.</div>';
                     console.error('DuckDuckGo fallback failed:', ddErr);
                 }
             }
-        }
-
-        // Mock function to see all emails from industry lead
-        function seeAllEmailsFromIndustry(companyName) {
-            const domain = companyName.toLowerCase().replace(/\s+/g, '') + '.com';
-            seeAllEmails(domain);
         }
 
         // Import Records Search (Static fallback)
@@ -323,41 +219,16 @@
                 results.innerHTML = '<div class="result-item">Enter a company name.</div>';
                 return;
             }
-            try {
-                results.innerHTML = '<div class="result-item"><strong>Sample Supplier</strong> (USA) | Trade Value: $1000 | Year: 2023</div>';
-                console.log('Using static fallback data for imports search');
-            } catch (err) {
-                results.innerHTML = '<div class="result-item">Error: Using static fallback data.</div>';
-                results.innerHTML += '<div class="result-item"><strong>Sample Supplier</strong> (USA) | Trade Value: $1000 | Year: 2023</div>';
-                console.error('Imports search failed:', err);
-            }
+            results.innerHTML = '<div class="result-item"><h3>Sample Supplier</h3><p>USA | Trade Value: $1000 | Year: 2023</p></div>';
         }
 
         // Smooth scroll for CTAs
-        document.querySelectorAll('button').forEach(btn => {
+        document.querySelectorAll('a.btn, button.btn').forEach(btn => {
             if (btn.textContent.includes('Get Started') || btn.textContent.includes('Sign Up')) {
                 btn.addEventListener('click', () => {
                     document.querySelector('section:last-of-type').scrollIntoView({ behavior: 'smooth' });
                 });
             }
-        });
-
-        // Form submission (lead capture)
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            fetch('https://formspree.io/f/YOUR_FORM_ID', { // Replace with your Formspree ID
-                method: 'POST',
-                body: formData,
-                headers: { 'Accept': 'application/json' }
-            }).then(response => {
-                if (response.ok) {
-                    alert('Signup successful! Welcome to NovaHunt.');
-                    this.reset();
-                } else {
-                    alert('Oops! Try again.');
-                }
-            }).catch(err => console.error('Error:', err));
         });
     </script>
 </body>
