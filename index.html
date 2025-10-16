@@ -86,17 +86,18 @@
 
         // Tab switching
         function switchTab(tabName, button) {
+            console.log(`Switching to ${tabName} tab`);
             const tabs = document.querySelectorAll('.tab-btn');
             const contents = document.querySelectorAll('.tab-content');
             tabs.forEach(btn => btn.classList.remove('active'));
             contents.forEach(content => content.classList.remove('active'));
             button.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
-            console.log(`Switched to ${tabName} tab`);
         }
 
         // Company Search with Hunter.io API via AllOrigins Proxy
         async function searchCompany() {
+            console.log('Starting searchCompany');
             const query = document.getElementById('companyInput').value.trim();
             const results = document.getElementById('companyResults');
             const errorDiv = document.getElementById('companyError');
@@ -104,6 +105,7 @@
 
             // Validate input format
             if (!query.includes('.com') && !query.includes('.org') && !query.includes('.net')) {
+                console.log('Invalid format detected');
                 errorDiv.textContent = 'Incorrect format. Please enter a valid domain (e.g., coca-cola.com).';
                 errorDiv.style.display = 'block';
                 results.innerHTML = '';
@@ -112,22 +114,20 @@
 
             results.innerHTML = '<div class="loading">Searching...</div>';
             try {
+                console.log('Fetching data for', query);
                 const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a';
                 const proxyUrl = 'https://api.allorigins.win/raw?url=';
                 const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
                 const response = await fetch(proxyUrl + encodeURIComponent(apiUrl));
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
-                if (data.errors) {
-                    throw new Error(data.data.errors[0].message);
-                }
+                if (data.errors) throw new Error(data.data.errors[0].message);
+                console.log('Data fetched successfully', data);
+
                 // Mock full count based on known data
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
                 results.innerHTML = `<p style="color: #4A4A4A;">Found ${mockTotal} emails across departments. (Free tier shows 10, upgrade for all)</p>`;
 
-                // Group emails by department
                 const emailsByDept = {};
                 data.data.emails.slice(0, 10).forEach(email => {
                     const dept = email.department || 'Unknown';
@@ -152,8 +152,9 @@
                     });
                 }
                 results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to Premium</a> for full ${mockTotal} emails.</div>`;
+                console.log('Results rendered');
             } catch (err) {
-                console.error('API fetch failed:', err);
+                console.error('SearchCompany error:', err);
                 results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data for ${query}...</div>`;
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : 10);
                 results.innerHTML += `<p style="color: #4A4A4A;">Mock data: Found ${mockTotal} emails across departments. (Free tier shows 10)</p>`;
@@ -193,18 +194,21 @@
 
         // Reveal email function
         function revealEmail(email, button, cost) {
+            console.log('Revealing email, credits:', userCredits);
             if (userCredits >= cost) {
                 userCredits -= cost;
                 button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
                 alert(`Email revealed! ${userCredits} credits remaining.`);
             } else {
                 alert('Not enough credits. Upgrade to reveal more emails.');
-                window.open('plans.html', '_self');
+                window.location.href = 'plans.html'; // Use location.href for reliable navigation
             }
+            console.log('Reveal completed');
         }
 
         // AI Industry Search with OpenCorporates and DuckDuckGo Fallback
         async function searchAI() {
+            console.log('Starting searchAI');
             const query = document.getElementById('aiInput').value.trim().toLowerCase().replace('stores', 'companies');
             const results = document.getElementById('aiResults');
             results.innerHTML = '<div class="loading">Searching...</div>';
@@ -213,29 +217,26 @@
                 return;
             }
             try {
+                console.log('Fetching OpenCorporates data');
                 const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
                 const ocResponse = await fetch(ocApiUrl);
-                if (!ocResponse.ok) {
-                    throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
-                }
+                if (!ocResponse.ok) throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
                 const ocData = await ocResponse.json();
                 results.innerHTML = '';
-                if (!ocData.results || ocData.results.companies.length === 0) {
-                    throw new Error('No companies from OpenCorporates');
-                }
+                if (!ocData.results || ocData.results.companies.length === 0) throw new Error('No companies from OpenCorporates');
                 ocData.results.companies.forEach(company => {
                     const name = company.company.name || 'N/A';
                     const url = company.company.company_number ? `https://opencorporates.com/companies/${company.company.jurisdiction_code}/${company.company.company_number}` : '#';
                     results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                 });
+                console.log('SearchAI completed');
             } catch (err) {
-                console.error('OpenCorporates failed, falling back to DuckDuckGo:', err);
+                console.error('SearchAI error:', err);
                 try {
+                    console.log('Falling back to DuckDuckGo');
                     const ddApiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent('list of ' + query + ' site:*.com -inurl:(signup | login)')}&format=json`;
                     const ddResponse = await fetch(ddApiUrl);
-                    if (!ddResponse.ok) {
-                        throw new Error(`DuckDuckGo error! Status: ${ddResponse.status}`);
-                    }
+                    if (!ddResponse.ok) throw new Error(`DuckDuckGo error! Status: ${ddResponse.status}`);
                     const ddData = await ddResponse.json();
                     results.innerHTML = '';
                     if (!ddData.RelatedTopics || ddData.RelatedTopics.length === 0) {
@@ -247,15 +248,17 @@
                             results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                         });
                     }
+                    console.log('DuckDuckGo fallback completed');
                 } catch (ddErr) {
+                    console.error('DuckDuckGo fallback error:', ddErr);
                     results.innerHTML = '<div class="result-item">Error: Both APIs failed. Check console for details.</div>';
-                    console.error('DuckDuckGo fallback failed:', ddErr);
                 }
             }
         }
 
         // Import Records Search (Static fallback)
         function searchImports() {
+            console.log('Starting searchImports');
             const query = document.getElementById('importsInput').value.trim();
             const results = document.getElementById('importsResults');
             results.innerHTML = '<div class="loading">Finding suppliers...</div>';
@@ -264,6 +267,7 @@
                 return;
             }
             results.innerHTML = '<div class="result-item"><h3>Sample Supplier</h3><p>USA | Trade Value: $1000 | Year: 2023</p></div>';
+            console.log('searchImports completed');
         }
 
         // Smooth scroll for CTAs
