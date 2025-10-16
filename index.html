@@ -200,7 +200,7 @@
             }
         }
 
-        // AI Industry Search with DuckDuckGo API
+        // AI Industry Search with DuckDuckGo API and Fallback
         async function searchAI() {
             const query = document.getElementById('aiInput').value.trim();
             const results = document.getElementById('aiResults');
@@ -210,7 +210,7 @@
                 return;
             }
             try {
-                const apiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query + ' company list')}&format=json`;
+                const apiUrl = `https://api.duckduckgo.com/?q=list of ${encodeURIComponent(query)}&format=json`;
                 const response = await fetch(apiUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -220,7 +220,14 @@
                 if (!data.RelatedTopics || data.RelatedTopics.length === 0) {
                     results.innerHTML = '<div class="result-item">No companies found.</div>';
                 } else {
-                    data.RelatedTopics.slice(0, 15).forEach(topic => {
+                    const companies = data.RelatedTopics.filter(topic => 
+                        topic.FirstURL && (topic.FirstURL.includes('.com') || topic.FirstURL.includes('.ca') || topic.FirstURL.includes('.org'))
+                    ).slice(0, 15);
+                    if (companies.length === 0) {
+                        results.innerHTML = '<div class="result-item">No company websites found. Showing all related topics...</div>';
+                        companies = data.RelatedTopics.slice(0, 15);
+                    }
+                    companies.forEach(topic => {
                         const name = topic.Text || 'N/A';
                         const url = topic.FirstURL || '#';
                         results.innerHTML += `
@@ -230,7 +237,7 @@
                             </div>
                         `;
                     });
-                    results.innerHTML += '<button class="see-more-btn" onclick="window.open(`https://duckduckgo.com/?q=${encodeURIComponent(query + \' company list\')}`, \'_blank\')">See More</button>';
+                    results.innerHTML += '<button class="see-more-btn" onclick="window.open(`https://duckduckgo.com/?q=${encodeURIComponent(\'list of \' + query)}`, \'_blank\')">See More</button>';
                 }
             } catch (err) {
                 results.innerHTML = `<div class="result-item">Error: ${err.message}. Check console for details.</div>`;
