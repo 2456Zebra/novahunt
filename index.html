@@ -6,6 +6,7 @@
     <title>NovaHunt - AI Lead Hunter</title>
     <meta name="description" content="NovaHunt.ai: AI-powered tool to hunt B2B leads, emails, and suppliers with precision.">
     <meta name="keywords" content="AI lead generation, B2B leads, email hunter, supplier finder">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #4A90E2 0%, #7B2CBF 100%); color: #1A1A1A; overflow-x: hidden; line-height: 1.6; }
@@ -70,7 +71,7 @@
                 <button class="tab-btn" onclick="switchTab('imports', this)">Hunt Import Records</button>
             </div>
             <div id="company-tab" class="tab-content active">
-                <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., monsterenergy.com).</p>
+                <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., anheuser-busch.com).</p>
                 <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
                 <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
                 <div id="companyResults" class="results"></div>
@@ -83,7 +84,7 @@
             </div>
             <div id="imports-tab" class="tab-content">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
-                <p style="text-align: center; opacity: 0.8; font-weight: bold;">Import Competitors Supplier Records (e.g., acme imports)</p>
+                <p style="text-align: center; opacity: 0.8; font-weight: bold;">Import Competitors Supplier Records (e.g., acme imports) - ImportYeti integration planned</p>
                 <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
                 <div id="importsResults" class="results"></div>
@@ -183,8 +184,8 @@
                 if (data.errors) {
                     throw new Error(data.errors[0].message);
                 }
-                results.innerHTML = '';
-                const emails = data.data.emails.slice(0, 10); // Limit to 10 results
+                results.innerHTML = `<p style="color: #E0E0E0;">Found ${data.data.emails.length} emails, showing top 10 for free plan.</p>`;
+                const emails = data.data.emails.slice(0, 10); // Limit to 10 for free
                 if (emails.length === 0) {
                     results.innerHTML = '<div class="result-item">No emails found for this domain.</div>';
                 } else {
@@ -199,11 +200,11 @@
                                 <h3>${name}</h3>
                                 <p class="result-desc">Role: ${role}</p>
                                 <p class="card-metric">Email: ${maskedEmail} | Confidence: ${confidence}%</p>
-                                ${userCredits <= 0 ? '<button class="btn" onclick="buyCredits()">Buy Credits to Unlock</button>' : ''}
+                                ${userCredits <= 0 || data.data.emails.length > 10 ? '<button class="btn" onclick="buyCredits()">Buy Credits to See More</button>' : ''}
                             </div>
                         `;
                     });
-                    if (emails.length === 10 && userCredits > 0) {
+                    if (data.data.emails.length > 10 && userCredits > 0) {
                         results.innerHTML += '<button class="btn" onclick="seeAllEmails(\'' + query + '\')">See All Emails</button>';
                     }
                 }
@@ -217,15 +218,18 @@
         // Mock credit purchase (replace with real payment integration later)
         function buyCredits() {
             userCredits += 10;
-            alert('Purchased 10 credits! Refresh to see full emails.');
+            alert('Purchased 10 credits! Refresh to see full emails and more.');
             location.reload();
         }
 
-        // Redirect to see all emails
+        // Redirect to see all emails with delay
         function seeAllEmails(domain) {
-            document.getElementById('companyInput').value = domain;
-            switchTab('company', document.querySelector('.tab-btn:nth-child(1)'));
-            searchCompany();
+            alert('Redirecting to see all emails...');
+            setTimeout(() => {
+                document.getElementById('companyInput').value = domain;
+                switchTab('company', document.querySelector('.tab-btn:nth-child(1)'));
+                searchCompany();
+            }, 500); // 500ms delay
         }
 
         // AI Industry Search with OpenCorporates and DuckDuckGo Fallback
@@ -238,7 +242,6 @@
                 return;
             }
             try {
-                // Try OpenCorporates first
                 const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
                 const ocResponse = await fetch(ocApiUrl);
                 if (!ocResponse.ok) {
@@ -271,7 +274,6 @@
                 });
                 results.innerHTML += '<button class="btn" onclick="window.open(\'https://ensun.io/search?query=' + encodeURIComponent(query) + '\', \'_blank\')">See More on Ensun</button>';
             } catch (err) {
-                // Fallback to DuckDuckGo if OpenCorporates fails
                 console.error('OpenCorporates failed, falling back to DuckDuckGo:', err);
                 try {
                     const ddApiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent('list of ' + query)}&format=json`;
@@ -308,7 +310,6 @@
 
         // Mock function to see all emails from industry lead
         function seeAllEmailsFromIndustry(companyName) {
-            // Simulate domain guess (replace with real lookup later)
             const domain = companyName.toLowerCase().replace(/\s+/g, '') + '.com';
             seeAllEmails(domain);
         }
