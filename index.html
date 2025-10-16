@@ -151,7 +151,7 @@
                         `;
                     });
                 }
-                results.innerHTML += `<div class="premium-note"><a href="plans.html" target="_blank" class="btn">Upgrade to Premium</a> for full ${mockTotal} emails.</div>`;
+                results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to Premium</a> for full ${mockTotal} emails.</div>`;
             } catch (err) {
                 console.error('API fetch failed:', err);
                 results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data for ${query}...</div>`;
@@ -187,7 +187,7 @@
                         `;
                     });
                 }
-                results.innerHTML += `<div class="premium-note"><a href="plans.html" target="_blank" class="btn">Upgrade to Premium</a> for full ${mockTotal} emails.</div>`;
+                results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to Premium</a> for full ${mockTotal} emails.</div>`;
             }
         }
 
@@ -199,7 +199,7 @@
                 alert(`Email revealed! ${userCredits} credits remaining.`);
             } else {
                 alert('Not enough credits. Upgrade to reveal more emails.');
-                window.open('plans.html', '_blank');
+                window.open('plans.html', '_self');
             }
         }
 
