@@ -17,10 +17,12 @@
         .btn { background: #7B2CBF; color: #FFFFFF !important; padding: 12px 25px; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; transition: background 0.3s; display: inline-block; }
         .btn:hover { background: #5F1A8D; }
         .btn-primary { background: #7B2CBF; color: #FFFFFF !important; font-size: 1.2em; padding: 14px 30px; border-radius: 8px; }
-        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin-top: 30px; }
-        .card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
-        .card h3 { font-size: 1.4em; color: #FFFFFF; margin-bottom: 10px; }
-        .card p { font-size: 1em; color: #D0D0D0; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+        .card { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; text-align: left; border: 1px solid rgba(255,255,255,0.2); }
+        .card-logo { width: 60px; height: 60px; border-radius: 8px; margin-bottom: 10px; }
+        .card h3 { font-size: 1.3em; color: #FFFFFF; margin-bottom: 5px; }
+        .card p { font-size: 0.9em; color: #D0D0D0; margin-bottom: 5px; }
+        .card-metric { font-size: 0.85em; color: #B0B0B0; }
         .stats { display: flex; justify-content: space-around; background: rgba(255,255,255,0.03); padding: 30px; border-radius: 12px; margin: 20px 0; }
         .stat { text-align: center; }
         .stat .value { font-size: 2.2em; font-weight: 700; color: #FFFFFF; }
@@ -40,7 +42,6 @@
         .result-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin: 10px 0; color: #E0E0E0; font-weight: bold; }
         .result-item a { color: #FFFFFF !important; text-decoration: none; }
         .result-item a:hover { text-decoration: underline; }
-        .result-desc { font-size: 0.9em; color: #B0B0B0; margin-top: 5px; }
         .loading { color: #B0B0B0; font-style: italic; }
         .see-more-btn { margin: 10px auto; display: block; }
         @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .stats { flex-direction: column; gap: 20px; } .search-tabs { flex-direction: column; } }
@@ -64,18 +65,18 @@
             <h2>Search for Leads</h2>
             <p>Choose a mode below to get started.</p>
             <div class="search-tabs">
-                <button class="tab-btn active" onclick="switchTab('company', this)">Company/Domain Search</button>
-                <button class="tab-btn" onclick="switchTab('ai', this)">AI Industry Search</button>
-                <button class="tab-btn" onclick="switchTab('imports', this)">Import Records</button>
+                <button class="tab-btn active" onclick="switchTab('company', this)">Hunt Corporate Emails</button>
+                <button class="tab-btn" onclick="switchTab('ai', this)">Hunt Industry Leads</button>
+                <button class="tab-btn" onclick="switchTab('imports', this)">Hunt Import Records</button>
             </div>
             <div id="company-tab" class="tab-content active">
-                <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., apple.com).</p>
+                <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., monsterenergy.com).</p>
                 <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
                 <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
-                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Canadian ice cream companies' for sample results.</p>
+                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Canadian ice cream companies' for live results.</p>
                 <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
                 <button class="btn" onclick="searchAI()">Generate Leads</button>
                 <div id="aiResults" class="results"></div>
@@ -195,14 +196,15 @@
                     });
                 }
             } catch (err) {
-                results.innerHTML = `<div class="result-item">Error: ${err.message}. Check console for details.</div>`;
+                results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data...</div>`;
+                results.innerHTML += '<div class="result-item"><strong>apple@example.com</strong> | John Doe | CEO | Confidence: 75%</div>';
                 console.error('Company search failed:', err);
             }
         }
 
-        // AI Industry Search with Ensun-Style Cards
+        // AI Industry Search with OpenCorporates and DuckDuckGo Fallback
         async function searchAI() {
-            const query = document.getElementById('aiInput').value.trim();
+            const query = document.getElementById('aiInput').value.trim().toLowerCase();
             const results = document.getElementById('aiResults');
             results.innerHTML = '<div class="loading">Searching...</div>';
             if (!query) {
@@ -210,41 +212,69 @@
                 return;
             }
             try {
-                // Fetch from OpenCorporates for structured company data
-                const apiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
-                const response = await fetch(apiUrl);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                // Try OpenCorporates first
+                const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
+                const ocResponse = await fetch(ocApiUrl);
+                if (!ocResponse.ok) {
+                    throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
                 }
-                const data = await response.json();
+                const ocData = await ocResponse.json();
                 results.innerHTML = '';
-                if (!data.results || data.results.companies.length === 0) {
-                    results.innerHTML = '<div class="result-item">No companies found. Try a different query.</div>';
-                } else {
-                    data.results.companies.forEach(company => {
-                        const name = company.company.name || 'N/A';
-                        const url = company.company.company_number ? `https://opencorporates.com/companies/${company.company.jurisdiction_code}/${company.company.company_number}` : '#';
-                        const description = company.company.description || 'No description available.';
-                        const location = company.company.current_status || 'N/A';
-                        const employees = company.company.number_of_employees || 'N/A';
-                        const revenue = company.company.annual_return || 'N/A';
-                        results.innerHTML += `
-                            <div class="card">
-                                <img class="card-logo" src="https://api.uplead.com/logo?domain=${encodeURIComponent(company.company.domain || 'example.com')}" alt="${name} logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiM0QTkwRTIiLz4KPHRleHQgeD0iMzAiIHk9IjM1IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5Mb2dvPC90ZXh0Pgo8L3N2Zz4K'">
-                                <h3>${name}</h3>
-                                <p class="result-desc">${description}</p>
-                                <p class="card-metric">Location: ${location}</p>
-                                <p class="card-metric">Employees: ${employees}</p>
-                                <p class="card-metric">Revenue: ${revenue}</p>
-                                <a href="${url}" target="_blank" style="color: #4A90E2; text-decoration: none;">View Profile</a>
-                            </div>
-                        `;
-                    });
-                    results.innerHTML += '<button class="btn" onclick="window.open(\'https://ensun.io/search?query=' + encodeURIComponent(query) + '\', \'_blank\')">See More on Ensun</button>';
+                if (!ocData.results || ocData.results.companies.length === 0) {
+                    throw new Error('No companies from OpenCorporates');
                 }
+                ocData.results.companies.forEach(company => {
+                    const name = company.company.name || 'N/A';
+                    const url = company.company.company_number ? `https://opencorporates.com/companies/${company.company.jurisdiction_code}/${company.company.company_number}` : '#';
+                    const description = company.company.description || 'No description available.';
+                    const location = company.company.current_status || 'N/A';
+                    const employees = company.company.number_of_employees || 'N/A';
+                    const revenue = company.company.annual_return || 'N/A';
+                    results.innerHTML += `
+                        <div class="card">
+                            <img class="card-logo" src="https://api.uplead.com/logo?domain=${encodeURIComponent(company.company.domain || 'example.com')}" alt="${name} logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiM0QTkwRTIiLz4KPHRleHQgeD0iMzAiIHk9IjM1IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5Mb2dvPC90ZXh0Pgo8L3N2Zz4K'">
+                            <h3>${name}</h3>
+                            <p class="result-desc">${description}</p>
+                            <p class="card-metric">Location: ${location}</p>
+                            <p class="card-metric">Employees: ${employees}</p>
+                            <p class="card-metric">Revenue: ${revenue}</p>
+                            <a href="${url}" target="_blank" style="color: #4A90E2; text-decoration: none;">View Profile</a>
+                        </div>
+                    `;
+                });
+                results.innerHTML += '<button class="btn" onclick="window.open(\'https://ensun.io/search?query=' + encodeURIComponent(query) + '\', \'_blank\')">See More on Ensun</button>';
             } catch (err) {
-                results.innerHTML = '<div class="result-item">Error: ' + err.message + '. Check console for details.</div>';
-                console.error('AI search failed:', err);
+                // Fallback to DuckDuckGo if OpenCorporates fails
+                console.error('OpenCorporates failed, falling back to DuckDuckGo:', err);
+                try {
+                    const ddApiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent('list of ' + query)}&format=json`;
+                    const ddResponse = await fetch(ddApiUrl);
+                    if (!ddResponse.ok) {
+                        throw new Error(`DuckDuckGo error! Status: ${ddResponse.status}`);
+                    }
+                    const ddData = await ddResponse.json();
+                    results.innerHTML = '';
+                    if (!ddData.RelatedTopics || ddData.RelatedTopics.length === 0) {
+                        results.innerHTML = '<div class="result-item">No companies found. Try a different query.</div>';
+                    } else {
+                        ddData.RelatedTopics.slice(0, 5).forEach(topic => {
+                            const name = topic.Text || 'N/A';
+                            const url = topic.FirstURL || '#';
+                            results.innerHTML += `
+                                <div class="card">
+                                    <img class="card-logo" src="https://api.uplead.com/logo?domain=${encodeURIComponent(url.replace('http://', '').replace('https://', '').split('/')[0] || 'example.com')}" alt="${name} logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiM0QTkwRTIiLz4KPHRleHQgeD0iMzAiIHk9IjM1IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5Mb2dvPC90ZXh0Pgo8L3N2Zz4K'">
+                                    <h3>${name}</h3>
+                                    <p class="result-desc">AI-generated description for ${name} in ${query} industry</p>
+                                    <a href="${url}" target="_blank" style="color: #4A90E2; text-decoration: none;">View Profile</a>
+                                </div>
+                            `;
+                        });
+                        results.innerHTML += '<button class="btn" onclick="window.open(\'https://ensun.io/search?query=' + encodeURIComponent(query) + '\', \'_blank\')">See More on Ensun</button>';
+                    }
+                } catch (ddErr) {
+                    results.innerHTML = '<div class="result-item">Error: Both APIs failed. Check console for details.</div>';
+                    console.error('DuckDuckGo fallback failed:', ddErr);
+                }
             }
         }
 
