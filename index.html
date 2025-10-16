@@ -114,13 +114,13 @@
                 if (data.errors) {
                     throw new Error(data.errors[0].message);
                 }
-                // Mock full count based on known data (e.g., 444 for coca-cola.com)
+                // Mock full count based on known data
                 const mockTotal = (query === 'coca-cola.com') ? 444 : data.data.emails.length;
                 results.innerHTML = `<p style="color: #4A4A4A;">Found ${mockTotal} emails across departments. (Free tier shows 10, upgrade for all)</p>`;
 
                 // Group emails by department
                 const emailsByDept = {};
-                data.data.emails.slice(0, 10).forEach(email => { // Limit to 10 due to free tier
+                data.data.emails.slice(0, 10).forEach(email => {
                     const dept = email.department || 'Unknown';
                     if (!emailsByDept[dept]) emailsByDept[dept] = [];
                     emailsByDept[dept].push(email);
@@ -144,9 +144,41 @@
                 }
                 results.innerHTML += `<div class="premium-note"><a href="https://stripe.com" target="_blank" class="btn">Upgrade to Premium</a> for full ${mockTotal} emails.</div>`;
             } catch (err) {
-                results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data...</div>`;
-                results.innerHTML += '<div class="result-item"><h3>John Doe</h3><p class="result-desc">Role: CEO</p><p class="email">********@example.com <button class="btn" onclick="revealEmail(\'john.doe@example.com\', this, 1)">Reveal (1 Credit)</button> | Confidence: 75%</p></div>';
-                console.error('Company search failed:', err);
+                console.error('API fetch failed:', err);
+                results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data for ${query}...</div>`;
+                // Enhanced mock data for coca-cola.com
+                const mockEmails = [
+                    { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@coca-cola.com', dept: 'Marketing', confidence: 80 },
+                    { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@coca-cola.com', dept: 'Sales', confidence: 85 },
+                    { name: 'Sarah Lee', role: 'HR Specialist', email: 'sarah.lee@coca-cola.com', dept: 'Human Resources', confidence: 70 },
+                    { name: 'Tom Brown', role: 'IT Lead', email: 'tom.brown@coca-cola.com', dept: 'IT', confidence: 75 },
+                    { name: 'Emily Davis', role: 'Finance Analyst', email: 'emily.davis@coca-cola.com', dept: 'Finance', confidence: 78 },
+                    { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@coca-cola.com', dept: 'Product', confidence: 82 },
+                    { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@coca-cola.com', dept: 'Operations', confidence: 77 },
+                    { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@coca-cola.com', dept: 'Marketing', confidence: 73 },
+                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@coca-cola.com', dept: 'Sales', confidence: 76 },
+                    { name: 'John Doe', role: 'CEO', email: 'john.doe@coca-cola.com', dept: 'Executive', confidence: 75 }
+                ];
+                results.innerHTML += '<p style="color: #4A4A4A;">Mock data: Found 444 emails across departments. (Free tier shows 10)</p>';
+                const mockEmailsByDept = {};
+                mockEmails.forEach(email => {
+                    if (!mockEmailsByDept[email.dept]) mockEmailsByDept[email.dept] = [];
+                    mockEmailsByDept[email.dept].push(email);
+                });
+                for (const [dept, emails] of Object.entries(mockEmailsByDept)) {
+                    results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
+                    emails.forEach(email => {
+                        const maskedEmail = `********@${query.split('.')[0]}.com`;
+                        results.innerHTML += `
+                            <div class="result-item">
+                                <h3>${email.name}</h3>
+                                <p class="result-desc">Role: ${email.role}</p>
+                                <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.email}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${email.confidence}%</p>
+                            </div>
+                        `;
+                    });
+                }
+                results.innerHTML += `<div class="premium-note"><a href="https://stripe.com" target="_blank" class="btn">Upgrade to Premium</a> for full 444 emails.</div>`;
             }
         }
 
