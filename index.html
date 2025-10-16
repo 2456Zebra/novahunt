@@ -71,7 +71,7 @@
                 <button class="tab-btn" onclick="switchTab('imports', this)">Hunt Import Records</button>
             </div>
             <div id="company-tab" class="tab-content active">
-                <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., monsterenergy.com).</p>
+                <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., coca-cola.com).</p>
                 <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block;">
                 <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
                 <div id="companyResults" class="results"></div>
@@ -200,7 +200,7 @@
                                 <h3>${name}</h3>
                                 <p class="result-desc">Role: ${role}</p>
                                 <p class="card-metric">Email: ${maskedEmail} | Confidence: ${confidence}%</p>
-                                ${userCredits <= 0 || data.data.emails.length > 10 ? '<button class="btn" onclick="buyCredits()">Buy Credits to See More</button>' : ''}
+                                ${data.data.emails.length > 10 ? '<button class="btn" onclick="buyCredits()">Buy Credits to See More</button>' : ''}
                             </div>
                         `;
                     });
@@ -244,7 +244,7 @@
             try {
                 const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
                 const ocResponse = await fetch(ocApiUrl);
-                if (!response.ok) {
+                if (!ocResponse.ok) {
                     throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
                 }
                 const ocData = await ocResponse.json();
@@ -284,7 +284,7 @@
                     const ddData = await ddResponse.json();
                     results.innerHTML = '';
                     if (!ddData.RelatedTopics || ddData.RelatedTopics.length === 0) {
-                        results.innerHTML = '<div class="result-item">No companies found. Try a different query.</div>';
+                        results.innerHTML = '<div class="result-item">No companies found. Try a different query (e.g., adjust location or industry).</div>';
                     } else {
                         ddData.RelatedTopics.slice(0, 5).forEach(topic => {
                             const name = topic.Text || 'N/A';
