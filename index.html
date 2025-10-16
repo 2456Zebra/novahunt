@@ -244,7 +244,7 @@
             try {
                 const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
                 const ocResponse = await fetch(ocApiUrl);
-                if (!ocResponse.ok) {
+                if (!response.ok) {
                     throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
                 }
                 const ocData = await ocResponse.json();
