@@ -30,7 +30,7 @@
         .result-table th { background: #2D3748; font-weight: 600; color: #E2E8F0; cursor: pointer; }
         .result-table th:hover { background: #4A5568; }
         .result-table td { background: #2D3748; }
-        .result-table .premium { color: #00FFCC; font-style: italic; } /* Changed to cyan for visibility */
+        .result-table .premium { color: #00FFCC; font-style: italic; text-align: center; } /* Ensured text is visible and centered */
         .loading { color: #90CDF4; font-style: italic; text-align: center; }
         .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00FFCC; }
         .pagination { text-align: center; margin-top: 10px; }
@@ -50,7 +50,6 @@
         .plan-card ul li { margin: 10px 0; color: #A0AEC0; }
         .plan-card .price { font-size: 1.5em; color: #E2E8F0; margin: 10px 0; }
         .plan-card .btn { margin-top: 15px; }
-        .back-button { text-align: center; margin: 20px 0; }
         @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 250px; margin-top: 30px; } .plan-card { max-width: 100%; margin: 10px 0; } }
     </style>
 </head>
@@ -121,11 +120,11 @@
 
         // Initialize map
         function initMap() {
-            map = L.map('map', { preferCanvas: true }).setView([20, 0], 2); // Added preferCanvas for performance
+            map = L.map('map', { preferCanvas: true }).setView([20, 0], 2);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                lang: 'en' // Force English language
+                lang: 'en'
             }).addTo(map);
             map.getContainer().style.background = '#1A202C';
         }
@@ -140,7 +139,7 @@
                 button.classList.add('active');
                 const tabContent = document.getElementById(tabName + '-tab');
                 if (tabContent) tabContent.classList.add('active');
-                if (tabName === 'imports' && !map) initMap(); // Initialize map only for imports tab
+                if (tabName === 'imports' && !map) initMap();
                 console.log(`Switched to ${tabName} tab`);
             } catch (err) {
                 console.error('Tab switching failed:', err);
@@ -155,7 +154,6 @@
             const errorDiv = document.getElementById('companyError');
             errorDiv.style.display = 'none';
 
-            // Validate input format
             if (!query.includes('.com') && !query.includes('.org') && !query.includes('.net')) {
                 errorDiv.textContent = 'Incorrect format. Please enter a valid domain (e.g., coca-cola.com).';
                 errorDiv.style.display = 'block';
@@ -169,18 +167,12 @@
                 const proxyUrl = 'https://api.allorigins.win/raw?url=';
                 const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
                 const response = await fetch(proxyUrl + encodeURIComponent(apiUrl));
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
-                if (data.errors) {
-                    throw new Error(data.data.errors[0].message);
-                }
-                // Mock full count based on known data
+                if (data.errors) throw new Error(data.data.errors[0].message);
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
                 results.innerHTML = `<p style="color: #A0AEC0;">Found ${mockTotal} emails across departments. (Free tier shows 10, upgrade for all)</p>`;
 
-                // Group emails by department
                 const emailsByDept = {};
                 data.data.emails.slice(0, 10).forEach(email => {
                     const dept = email.department || 'Unknown';
@@ -268,14 +260,10 @@
             try {
                 const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
                 const ocResponse = await fetch(ocApiUrl);
-                if (!ocResponse.ok) {
-                    throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
-                }
+                if (!ocResponse.ok) throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
                 const ocData = await ocResponse.json();
                 results.innerHTML = '';
-                if (!ocData.results || ocData.results.companies.length === 0) {
-                    throw new Error('No companies from OpenCorporates');
-                }
+                if (!ocData.results || ocData.results.companies.length === 0) throw new Error('No companies from OpenCorporates');
                 ocData.results.companies.forEach(company => {
                     const name = company.company.name || 'N/A';
                     const url = company.company.company_number ? `https://opencorporates.com/companies/${company.company.jurisdiction_code}/${company.company.company_number}` : '#';
@@ -286,9 +274,7 @@
                 try {
                     const ddApiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent('list of ' + query + ' site:*.com -inurl:(signup | login)')}&format=json`;
                     const ddResponse = await fetch(ddApiUrl);
-                    if (!ddResponse.ok) {
-                        throw new Error(`DuckDuckGo error! Status: ${ddResponse.status}`);
-                    }
+                    if (!ddResponse.ok) throw new Error(`DuckDuckGo error! Status: ${ddResponse.status}`);
                     const ddData = await ddResponse.json();
                     results.innerHTML = '';
                     if (!ddData.RelatedTopics || ddData.RelatedTopics.length === 0) {
@@ -370,7 +356,7 @@
                         const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', '')) || 1000;
                         const supplier = row.cells[0].textContent.trim();
                         const coords = getCountryCoords(country);
-                        if (coords[0] !== 0 || coords[1] !== 0) { // Ensure valid coordinates
+                        if (coords[0] !== 0 || coords[1] !== 0) {
                             const radius = Math.min(20, tradeValue / 1000) || 5;
                             L.circleMarker(coords, {
                                 color: '#00FFCC',
@@ -384,8 +370,6 @@
                             }).on('click', () => {
                                 alert(`Supplier: ${supplier}\nTrade Value: $${tradeValue.toLocaleString()}\nCountry: ${country}`);
                             });
-                        } else {
-                            console.warn(`No valid coordinates for ${country}`);
                         }
                     });
                     map.fitBounds(rows.map(row => getCountryCoords(row.cells[1].textContent.trim())).filter(coord => coord[0] !== 0 || coord[1] !== 0));
@@ -395,7 +379,7 @@
             }
         }
 
-        // Country coordinates (simplified mapping)
+        // Country coordinates
         function getCountryCoords(country) {
             const coords = {
                 'China': [35.8617, 104.1954],
@@ -425,7 +409,6 @@
             useMockImports(query, countryFilter, yearFilter, results);
         }
 
-        // Helper function for mock imports with enhanced design
         function useMockImports(query, countryFilter, yearFilter, results) {
             const mockSuppliers = {
                 'acme imports': [
@@ -478,7 +461,7 @@
                             <td>${supplier.tradeValue}</td>
                             <td>${supplier.year}</td>
                             <td>${supplier.product}</td>
-                            <td><a href="#" class="btn premium">View Report (Premium)</a></td>
+                            <td><a href="plans.html" class="btn premium">View Report (Premium)</a></td> <!-- Changed to link with explicit text -->
                         </tr>
                     `;
                 });
@@ -493,7 +476,7 @@
             }
             results.innerHTML = tableHTML;
             updatePagination();
-            updateMap(); // Ensure map updates after table render
+            updateMap();
         }
 
         // Smooth scroll for CTAs
