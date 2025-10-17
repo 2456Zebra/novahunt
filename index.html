@@ -34,6 +34,8 @@
         .error { color: #FF4444; font-size: 0.9em; margin-top: 5px; }
         .filter-group { margin-bottom: 10px; }
         .filter-group select { padding: 8px; border: 1px solid #E0E0E0; border-radius: 4px; }
+        .toggle-group { margin-bottom: 10px; text-align: center; }
+        .toggle-group label { margin-right: 10px; }
         @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } }
     </style>
 </head>
@@ -87,6 +89,9 @@
                         <option value="2023">2023</option>
                         <option value="2022">2022</option>
                     </select>
+                </div>
+                <div class="toggle-group">
+                    <label><input type="checkbox" id="liveToggle" checked> Live Data (Census API)</label>
                 </div>
                 <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E0E0E0; border-radius: 4px;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
@@ -274,6 +279,7 @@
             const query = document.getElementById('importsInput').value.toLowerCase().trim();
             const countryFilter = document.getElementById('countryFilter').value;
             const yearFilter = document.getElementById('yearFilter').value;
+            const liveToggle = document.getElementById('liveToggle').checked;
             const results = document.getElementById('importsResults');
             results.innerHTML = '<div class="loading">Searching...</div>';
 
@@ -282,91 +288,100 @@
                 return;
             }
 
-            try {
-                // Map company to HS code (simplified mapping; expand as needed)
-                const hsCodes = {
-                    'coca-cola': '2202',    // Beverages, non-alcoholic
-                    'monsterenergy': '2202', // Energy drinks
-                    'acme imports': '8471',  // General machinery (example)
-                    'default': '9999'       // Miscellaneous
-                };
-                const hsCode = hsCodes[query] || hsCodes['default'];
-                const apiUrl = `https://api.census.gov/data/timeseries/International/all?get=trade_value,country,year&commodity=${hsCode}&time=from+2022+to+2023&key=`;
-                const response = await fetch(apiUrl);
-                if (!response.ok) {
-                    throw new Error(`Census API error! Status: ${response.status}`);
-                }
-                const data = await response.json();
-
-                // Filter and format results
-                results.innerHTML = '';
-                if (data && data.length > 1) { // Skip header row
-                    const filteredData = data.slice(1).filter(item => {
-                        const matchesCountry = !countryFilter || item[1] === countryFilter;
-                        const matchesYear = !yearFilter || item[2] === yearFilter;
-                        return matchesCountry && matchesYear;
-                    }).slice(0, 10); // Limit to 10 results
-
-                    if (filteredData.length > 0) {
-                        filteredData.forEach(item => {
-                            const tradeValue = item[0] || 'N/A';
-                            const country = item[1] || 'N/A';
-                            const year = item[2] || 'N/A';
-                            results.innerHTML += `
-                                <div class="result-item">
-                                    <h3>Supplier from ${country}</h3>
-                                    <p>Trade Value: $${tradeValue} | Year: ${year}</p>
-                                </div>
-                            `;
-                        });
-                    } else {
-                        results.innerHTML = '<div class="result-item">No supplier records found with current filters.</div>';
+            if (liveToggle) {
+                // Live Census API call
+                try {
+                    // Map company to HS code (simplified; expand as needed)
+                    const hsCodes = {
+                        'coca-cola': '2202', // Beverages
+                        'monsterenergy': '2202', // Energy drinks
+                        'acme imports': '8471', // Machinery (example)
+                        'default': '9999' // Miscellaneous
+                    };
+                    const hsCode = hsCodes[query] || hsCodes['default'];
+                    const apiUrl = `https://api.census.gov/data/timeseries/International/all?get=trade_value,country,year&commodity=${hsCode}&time=from+2022+to+2023`;
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) {
+                        throw new Error(`Census API error! Status: ${response.status}`);
                     }
-                } else {
-                    results.innerHTML = '<div class="result-item">No data available for this company.</div>';
-                }
-            } catch (err) {
-                console.error('API fetch failed:', err);
-                results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data for ${query}...</div>`;
-                const mockSuppliers = {
-                    'acme imports': [
-                        { supplier: 'Global Supply Co.', country: 'China', tradeValue: '$5000', year: '2023' },
-                        { supplier: 'East Trade Ltd.', country: 'Vietnam', tradeValue: '$3000', year: '2022' }
-                    ],
-                    'coca-cola': [
-                        { supplier: 'Beverage Logistics Inc.', country: 'Mexico', tradeValue: '$10000', year: '2023' },
-                        { supplier: 'Sweet Water Suppliers', country: 'Brazil', tradeValue: '$7500', year: '2022' },
-                        { supplier: 'Pacific Beverage Corp.', country: 'China', tradeValue: '$6000', year: '2023' }
-                    ],
-                    'monsterenergy': [
-                        { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023' },
-                        { supplier: 'Asia Energy Import', country: 'India', tradeValue: '$2500', year: '2022' }
-                    ],
-                    'default': [
-                        { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023' }
-                    ]
-                };
-                const suppliers = mockSuppliers[query] || mockSuppliers['default'];
-                results.innerHTML = '';
-                if (suppliers.length > 0) {
-                    suppliers.forEach(supplier => {
-                        const matchesCountry = !countryFilter || supplier.country === countryFilter;
-                        const matchesYear = !yearFilter || supplier.year === yearFilter;
-                        if (matchesCountry && matchesYear) {
-                            results.innerHTML += `
-                                <div class="result-item">
-                                    <h3>${supplier.supplier}</h3>
-                                    <p>Country: ${supplier.country} | Trade Value: ${supplier.tradeValue} | Year: ${supplier.year}</p>
-                                </div>
-                            `;
+                    const data = await response.json();
+
+                    // Filter and format
+                    results.innerHTML = '';
+                    if (data && data.length > 1) { // Skip header
+                        const filteredData = data.slice(1).filter(item => {
+                            const matchesCountry = !countryFilter || item[1] === countryFilter;
+                            const matchesYear = !yearFilter || item[2] === yearFilter;
+                            return matchesCountry && matchesYear;
+                        }).slice(0, 10);
+
+                        if (filteredData.length > 0) {
+                            filteredData.forEach(item => {
+                                const tradeValue = item[0] || 'N/A';
+                                const country = item[1] || 'N/A';
+                                const year = item[2] || 'N/A';
+                                results.innerHTML += `
+                                    <div class="result-item">
+                                        <h3>Supplier from ${country}</h3>
+                                        <p>Trade Value: $${tradeValue} | Year: ${year}</p>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            results.innerHTML = '<div class="result-item">No supplier records found with current filters.</div>';
                         }
-                    });
-                    if (results.innerHTML === '') {
-                        results.innerHTML = '<div class="result-item">No supplier records found with current filters.</div>';
+                    } else {
+                        results.innerHTML = '<div class="result-item">No data available for this company.</div>';
                     }
-                } else {
-                    results.innerHTML = '<div class="result-item">No supplier records found for this company.</div>';
+                } catch (err) {
+                    console.error('Census API failed, falling back to mock:', err);
+                    useMockImports(query, countryFilter, yearFilter, results);
                 }
+            } else {
+                // Mock mode
+                useMockImports(query, countryFilter, yearFilter, results);
+            }
+        }
+
+        // Helper function for mock imports
+        function useMockImports(query, countryFilter, yearFilter, results) {
+            const mockSuppliers = {
+                'acme imports': [
+                    { supplier: 'Global Supply Co.', country: 'China', tradeValue: '$5000', year: '2023' },
+                    { supplier: 'East Trade Ltd.', country: 'Vietnam', tradeValue: '$3000', year: '2022' }
+                ],
+                'coca-cola': [
+                    { supplier: 'Beverage Logistics Inc.', country: 'Mexico', tradeValue: '$10000', year: '2023' },
+                    { supplier: 'Sweet Water Suppliers', country: 'Brazil', tradeValue: '$7500', year: '2022' },
+                    { supplier: 'Pacific Beverage Corp.', country: 'China', tradeValue: '$6000', year: '2023' }
+                ],
+                'monsterenergy': [
+                    { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023' },
+                    { supplier: 'Asia Energy Import', country: 'India', tradeValue: '$2500', year: '2022' }
+                ],
+                'default': [
+                    { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023' }
+                ]
+            };
+
+            const suppliers = mockSuppliers[query] || mockSuppliers['default'];
+            results.innerHTML = '';
+            const filteredSuppliers = suppliers.filter(supplier => {
+                const matchesCountry = !countryFilter || supplier.country === countryFilter;
+                const matchesYear = !yearFilter || supplier.year === yearFilter;
+                return matchesCountry && matchesYear;
+            });
+            if (filteredSuppliers.length > 0) {
+                filteredSuppliers.forEach(supplier => {
+                    results.innerHTML += `
+                        <div class="result-item">
+                            <h3>${supplier.supplier}</h3>
+                            <p>Country: ${supplier.country} | Trade Value: ${supplier.tradeValue} | Year: ${supplier.year}</p>
+                        </div>
+                    `;
+                });
+            } else {
+                results.innerHTML = '<div class="result-item">No supplier records found with current filters.</div>';
             }
         }
 
