@@ -52,7 +52,7 @@
             <h1>🥷 NovaHunt</h1>
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
             <p>Redefine B2B success with cutting-edge AI precision.</p>
-            <div style="text-align: center; margin-top: 20px;"><a href="plans.html" class="btn">Start Free Trial</a></div>
+            <div style="text-align: center; margin-top: 20px;"><a href="signup.html" class="btn">Get Started</a></div>
             <p style="font-size: 0.9em; color: #90CDF4;">free credits • No credit card required</p>
         </div>
     </section>
@@ -347,7 +347,7 @@
                         'coca-cola': '2202', // Beverages
                         'monsterenergy': '2202', // Energy drinks
                         'acme imports': '8471', // Machinery
-                        'pepsi cola': '2202', // Beverages (assuming similarity to Coca-Cola)
+                        'pepsi cola': '2202', // Beverages
                         'default': '9999' // Miscellaneous
                     };
                     const hsCode = hsCodes[query] || hsCodes['default'];
@@ -493,7 +493,7 @@
         document.querySelectorAll('a.btn, button.btn').forEach(btn => {
             if (btn.textContent.includes('Get Started') || btn.textContent.includes('Sign Up')) {
                 btn.addEventListener('click', () => {
-                    document.querySelector('section:last-of-type').scrollIntoView({ behavior: 'smooth' });
+                    window.location.href = 'signup.html';
                 });
             }
         });
