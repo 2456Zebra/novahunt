@@ -16,7 +16,7 @@
         h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
         h2 { font-size: 2em; font-weight: 700; color: #E2E8F0; margin-bottom: 20px; text-align: center; }
         p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
-        .btn { background: #00FFCC; color: #1A202C; padding: 8px 15px; border: none; border-radius: 4px; font-size: 0.9em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
+        .btn { background: #00FFCC; color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
         .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
         .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
         .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
@@ -26,7 +26,7 @@
         .tab-content.active { display: block; }
         .results { margin-top: 20px; }
         .result-table { width: 100%; border-collapse: collapse; }
-        .result-table th, .result-table td { padding: 12px; text-align: left; border-bottom: 1px solid #4A5568; }
+        .result-table th, .result-table td { padding: 10px; text-align: left; border-bottom: 1px solid #4A5568; }
         .result-table th { background: #2D3748; font-weight: 600; color: #E2E8F0; cursor: pointer; }
         .result-table th:hover { background: #4A5568; }
         .result-table td { background: #2D3748; }
@@ -37,14 +37,14 @@
         .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
         .pagination button:hover { background: #718096; }
         .department-header { font-size: 1.2em; font-weight: 600; color: #E2E8F0; margin: 10px 0 5px; }
-        .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; }
+        .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; padding-bottom: 20px; } /* Added padding for spacing */
         .error { color: #FC8181; font-size: 1em; margin-top: 10px; text-align: center; font-weight: bold; padding: 10px; background: #2D3748; border-radius: 4px; }
         .filter-group { margin-bottom: 10px; }
         .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
         .toggle-group { margin-bottom: 10px; text-align: center; }
         .toggle-group label { margin-right: 10px; color: #E2E8F0; }
-        #map { height: 400px; width: 100%; margin-top: 20px; border: 1px solid #4A5568; border-radius: 6px; }
-        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 300px; } }
+        #map { height: 300px; width: 100%; margin-top: 40px; border: 1px solid #4A5568; border-radius: 6px; } /* Reduced height and added margin */
+        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 250px; margin-top: 30px; } }
     </style>
 </head>
 <body>
@@ -423,7 +423,7 @@
                     };
                     const hsCode = hsCodes[query] || hsCodes['default'];
                     const proxyUrl = 'https://api.allorigins.win/raw?url=';
-                    const apiUrl = `https://comtrade.un.org/api/get?max=10&type=C&freq=A&px=HS&ps=${yearFilter || '2023'}&r=all&p=all&rg=1&cc=${hsCode}&fmt=json`; // Changed r=842 to r=all
+                    const apiUrl = `https://comtrade.un.org/api/get?max=10&type=C&freq=A&px=HS&ps=${yearFilter || '2023'}&r=all&p=all&rg=1&cc=${hsCode}&fmt=json`;
                     const response = await fetch(proxyUrl + encodeURIComponent(apiUrl));
                     if (!response.ok) {
                         throw new Error(`UN Comtrade API error! Status: ${response.status} - ${response.statusText}`);
@@ -448,9 +448,11 @@
                             const matchesYear = !yearFilter || item.period === yearFilter;
                             return matchesCountry && matchesYear;
                         });
+                        const totalResults = data.dataset.length; // Total available results
+                        const displayedResults = Math.min(itemsPerPage, filteredData.length); // Results shown per page
 
                         if (filteredData.length > 0) {
-                            filteredData.forEach(item => {
+                            filteredData.slice(0, itemsPerPage).forEach(item => {
                                 const supplier = item.rtTitle || 'Unknown Supplier';
                                 const country = item.rtTitle || 'N/A';
                                 const tradeValue = item.TradeValue ? `$${Number(item.TradeValue).toLocaleString()}` : 'N/A';
@@ -473,7 +475,12 @@
                     } else {
                         results.innerHTML += '<tr><td colspan="6">No data available for this company.</td></tr>';
                     }
-                    results.innerHTML += '</table><div class="pagination"></div>';
+                    results.innerHTML += '</table>';
+                    if (data.dataset && data.dataset.length > itemsPerPage) {
+                        results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${itemsPerPage} of ${data.dataset.length} results</p><div class="premium-note"><a href="plans.html" class="btn">Upgrade to See More</a></div><div class="pagination"></div>`;
+                    } else if (data.dataset && data.dataset.length > 0) {
+                        results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${data.dataset.length} of ${data.dataset.length} results</p><div class="pagination"></div>`;
+                    }
                     updatePagination();
                 } catch (err) {
                     console.error('UN Comtrade API failed, falling back to mock:', err);
@@ -528,8 +535,11 @@
                 const matchesYear = !yearFilter || supplier.year === yearFilter;
                 return matchesCountry && matchesYear;
             });
+            const totalResults = suppliers.length; // Total mock results
+            const displayedResults = Math.min(itemsPerPage, filteredSuppliers.length); // Results shown per page
+
             if (filteredSuppliers.length > 0) {
-                filteredSuppliers.forEach(supplier => {
+                filteredSuppliers.slice(0, itemsPerPage).forEach(supplier => {
                     results.innerHTML += `
                         <tr>
                             <td>${supplier.supplier}</td>
@@ -544,7 +554,12 @@
             } else {
                 results.innerHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
             }
-            results.innerHTML += '</table><div class="pagination"></div>';
+            results.innerHTML += '</table>';
+            if (filteredSuppliers.length > itemsPerPage) {
+                results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${displayedResults} of ${totalResults} results</p><div class="premium-note"><a href="plans.html" class="btn">Upgrade to See More</a></div><div class="pagination"></div>`;
+            } else if (filteredSuppliers.length > 0) {
+                results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${filteredSuppliers.length} of ${totalResults} results</p><div class="pagination"></div>`;
+            }
             updatePagination();
         }
 
