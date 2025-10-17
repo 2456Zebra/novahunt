@@ -9,45 +9,46 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #FFFFFF; color: #1A1A1A; line-height: 1.6; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F5F7FA; color: #2D3748; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
         .section { padding: 60px 0; }
-        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #1A1A1A; margin-bottom: 15px; }
-        h2 { font-size: 2em; font-weight: 700; color: #1A1A1A; margin-bottom: 20px; text-align: center; }
-        p { font-size: 1.1em; color: #4A4A4A; margin-bottom: 20px; text-align: center; }
-        .btn { background: #007BFF; color: #FFFFFF; padding: 8px 15px; border: none; border-radius: 4px; font-size: 0.9em; cursor: pointer; transition: background 0.3s; text-decoration: none; display: inline-block; }
-        .btn:hover { background: #0056b3; }
-        .btn-primary { background: #007BFF; color: #FFFFFF; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
-        .search-tabs { display: flex; background: #F8F9FA; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 12px; background: transparent; color: #1A1A1A; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
-        .tab-btn.active { background: #007BFF; color: #FFFFFF; }
+        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #2D3748; margin-bottom: 15px; }
+        h2 { font-size: 2em; font-weight: 700; color: #2D3748; margin-bottom: 20px; text-align: center; }
+        p { font-size: 1.1em; color: #4A5568; margin-bottom: 20px; text-align: center; }
+        .btn { background: #4C51BF; color: #FFFFFF; padding: 8px 15px; border: none; border-radius: 4px; font-size: 0.9em; cursor: pointer; transition: background 0.3s; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #434190; }
+        .btn-primary { background: #4C51BF; color: #FFFFFF; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
+        .search-tabs { display: flex; background: #EDF2F7; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; background: transparent; color: #2D3748; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
+        .tab-btn.active { background: #4C51BF; color: #FFFFFF; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .results { margin-top: 20px; }
-        .result-item { background: #FFFFFF; padding: 10px; border: 1px solid #E0E0E0; border-radius: 4px; margin: 5px 0; color: #4A4A4A; font-weight: 500; }
-        .result-item h3 { font-size: 1.1em; color: #1A1A1A; margin-bottom: 5px; }
-        .result-item p { font-size: 0.85em; color: #666666; margin: 2px 0; }
-        .result-item .email { font-weight: bold; }
-        .loading { color: #888888; font-style: italic; }
-        .department-header { font-size: 1.2em; font-weight: 600; color: #1A1A1A; margin: 10px 0 5px; }
-        .premium-note { font-size: 0.8em; color: #888888; margin-top: 10px; }
-        .error { color: #FF4444; font-size: 0.9em; margin-top: 5px; }
+        .result-table { width: 100%; border-collapse: collapse; }
+        .result-table th, .result-table td { padding: 12px; text-align: left; border-bottom: 1px solid #E2E8F0; }
+        .result-table th { background: #EDF2F7; font-weight: 600; color: #2D3748; }
+        .result-table td { background: #FFFFFF; }
+        .result-table .premium { color: #718096; font-style: italic; }
+        .loading { color: #718096; font-style: italic; text-align: center; }
+        .department-header { font-size: 1.2em; font-weight: 600; color: #2D3748; margin: 10px 0 5px; }
+        .premium-note { font-size: 0.8em; color: #718096; margin-top: 10px; text-align: center; }
+        .error { color: #E53E3E; font-size: 0.9em; margin-top: 5px; text-align: center; }
         .filter-group { margin-bottom: 10px; }
-        .filter-group select { padding: 8px; border: 1px solid #E0E0E0; border-radius: 4px; }
+        .filter-group select { padding: 8px; border: 1px solid #E2E8F0; border-radius: 4px; }
         .toggle-group { margin-bottom: 10px; text-align: center; }
         .toggle-group label { margin-right: 10px; }
-        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } }
+        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } }
     </style>
 </head>
 <body>
     <!-- Hero Section -->
-    <section class="section" style="padding-top: 80px;">
+    <section class="section" style="padding-top: 80px; background: #FFFFFF; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <div class="container">
             <h1>🥷 NovaHunt</h1>
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
             <p>Hunt thousands of qualified B2B leads instantly with cutting-edge AI.</p>
             <div style="text-align: center; margin-top: 20px;"><a href="plans.html" class="btn">Start Free Trial</a></div>
-            <p style="font-size: 0.9em; color: #666666;">free credits • No credit card required</p>
+            <p style="font-size: 0.9em; color: #718096;">free credits • No credit card required</p>
         </div>
     </section>
 
@@ -63,14 +64,14 @@
             </div>
             <div id="company-tab" class="tab-content active">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., coca-cola.com).</p>
-                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E0E0E0; border-radius: 4px;">
+                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E2E8F0; border-radius: 4px;">
                 <div id="companyError" class="error" style="display: none;"></div>
                 <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
                 <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Companies USA' for live results.</p>
-                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E0E0E0; border-radius: 4px;">
+                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E2E8F0; border-radius: 4px;">
                 <button class="btn" onclick="searchAI()">Generate Leads</button>
                 <div id="aiResults" class="results"></div>
             </div>
@@ -93,7 +94,7 @@
                 <div class="toggle-group">
                     <label><input type="checkbox" id="liveToggle" checked> Live Data (WITS API)</label>
                 </div>
-                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E0E0E0; border-radius: 4px;">
+                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E2E8F0; border-radius: 4px;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
                 <div id="importsResults" class="results"></div>
             </div>
@@ -145,7 +146,7 @@
                 }
                 // Mock full count based on known data
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
-                results.innerHTML = `<p style="color: #4A4A4A;">Found ${mockTotal} emails across departments. (Free tier shows 10, upgrade for all)</p>`;
+                results.innerHTML = `<p style="color: #4A5568;">Found ${mockTotal} emails across departments. (Free tier shows 10, upgrade for all)</p>`;
 
                 // Group emails by department
                 const emailsByDept = {};
@@ -176,7 +177,7 @@
                 console.error('API fetch failed:', err);
                 results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data for ${query}...</div>`;
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : 10);
-                results.innerHTML += `<p style="color: #4A4A4A;">Mock data: Found ${mockTotal} emails across departments. (Free tier shows 10)</p>`;
+                results.innerHTML += `<p style="color: #4A5568;">Mock data: Found ${mockTotal} emails across departments. (Free tier shows 10)</p>`;
                 const mockEmails = [
                     { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 80 },
                     { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 },
@@ -289,9 +290,8 @@
             }
 
             if (liveToggle) {
-                // Live WITS API call (no key needed)
+                // Live WITS API call with adjusted endpoint
                 try {
-                    // Map company to HS code (simplified; expand as needed)
                     const hsCodes = {
                         'coca-cola': '2202', // Beverages
                         'monsterenergy': '2202', // Energy drinks
@@ -299,40 +299,52 @@
                         'default': '9999' // Miscellaneous
                     };
                     const hsCode = hsCodes[query] || hsCodes['default'];
-                    const apiUrl = `https://wits.worldbank.org/api/v1/en/country/usa/product/${hsCode}/reporter/import?startyear=2022&endyear=2023`;
-                    const response = await fetch(apiUrl);
+                    const apiUrl = `https://wits.worldbank.org/API/v1/wits/data/trade?indicator=TRADE&reporter=USA&partner=ALL&year=2022-2023&product=${hsCode}&format=json`;
+                    const response = await fetch(apiUrl, {
+                        headers: { 'Accept': 'application/json' }
+                    });
                     if (!response.ok) {
                         throw new Error(`WITS API error! Status: ${response.status} - ${response.statusText}`);
                     }
                     const data = await response.json();
 
-                    // Filter and format
-                    results.innerHTML = '';
-                    if (data && data.data && data.data.length > 0) {
-                        const filteredData = data.data.filter(item => {
-                            const matchesCountry = !countryFilter || item.partner_iso === countryFilter;
+                    // Filter and format with enhanced details
+                    results.innerHTML = `
+                        <table class="result-table">
+                            <tr><th>Supplier</th><th>Country</th><th>Trade Value</th><th>Year</th><th>Product</th><th>Action</th></tr>
+                    `;
+                    if (data && data.length > 0) {
+                        const filteredData = data.filter(item => {
+                            const matchesCountry = !countryFilter || item.partner === countryFilter;
                             const matchesYear = !yearFilter || item.year === yearFilter;
                             return matchesCountry && matchesYear;
                         }).slice(0, 10);
 
                         if (filteredData.length > 0) {
                             filteredData.forEach(item => {
-                                const tradeValue = item.trade_value || 'N/A';
-                                const country = item.partner_name || 'N/A';
+                                const supplier = item.partner_name || 'Unknown Supplier';
+                                const country = item.partner || 'N/A';
+                                const tradeValue = item.trade_value ? `$${Number(item.trade_value).toLocaleString()}` : 'N/A';
                                 const year = item.year || 'N/A';
+                                const product = item.product_description || 'Beverages';
                                 results.innerHTML += `
-                                    <div class="result-item">
-                                        <h3>Supplier from ${country}</h3>
-                                        <p>Trade Value: $${tradeValue} | Year: ${year}</p>
-                                    </div>
+                                    <tr>
+                                        <td>${supplier}</td>
+                                        <td>${country}</td>
+                                        <td>${tradeValue}</td>
+                                        <td>${year}</td>
+                                        <td>${product}</td>
+                                        <td><a href="#" class="btn premium">View Report (Premium)</a></td>
+                                    </tr>
                                 `;
                             });
                         } else {
-                            results.innerHTML = '<div class="result-item">No supplier records found with current filters.</div>';
+                            results.innerHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
                         }
                     } else {
-                        results.innerHTML = '<div class="result-item">No data available for this company.</div>';
+                        results.innerHTML += '<tr><td colspan="6">No data available for this company.</td></tr>';
                     }
+                    results.innerHTML += '</table>';
                 } catch (err) {
                     console.error('WITS API failed, falling back to mock:', err);
                     results.innerHTML = `<div class="error">API Error: ${err.message}. Using mock data.</div>`;
@@ -344,29 +356,32 @@
             }
         }
 
-        // Helper function for mock imports
+        // Helper function for mock imports with enhanced design
         function useMockImports(query, countryFilter, yearFilter, results) {
             const mockSuppliers = {
                 'acme imports': [
-                    { supplier: 'Global Supply Co.', country: 'China', tradeValue: '$5000', year: '2023' },
-                    { supplier: 'East Trade Ltd.', country: 'Vietnam', tradeValue: '$3000', year: '2022' }
+                    { supplier: 'Global Supply Co.', country: 'China', tradeValue: '$5000', year: '2023', product: 'Machinery Parts' },
+                    { supplier: 'East Trade Ltd.', country: 'Vietnam', tradeValue: '$3000', year: '2022', product: 'Machinery Parts' }
                 ],
                 'coca-cola': [
-                    { supplier: 'Beverage Logistics Inc.', country: 'Mexico', tradeValue: '$10000', year: '2023' },
-                    { supplier: 'Sweet Water Suppliers', country: 'Brazil', tradeValue: '$7500', year: '2022' },
-                    { supplier: 'Pacific Beverage Corp.', country: 'China', tradeValue: '$6000', year: '2023' }
+                    { supplier: 'Beverage Logistics Inc.', country: 'Mexico', tradeValue: '$10000', year: '2023', product: 'Soft Drinks' },
+                    { supplier: 'Sweet Water Suppliers', country: 'Brazil', tradeValue: '$7500', year: '2022', product: 'Soft Drinks' },
+                    { supplier: 'Pacific Beverage Corp.', country: 'China', tradeValue: '$6000', year: '2023', product: 'Soft Drinks' }
                 ],
                 'monsterenergy': [
-                    { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023' },
-                    { supplier: 'Asia Energy Import', country: 'India', tradeValue: '$2500', year: '2022' }
+                    { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023', product: 'Energy Drinks' },
+                    { supplier: 'Asia Energy Import', country: 'India', tradeValue: '$2500', year: '2022', product: 'Energy Drinks' }
                 ],
                 'default': [
-                    { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023' }
+                    { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
                 ]
             };
 
             const suppliers = mockSuppliers[query] || mockSuppliers['default'];
-            results.innerHTML = '';
+            results.innerHTML = `
+                <table class="result-table">
+                    <tr><th>Supplier</th><th>Country</th><th>Trade Value</th><th>Year</th><th>Product</th><th>Action</th></tr>
+            `;
             const filteredSuppliers = suppliers.filter(supplier => {
                 const matchesCountry = !countryFilter || supplier.country === countryFilter;
                 const matchesYear = !yearFilter || supplier.year === yearFilter;
@@ -375,15 +390,20 @@
             if (filteredSuppliers.length > 0) {
                 filteredSuppliers.forEach(supplier => {
                     results.innerHTML += `
-                        <div class="result-item">
-                            <h3>${supplier.supplier}</h3>
-                            <p>Country: ${supplier.country} | Trade Value: ${supplier.tradeValue} | Year: ${supplier.year}</p>
-                        </div>
+                        <tr>
+                            <td>${supplier.supplier}</td>
+                            <td>${supplier.country}</td>
+                            <td>${supplier.tradeValue}</td>
+                            <td>${supplier.year}</td>
+                            <td>${supplier.product}</td>
+                            <td><a href="#" class="btn premium">View Report (Premium)</a></td>
+                        </tr>
                     `;
                 });
             } else {
-                results.innerHTML = '<div class="result-item">No supplier records found with current filters.</div>';
+                results.innerHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
             }
+            results.innerHTML += '</table>';
         }
 
         // Reveal email function
