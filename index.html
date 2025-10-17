@@ -37,7 +37,7 @@
         .pagination button:hover { background: #718096; }
         .department-header { font-size: 1.2em; font-weight: 600; color: #E2E8F0; margin: 10px 0 5px; }
         .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; }
-        .error { color: #FC8181; font-size: 0.9em; margin-top: 5px; text-align: center; font-weight: bold; }
+        .error { color: #FC8181; font-size: 1em; margin-top: 10px; text-align: center; font-weight: bold; padding: 10px; background: #2D3748; border-radius: 4px; }
         .filter-group { margin-bottom: 10px; }
         .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
         .toggle-group { margin-bottom: 10px; text-align: center; }
@@ -347,6 +347,7 @@
                         'coca-cola': '2202', // Beverages
                         'monsterenergy': '2202', // Energy drinks
                         'acme imports': '8471', // Machinery
+                        'pepsi cola': '2202', // Beverages (assuming similarity to Coca-Cola)
                         'default': '9999' // Miscellaneous
                     };
                     const hsCode = hsCodes[query] || hsCodes['default'];
@@ -405,7 +406,7 @@
                     updatePagination();
                 } catch (err) {
                     console.error('UN Comtrade API failed, falling back to mock:', err);
-                    results.innerHTML = `<div class="error">API Error: ${err.message}. Using mock data.</div>`;
+                    results.innerHTML = `<div class="error">API Error: ${err.message}. Using mock data. Check console for details.</div>`;
                     useMockImports(query, countryFilter, yearFilter, results);
                 }
             } else {
@@ -429,6 +430,9 @@
                 'monsterenergy': [
                     { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023', product: 'Energy Drinks' },
                     { supplier: 'Asia Energy Import', country: 'India', tradeValue: '$2500', year: '2022', product: 'Energy Drinks' }
+                ],
+                'pepsi cola': [
+                    { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
                 ],
                 'default': [
                     { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
