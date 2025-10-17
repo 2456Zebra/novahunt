@@ -383,8 +383,7 @@
                     });
                     map.fitBounds(rows.map(row => {
                         const country = row.cells[1].textContent.trim();
-                        const coords = getCountryCoords(country);
-                        return coords;
+                        return getCountryCoords(country);
                     }).filter(coord => coord[0] !== 0 || coord[1] !== 0));
                 } else {
                     L.marker([20, 0], { icon: L.divIcon({ className: 'no-data-icon', html: 'No Data' }) }).addTo(map).bindTooltip('No supplier data available for current filters', { direction: 'top', className: 'map-tooltip' });
@@ -402,7 +401,7 @@
                 'Thailand': [15.8700, 100.9925],
                 'India': [20.5937, 78.9629],
                 'USA': [37.0902, -95.7129],
-                'default': [0, 0]
+                'default': [0, 0] // Should not map to Africa
             };
             return coords[country] || coords['default'];
         }
