@@ -15,7 +15,7 @@
         .section { padding: 60px 0; }
         h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
         h2 { font-size: 2em; font-weight: 700; color: #E2E8F0; margin-bottom: 20px; text-align: center; }
-        p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
+        p { font-size: 1.1em; color: #A0A0EC0; margin-bottom: 20px; text-align: center; }
         .btn { background: #00FFCC; color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
         .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
         .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
@@ -25,8 +25,8 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .results { margin-top: 20px; }
-        .result-table { width: 100%; border-collapse: collapse; }
-        .result-table th, .result-table td { padding: 10px; text-align: left; border-bottom: 1px solid #4A5568; }
+        .result-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .result-table th, .result-table td { padding: 10px; text-align: left; border-bottom: 1px solid #4A5568; word-wrap: break-word; }
         .result-table th { background: #2D3748; font-weight: 600; color: #E2E8F0; cursor: pointer; }
         .result-table th:hover { background: #4A5568; }
         .result-table td { background: #2D3748; }
@@ -42,7 +42,7 @@
         .filter-group { margin-bottom: 10px; }
         .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
         .toggle-group { display: none; }
-        #map { height: 300px; width: 100%; margin-top: 40px; border: 1px solid #4A5568; border-radius: 6px; }
+        #map { height: 300px; width: 100%; margin-top: 40px; border: 1px solid #4A5568; border-radius: 4px; }
         .plans-section { padding: 40px 0; }
         .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00FFCC; }
         .plan-card h3 { color: #00FFCC; margin-bottom: 10px; }
@@ -187,7 +187,7 @@
                         const name = email.first_name || email.last_name ? `${email.first_name || ''} ${email.last_name || ''}`.trim() : 'N/A';
                         const role = email.position || 'N/A';
                         const confidence = email.confidence || 'N/A';
-                        const maskedEmail = `********@${query.split('.')[0]}.com`;
+                        const maskedEmail = `********@${query.split('[0]}.com`;
                         results.innerHTML += `
                             <div class="result-item">
                                 <h3>${name}</h3>
@@ -212,8 +212,8 @@
                     { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('.')[0] + '.com', dept: 'Product', confidence: 82 },
                     { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('.')[0] + '.com', dept: 'Operations', confidence: 77 },
                     { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 73 },
-                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 76 },
-                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('.')[0] + '.com', dept: 'Executive', confidence: 75 }
+                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('[0]}.com', dept: 'Sales', confidence: 76 },
+                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('[0]}.com', dept: 'Executive', confidence: 75 }
                 ];
                 const mockEmailsByDept = {};
                 mockEmails.forEach(email => {
@@ -441,7 +441,7 @@
             };
 
             const suppliers = mockSuppliers[query] || mockSuppliers['default'];
-            results.innerHTML = `
+            let tableHTML = `
                 <div class="summary-box">Trade Insights for ${query.toUpperCase()} | Last Updated: ${new Date().toLocaleDateString()} | <a href="plans.html" class="btn">Upgrade for Full Report</a></div>
                 <table class="result-table">
                     <tr>
@@ -458,10 +458,11 @@
                 const matchesYear = !yearFilter || supplier.year === yearFilter;
                 return matchesCountry && matchesYear;
             });
+            const totalResults = suppliers.length;
 
             if (filteredSuppliers.length > 0) {
                 filteredSuppliers.forEach(supplier => {
-                    results.innerHTML += `
+                    tableHTML += `
                         <tr>
                             <td>${supplier.supplier}</td>
                             <td>${supplier.country}</td>
@@ -473,14 +474,15 @@
                     `;
                 });
             } else {
-                results.innerHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
+                tableHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
             }
-            results.innerHTML += '</table>';
+            tableHTML += '</table>';
             if (filteredSuppliers.length > itemsPerPage) {
-                results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${itemsPerPage} of ${suppliers.length} results</p><div class="premium-note"><a href="plans.html" class="btn">Upgrade to See More</a></div><div class="pagination"></div>`;
+                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${itemsPerPage} of ${totalResults} results</p><div class="premium-note"><a href="plans.html" class="btn">Upgrade to See More</a></div><div class="pagination"></div>`;
             } else if (filteredSuppliers.length > 0) {
-                results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${filteredSuppliers.length} of ${suppliers.length} results</p><div class="pagination"></div>`;
+                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${filteredSuppliers.length} of ${totalResults} results</p><div class="pagination"></div>`;
             }
+            results.innerHTML = tableHTML;
             updatePagination();
             updateMap();
         }
