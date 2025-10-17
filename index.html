@@ -365,26 +365,21 @@
                         const coords = getCountryCoords(country);
                         if (coords[0] !== 0 || coords[1] !== 0) {
                             const radius = Math.min(20, tradeValue / 1000) || 5;
-                            const marker = L.circleMarker(coords, {
+                            L.circleMarker(coords, {
                                 color: '#00FFCC',
                                 fillColor: '#00FFCC',
                                 fillOpacity: 0.5,
                                 radius: radius
-                            }).addTo(map);
-                            marker.bindTooltip(`<b>${supplier}</b><br>Trade Value: $${tradeValue.toLocaleString()}<br>Country: ${country}`, {
+                            }).addTo(map).bindTooltip(`<b>${supplier}</b><br>Trade Value: $${tradeValue.toLocaleString()}<br>Country: ${country}`, {
                                 permanent: false,
                                 direction: 'top',
                                 className: 'map-tooltip'
-                            });
-                            marker.on('click', () => {
+                            }).on('click', () => {
                                 alert(`Supplier: ${supplier}\nTrade Value: $${tradeValue.toLocaleString()}\nCountry: ${country}`);
                             });
                         }
                     });
-                    map.fitBounds(rows.map(row => {
-                        const country = row.cells[1].textContent.trim();
-                        return getCountryCoords(country);
-                    }).filter(coord => coord[0] !== 0 || coord[1] !== 0));
+                    map.fitBounds(rows.map(row => getCountryCoords(row.cells[1].textContent.trim())).filter(coord => coord[0] !== 0 || coord[1] !== 0));
                 } else {
                     L.marker([20, 0], { icon: L.divIcon({ className: 'no-data-icon', html: 'No Data' }) }).addTo(map).bindTooltip('No supplier data available for current filters', { direction: 'top', className: 'map-tooltip' });
                 }
@@ -463,7 +458,6 @@
                 const matchesYear = !yearFilter || supplier.year === yearFilter;
                 return matchesCountry && matchesYear;
             });
-            const totalResults = suppliers.length;
 
             if (filteredSuppliers.length > 0) {
                 filteredSuppliers.forEach(supplier => {
@@ -483,11 +477,12 @@
             }
             results.innerHTML += '</table>';
             if (filteredSuppliers.length > itemsPerPage) {
-                results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${itemsPerPage} of ${totalResults} results</p><div class="premium-note"><a href="plans.html" class="btn">Upgrade to See More</a></div><div class="pagination"></div>`;
+                results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${itemsPerPage} of ${suppliers.length} results</p><div class="premium-note"><a href="plans.html" class="btn">Upgrade to See More</a></div><div class="pagination"></div>`;
             } else if (filteredSuppliers.length > 0) {
-                results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${filteredSuppliers.length} of ${totalResults} results</p><div class="pagination"></div>`;
+                results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${filteredSuppliers.length} of ${suppliers.length} results</p><div class="pagination"></div>`;
             }
             updatePagination();
+            updateMap();
         }
 
         // Reveal email function
