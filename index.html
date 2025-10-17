@@ -32,9 +32,12 @@
         .result-table .premium { color: #718096; font-style: italic; }
         .loading { color: #718096; font-style: italic; text-align: center; }
         .summary-box { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .pagination { text-align: center; margin-top: 10px; }
+        .pagination button { background: #EDF2F7; color: #2D3748; border: 1px solid #E2E8F0; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
+        .pagination button:hover { background: #E2E8F0; }
         .department-header { font-size: 1.2em; font-weight: 600; color: #2D3748; margin: 10px 0 5px; }
         .premium-note { font-size: 0.8em; color: #718096; margin-top: 10px; text-align: center; }
-        .error { color: #E53E3E; font-size: 0.9em; margin-top: 5px; text-align: center; }
+        .error { color: #E53E3E; font-size: 0.9em; margin-top: 5px; text-align: center; font-weight: bold; }
         .filter-group { margin-bottom: 10px; }
         .filter-group select { padding: 8px; border: 1px solid #E2E8F0; border-radius: 4px; }
         .toggle-group { margin-bottom: 10px; text-align: center; }
@@ -96,7 +99,7 @@
                 <div class="toggle-group">
                     <label><input type="checkbox" id="liveToggle" checked> Live Data (Trade Map API)</label>
                 </div>
-                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E2E8F0; border-radius: 4px;">
+                <input type="text" id="importsInput" placeholder="Company for import import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E2E8F0; border-radius: 4px;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
                 <div id="importsResults" class="results"></div>
             </div>
@@ -279,6 +282,9 @@
 
         // Import Records Search with Trade Map API
         let sortDirection = 1;
+        let currentPage = 1;
+        const itemsPerPage = 5;
+
         function sortTable(columnIndex) {
             const table = document.querySelector('#importsResults table');
             const rows = Array.from(table.querySelectorAll('tr')).slice(1);
@@ -289,6 +295,36 @@
             });
             rows.forEach(row => table.appendChild(row));
             sortDirection *= -1;
+            updatePagination();
+        }
+
+        function updatePagination() {
+            const table = document.querySelector('#importsResults table');
+            const rows = Array.from(table.querySelectorAll('tr')).slice(1);
+            const totalPages = Math.ceil(rows.length / itemsPerPage);
+            const pagination = document.querySelector('.pagination');
+            pagination.innerHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                const button = document.createElement('button');
+                button.textContent = i;
+                button.addEventListener('click', () => {
+                    currentPage = i;
+                    displayPage();
+                });
+                if (i === currentPage) button.style.background = '#4C51BF';
+                pagination.appendChild(button);
+            }
+            displayPage();
+        }
+
+        function displayPage() {
+            const table = document.querySelector('#importsResults table');
+            const rows = Array.from(table.querySelectorAll('tr')).slice(1);
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            rows.forEach((row, index) => {
+                row.style.display = (index >= start && index < end) ? '' : 'none';
+            });
         }
 
         async function searchImports() {
@@ -305,7 +341,7 @@
             }
 
             if (liveToggle) {
-                // Live Trade Map API call via proxy
+                // Live Trade Map API call via proxy with web scrape fallback
                 try {
                     const hsCodes = {
                         'coca-cola': '2202', // Beverages
@@ -322,7 +358,6 @@
                     }
                     const data = await response.json();
 
-                    // Filter and format with enhanced details
                     results.innerHTML = `
                         <div class="summary-box">Trade Insights for ${query.toUpperCase()} | Last Updated: ${new Date().toLocaleDateString()} | <a href="plans.html" class="btn">Upgrade for Full Report</a></div>
                         <table class="result-table">
@@ -340,10 +375,10 @@
                             const matchesCountry = !countryFilter || item.partner === countryFilter;
                             const matchesYear = !yearFilter || item.year === yearFilter;
                             return matchesCountry && matchesYear;
-                        }).slice(0, 10);
+                        });
 
                         if (filteredData.length > 0) {
-                            filteredData.forEach(item => {
+                            filteredData.slice(0, 10).forEach(item => {
                                 const supplier = item.partner_name || 'Unknown Supplier';
                                 const country = item.partner || 'N/A';
                                 const tradeValue = item.trade_value ? `$${Number(item.trade_value).toLocaleString()}` : 'N/A';
@@ -364,9 +399,16 @@
                             results.innerHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
                         }
                     } else {
-                        results.innerHTML += '<tr><td colspan="6">No data available for this company.</td></tr>';
+                        // Fallback to web scrape if JSON fails
+                        const scrapeUrl = `https://www.trademap.org/Country_SelProduct.aspx?nvpm=1|842|0|0|1|1|1|2|1|2|${hsCode}|0`;
+                        const scrapeResponse = await fetch(proxyUrl + encodeURIComponent(scrapeUrl));
+                        if (!scrapeResponse.ok) throw new Error(`Web scrape error! Status: ${scrapeResponse.status}`);
+                        const scrapeText = await scrapeResponse.text();
+                        // Simplified parsing (needs refinement for real data)
+                        results.innerHTML = `<div class="error">JSON failed, scraping not implemented yet. Using mock data.</div>`;
                     }
-                    results.innerHTML += '</table>';
+                    results.innerHTML += '</table><div class="pagination"></div>';
+                    updatePagination();
                 } catch (err) {
                     console.error('Trade Map API failed, falling back to mock:', err);
                     results.innerHTML = `<div class="error">API Error: ${err.message}. Using mock data.</div>`;
@@ -433,7 +475,8 @@
             } else {
                 results.innerHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
             }
-            results.innerHTML += '</table>';
+            results.innerHTML += '</table><div class="pagination"></div>';
+            updatePagination();
         }
 
         // Reveal email function
