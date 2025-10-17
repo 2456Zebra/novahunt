@@ -371,14 +371,14 @@
                                 permanent: false,
                                 direction: 'top',
                                 className: 'map-tooltip'
-                            }).openTooltip();
+                            });
                             marker.on('click', () => {
                                 alert(`Supplier: ${supplier}\nTrade Value: $${tradeValue.toLocaleString()}\nCountry: ${country}`);
                             });
                         }
                     });
                 } else {
-                    L.marker([20, 0], { icon: L.divIcon({ className: 'no-data-icon', html: 'No Data' }) }).addTo(map).bindTooltip('No supplier data available', { direction: 'top', className: 'map-tooltip' });
+                    L.marker([20, 0], { icon: L.divIcon({ className: 'no-data-icon', html: 'No Data' }) }).addTo(map).bindTooltip('No supplier data available for current filters', { direction: 'top', className: 'map-tooltip' });
                 }
             }
         }
@@ -423,7 +423,7 @@
                     };
                     const hsCode = hsCodes[query] || hsCodes['default'];
                     const proxyUrl = 'https://api.allorigins.win/raw?url=';
-                    const apiUrl = `https://comtrade.un.org/api/get?max=10&type=C&freq=A&px=HS&ps=${yearFilter || '2023'}&r=842&p=all&rg=1&cc=${hsCode}&fmt=json`;
+                    const apiUrl = `https://comtrade.un.org/api/get?max=10&type=C&freq=A&px=HS&ps=${yearFilter || '2023'}&r=all&p=all&rg=1&cc=${hsCode}&fmt=json`; // Changed r=842 to r=all
                     const response = await fetch(proxyUrl + encodeURIComponent(apiUrl));
                     if (!response.ok) {
                         throw new Error(`UN Comtrade API error! Status: ${response.status} - ${response.statusText}`);
@@ -477,7 +477,7 @@
                     updatePagination();
                 } catch (err) {
                     console.error('UN Comtrade API failed, falling back to mock:', err);
-                    results.innerHTML = `<div class="error">API Error: ${err.message}. Using mock data. Check console for details.</div>`;
+                    results.innerHTML = `<div class="error">API Error: ${err.message}. Check console or try again later. Using mock data.</div>`;
                     useMockImports(query, countryFilter, yearFilter, results);
                 }
             } else {
