@@ -131,13 +131,17 @@
 
         // Initialize map
         function initMap() {
-            map = L.map('map', { preferCanvas: true }).setView([20, 0], 2);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                lang: 'en'
-            }).addTo(map);
-            map.getContainer().style.background = '#1A202C';
+            if (!map) {
+                map = L.map('map', { preferCanvas: true }).setView([20, 0], 2);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                    lang: 'en'
+                }).addTo(map);
+                map.getContainer().style.background = '#1A202C';
+            } else {
+                map.invalidateSize(); // Refresh map size if already initialized
+            }
         }
 
         // Toggle test mode
@@ -171,11 +175,15 @@
                     <div id="importsResults" class="results"></div>
                     <div id="map"></div>
                 `;
+                if (document.getElementById('imports-tab').classList.contains('active')) initMap();
             } else {
                 document.getElementById('ai-tab').innerHTML = '<div class="upgrade-message">Upgrade to Business or Enterprise to access Hunt Industry Leads.</div>';
                 document.getElementById('imports-tab').innerHTML = '<div class="upgrade-message">Upgrade to Business or Enterprise to access Hunt Import Records.</div>';
+                if (map) {
+                    map.remove();
+                    map = null;
+                }
             }
-            if (document.querySelector('.tab-btn.active').getAttribute('onclick').match(/switchTab\('([^']+)'.*/)[1] === 'imports' && isTestMode) initMap();
         }
 
         // Tab switching
@@ -187,7 +195,7 @@
                 contents.forEach(content => content.classList.remove('active'));
                 button.classList.add('active');
                 document.getElementById(tabName + '-tab').classList.add('active');
-                if (tabName === 'imports' && isTestMode && !map) initMap();
+                if (tabName === 'imports' && isTestMode) initMap();
                 console.log(`Switched to ${tabName} tab`);
             } catch (err) {
                 console.error('Tab switching failed:', err);
