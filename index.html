@@ -7,6 +7,7 @@
     <meta name="description" content="NovaHunt.ai: AI-powered tool to hunt B2B leads, emails, and suppliers with precision.">
     <meta name="keywords" content="AI lead generation, B2B leads, email hunter, supplier finder">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
@@ -42,7 +43,8 @@
         .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
         .toggle-group { margin-bottom: 10px; text-align: center; }
         .toggle-group label { margin-right: 10px; color: #E2E8F0; }
-        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } }
+        #map { height: 400px; width: 100%; margin-top: 20px; border: 1px solid #4A5568; border-radius: 6px; }
+        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 300px; } }
     </style>
 </head>
 <body>
@@ -102,13 +104,26 @@
                 <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
                 <div id="importsResults" class="results"></div>
+                <div id="map"></div>
             </div>
         </div>
     </section>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Mock user credits (replace with real auth later)
         let userCredits = 5;
+        let map;
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([20, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+            map.getContainer().style.background = '#1A202C';
+        }
 
         // Tab switching
         function switchTab(tabName, button) {
@@ -118,6 +133,7 @@
             contents.forEach(content => content.classList.remove('active'));
             button.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
+            if (tabName === 'imports' && !map) initMap(); // Initialize map only for imports tab
             console.log(`Switched to ${tabName} tab`);
         }
 
@@ -296,6 +312,7 @@
             rows.forEach(row => table.appendChild(row));
             sortDirection *= -1;
             updatePagination();
+            updateMap();
         }
 
         function updatePagination() {
@@ -325,6 +342,48 @@
             rows.forEach((row, index) => {
                 row.style.display = (index >= start && index < end) ? '' : 'none';
             });
+            updateMap();
+        }
+
+        function updateMap() {
+            if (!map) return;
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker || layer instanceof L.CircleMarker) map.removeLayer(layer);
+            });
+            const table = document.querySelector('#importsResults table');
+            if (table) {
+                const rows = Array.from(table.querySelectorAll('tr')).slice(1).filter(row => row.style.display !== 'none');
+                rows.forEach(row => {
+                    const country = row.cells[1].textContent.trim();
+                    const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', ''));
+                    const supplier = row.cells[0].textContent.trim();
+                    const coords = getCountryCoords(country);
+                    if (coords) {
+                        const radius = Math.min(20, tradeValue / 1000) || 5; // Scale radius by trade value (capped at 20)
+                        L.circleMarker(coords, {
+                            color: '#00FFCC',
+                            fillColor: '#00FFCC',
+                            fillOpacity: 0.5,
+                            radius: radius
+                        }).addTo(map).bindTooltip(`${supplier}<br>Trade Value: $${tradeValue.toLocaleString()}<br>Country: ${country}`, { direction: 'top', className: 'map-tooltip' });
+                    }
+                });
+            }
+        }
+
+        // Country coordinates (simplified mapping)
+        function getCountryCoords(country) {
+            const coords = {
+                'China': [35.8617, 104.1954],
+                'Vietnam': [14.0583, 108.2772],
+                'Mexico': [23.6345, -102.5528],
+                'Brazil': [-14.2350, -51.9253],
+                'Thailand': [15.8700, 100.9925],
+                'India': [20.5937, 78.9629],
+                'USA': [37.0902, -95.7129],
+                'default': [0, 0]
+            };
+            return coords[country] || coords['default'];
         }
 
         async function searchImports() {
@@ -498,5 +557,8 @@
             }
         });
     </script>
+    <style>
+        .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 4px; padding: 5px; }
+    </style>
 </body>
 </html>
