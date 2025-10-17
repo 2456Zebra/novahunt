@@ -9,51 +9,51 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F5F7FA; color: #2D3748; line-height: 1.6; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
         .section { padding: 60px 0; }
-        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #2D3748; margin-bottom: 15px; }
-        h2 { font-size: 2em; font-weight: 700; color: #2D3748; margin-bottom: 20px; text-align: center; }
-        p { font-size: 1.1em; color: #4A5568; margin-bottom: 20px; text-align: center; }
-        .btn { background: #4C51BF; color: #FFFFFF; padding: 8px 15px; border: none; border-radius: 4px; font-size: 0.9em; cursor: pointer; transition: background 0.3s; text-decoration: none; display: inline-block; }
-        .btn:hover { background: #434190; }
-        .btn-primary { background: #4C51BF; color: #FFFFFF; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
-        .search-tabs { display: flex; background: #EDF2F7; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 12px; background: transparent; color: #2D3748; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
-        .tab-btn.active { background: #4C51BF; color: #FFFFFF; }
+        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
+        h2 { font-size: 2em; font-weight: 700; color: #E2E8F0; margin-bottom: 20px; text-align: center; }
+        p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
+        .btn { background: #00FFCC; color: #1A202C; padding: 8px 15px; border: none; border-radius: 4px; font-size: 0.9em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
+        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
+        .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
+        .tab-btn.active { background: #00FFCC; color: #1A202C; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .results { margin-top: 20px; }
         .result-table { width: 100%; border-collapse: collapse; }
-        .result-table th, .result-table td { padding: 12px; text-align: left; border-bottom: 1px solid #E2E8F0; }
-        .result-table th { background: #EDF2F7; font-weight: 600; color: #2D3748; cursor: pointer; }
-        .result-table th:hover { background: #E2E8F0; }
-        .result-table td { background: #FFFFFF; }
-        .result-table .premium { color: #718096; font-style: italic; }
-        .loading { color: #718096; font-style: italic; text-align: center; }
-        .summary-box { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .result-table th, .result-table td { padding: 12px; text-align: left; border-bottom: 1px solid #4A5568; }
+        .result-table th { background: #2D3748; font-weight: 600; color: #E2E8F0; cursor: pointer; }
+        .result-table th:hover { background: #4A5568; }
+        .result-table td { background: #2D3748; }
+        .result-table .premium { color: #90CDF4; font-style: italic; }
+        .loading { color: #90CDF4; font-style: italic; text-align: center; }
+        .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00FFCC; }
         .pagination { text-align: center; margin-top: 10px; }
-        .pagination button { background: #EDF2F7; color: #2D3748; border: 1px solid #E2E8F0; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
-        .pagination button:hover { background: #E2E8F0; }
-        .department-header { font-size: 1.2em; font-weight: 600; color: #2D3748; margin: 10px 0 5px; }
-        .premium-note { font-size: 0.8em; color: #718096; margin-top: 10px; text-align: center; }
-        .error { color: #E53E3E; font-size: 0.9em; margin-top: 5px; text-align: center; font-weight: bold; }
+        .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
+        .pagination button:hover { background: #718096; }
+        .department-header { font-size: 1.2em; font-weight: 600; color: #E2E8F0; margin: 10px 0 5px; }
+        .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; }
+        .error { color: #FC8181; font-size: 0.9em; margin-top: 5px; text-align: center; font-weight: bold; }
         .filter-group { margin-bottom: 10px; }
-        .filter-group select { padding: 8px; border: 1px solid #E2E8F0; border-radius: 4px; }
+        .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
         .toggle-group { margin-bottom: 10px; text-align: center; }
-        .toggle-group label { margin-right: 10px; }
+        .toggle-group label { margin-right: 10px; color: #E2E8F0; }
         @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } }
     </style>
 </head>
 <body>
     <!-- Hero Section -->
-    <section class="section" style="padding-top: 80px; background: #FFFFFF; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <section class="section" style="padding-top: 80px; background: #1A202C; box-shadow: 0 4px 20px rgba(0, 255, 204, 0.3);">
         <div class="container">
             <h1>🥷 NovaHunt</h1>
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
-            <p>Hunt thousands of qualified B2B leads instantly with cutting-edge AI.</p>
+            <p>Redefine B2B success with cutting-edge AI precision.</p>
             <div style="text-align: center; margin-top: 20px;"><a href="plans.html" class="btn">Start Free Trial</a></div>
-            <p style="font-size: 0.9em; color: #718096;">free credits • No credit card required</p>
+            <p style="font-size: 0.9em; color: #90CDF4;">free credits • No credit card required</p>
         </div>
     </section>
 
@@ -61,7 +61,7 @@
     <section class="section">
         <div class="container">
             <h2>Search for Leads</h2>
-            <p>Choose a mode below to get started.</p>
+            <p>Unleash NovaHunt’s power across multiple modes.</p>
             <div class="search-tabs">
                 <button class="tab-btn active" onclick="switchTab('company', this)">Hunt Corporate Emails</button>
                 <button class="tab-btn" onclick="switchTab('ai', this)">Hunt Industry Leads</button>
@@ -69,20 +69,20 @@
             </div>
             <div id="company-tab" class="tab-content active">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., coca-cola.com).</p>
-                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E2E8F0; border-radius: 4px;">
+                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <div id="companyError" class="error" style="display: none;"></div>
                 <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
                 <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Companies USA' for live results.</p>
-                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E2E8F0; border-radius: 4px;">
+                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <button class="btn" onclick="searchAI()">Generate Leads</button>
                 <div id="aiResults" class="results"></div>
             </div>
             <div id="imports-tab" class="tab-content">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
-                <p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports) - ImportYeti integration planned</p>
+                <p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p>
                 <div class="filter-group">
                     <select id="countryFilter">
                         <option value="">All Countries</option>
@@ -97,9 +97,9 @@
                     </select>
                 </div>
                 <div class="toggle-group">
-                    <label><input type="checkbox" id="liveToggle" checked> Live Data (Trade Map API)</label>
+                    <label><input type="checkbox" id="liveToggle" checked> Live Data (UN Comtrade API)</label>
                 </div>
-                <input type="text" id="importsInput" placeholder="Company for import import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E2E8F0; border-radius: 4px;">
+                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
                 <div id="importsResults" class="results"></div>
             </div>
@@ -151,7 +151,7 @@
                 }
                 // Mock full count based on known data
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
-                results.innerHTML = `<p style="color: #4A5568;">Found ${mockTotal} emails across departments. (Free tier shows 10, upgrade for all)</p>`;
+                results.innerHTML = `<p style="color: #A0AEC0;">Found ${mockTotal} emails across departments. (Free tier shows 10, upgrade for all)</p>`;
 
                 // Group emails by department
                 const emailsByDept = {};
@@ -182,7 +182,7 @@
                 console.error('API fetch failed:', err);
                 results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data for ${query}...</div>`;
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : 10);
-                results.innerHTML += `<p style="color: #4A5568;">Mock data: Found ${mockTotal} emails across departments. (Free tier shows 10)</p>`;
+                results.innerHTML += `<p style="color: #A0AEC0;">Mock data: Found ${mockTotal} emails across departments. (Free tier shows 10)</p>`;
                 const mockEmails = [
                     { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 80 },
                     { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 },
@@ -280,7 +280,7 @@
             }
         }
 
-        // Import Records Search with Trade Map API
+        // Import Records Search with UN Comtrade API
         let sortDirection = 1;
         let currentPage = 1;
         const itemsPerPage = 5;
@@ -311,7 +311,7 @@
                     currentPage = i;
                     displayPage();
                 });
-                if (i === currentPage) button.style.background = '#4C51BF';
+                if (i === currentPage) button.style.background = '#00FFCC';
                 pagination.appendChild(button);
             }
             displayPage();
@@ -341,7 +341,7 @@
             }
 
             if (liveToggle) {
-                // Live Trade Map API call via proxy with web scrape fallback
+                // Live UN Comtrade API call via proxy
                 try {
                     const hsCodes = {
                         'coca-cola': '2202', // Beverages
@@ -351,10 +351,10 @@
                     };
                     const hsCode = hsCodes[query] || hsCodes['default'];
                     const proxyUrl = 'https://api.allorigins.win/raw?url=';
-                    const apiUrl = `https://www.trademap.org/api.aspx?indicator=TRADE&reporter=USA&partner=ALL&year=2022-2023&product=${hsCode}&format=json`;
+                    const apiUrl = `https://comtrade.un.org/api/get?max=10&type=C&freq=A&px=HS&ps=${yearFilter || '2023'}&r=842&p=all&rg=1&cc=${hsCode}&fmt=json`;
                     const response = await fetch(proxyUrl + encodeURIComponent(apiUrl));
                     if (!response.ok) {
-                        throw new Error(`Trade Map API error! Status: ${response.status} - ${response.statusText}`);
+                        throw new Error(`UN Comtrade API error! Status: ${response.status} - ${response.statusText}`);
                     }
                     const data = await response.json();
 
@@ -370,20 +370,20 @@
                                 <th>Action</th>
                             </tr>
                     `;
-                    if (data && data.length > 0) {
-                        const filteredData = data.filter(item => {
-                            const matchesCountry = !countryFilter || item.partner === countryFilter;
-                            const matchesYear = !yearFilter || item.year === yearFilter;
+                    if (data.dataset && data.dataset.length > 0) {
+                        const filteredData = data.dataset.filter(item => {
+                            const matchesCountry = !countryFilter || item.rtTitle === countryFilter;
+                            const matchesYear = !yearFilter || item.period === yearFilter;
                             return matchesCountry && matchesYear;
                         });
 
                         if (filteredData.length > 0) {
-                            filteredData.slice(0, 10).forEach(item => {
-                                const supplier = item.partner_name || 'Unknown Supplier';
-                                const country = item.partner || 'N/A';
-                                const tradeValue = item.trade_value ? `$${Number(item.trade_value).toLocaleString()}` : 'N/A';
-                                const year = item.year || 'N/A';
-                                const product = item.product_description || 'Beverages';
+                            filteredData.forEach(item => {
+                                const supplier = item.rtTitle || 'Unknown Supplier';
+                                const country = item.rtTitle || 'N/A';
+                                const tradeValue = item.TradeValue ? `$${Number(item.TradeValue).toLocaleString()}` : 'N/A';
+                                const year = item.period || 'N/A';
+                                const product = item.cmdDesc || 'Miscellaneous';
                                 results.innerHTML += `
                                     <tr>
                                         <td>${supplier}</td>
@@ -399,18 +399,12 @@
                             results.innerHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
                         }
                     } else {
-                        // Fallback to web scrape if JSON fails
-                        const scrapeUrl = `https://www.trademap.org/Country_SelProduct.aspx?nvpm=1|842|0|0|1|1|1|2|1|2|${hsCode}|0`;
-                        const scrapeResponse = await fetch(proxyUrl + encodeURIComponent(scrapeUrl));
-                        if (!scrapeResponse.ok) throw new Error(`Web scrape error! Status: ${scrapeResponse.status}`);
-                        const scrapeText = await scrapeResponse.text();
-                        // Simplified parsing (needs refinement for real data)
-                        results.innerHTML = `<div class="error">JSON failed, scraping not implemented yet. Using mock data.</div>`;
+                        results.innerHTML += '<tr><td colspan="6">No data available for this company.</td></tr>';
                     }
                     results.innerHTML += '</table><div class="pagination"></div>';
                     updatePagination();
                 } catch (err) {
-                    console.error('Trade Map API failed, falling back to mock:', err);
+                    console.error('UN Comtrade API failed, falling back to mock:', err);
                     results.innerHTML = `<div class="error">API Error: ${err.message}. Using mock data.</div>`;
                     useMockImports(query, countryFilter, yearFilter, results);
                 }
