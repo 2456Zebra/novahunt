@@ -30,13 +30,13 @@
         .result-table th { background: #2D3748; font-weight: 600; color: #E2E8F0; cursor: pointer; }
         .result-table th:hover { background: #4A5568; }
         .result-table td { background: #2D3748; }
-        .result-table .premium { color: #1A202C; font-style: italic; background: #00FFCC; padding: 5px 10px; border-radius: 4px; } /* Updated for visibility */
+        .result-table .premium { color: #1A202C; font-style: italic; background: #00FFCC; padding: 5px 10px; border-radius: 4px; text-align: center; }
         .loading { color: #90CDF4; font-style: italic; text-align: center; }
         .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00FFCC; }
         .pagination { text-align: center; margin-top: 10px; }
         .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
         .pagination button:hover { background: #718096; }
-        .pagination button.active { background: #00FFCC; color: #1A202C; } /* Updated active pagination visibility */
+        .pagination button.active { background: #00FFCC; color: #1A202C; }
         .department-header { font-size: 1.2em; font-weight: 600; color: #E2E8F0; margin: 10px 0 5px; }
         .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; padding-bottom: 20px; }
         .error { color: #FC8181; font-size: 1em; margin-top: 10px; text-align: center; font-weight: bold; padding: 10px; background: #2D3748; border-radius: 4px; }
@@ -103,23 +103,30 @@
 
         // Initialize map
         function initMap() {
-            map = L.map('map').setView([20, 0], 2);
+            map = L.map('map', { preferCanvas: true }).setView([20, 0], 2);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                lang: 'en'
             }).addTo(map);
             map.getContainer().style.background = '#1A202C';
         }
 
         // Tab switching
         function switchTab(tabName, button) {
-            const tabs = document.querySelectorAll('.tab-btn');
-            const contents = document.querySelectorAll('.tab-content');
-            tabs.forEach(btn => btn.classList.remove('active'));
-            contents.forEach(content => content.classList.remove('active'));
-            button.classList.add('active');
-            document.getElementById(tabName + '-tab').classList.add('active');
-            console.log(`Switched to ${tabName} tab`);
+            try {
+                const tabs = document.querySelectorAll('.tab-btn');
+                const contents = document.querySelectorAll('.tab-content');
+                tabs.forEach(btn => btn.classList.remove('active'));
+                contents.forEach(content => content.classList.remove('active'));
+                button.classList.add('active');
+                document.getElementById(tabName + '-tab').classList.add('active');
+                if (tabName === 'imports' && !map) initMap(); // Initialize map only for imports tab
+                console.log(`Switched to ${tabName} tab`);
+            } catch (err) {
+                console.error('Tab switching failed:', err);
+                alert('Error switching tabs. Please try again or refresh the page.');
+            }
         }
 
         // Company Search with Hunter.io API via AllOrigins Proxy
@@ -129,7 +136,6 @@
             const errorDiv = document.getElementById('companyError');
             errorDiv.style.display = 'none';
 
-            // Validate input format
             if (!query.includes('.com') && !query.includes('.org') && !query.includes('.net')) {
                 errorDiv.textContent = 'Incorrect format. Please enter a valid domain (e.g., coca-cola.com).';
                 errorDiv.style.display = 'block';
@@ -143,18 +149,12 @@
                 const proxyUrl = 'https://api.allorigins.win/raw?url=';
                 const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
                 const response = await fetch(proxyUrl + encodeURIComponent(apiUrl));
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
-                if (data.errors) {
-                    throw new Error(data.data.errors[0].message);
-                }
-                // Mock full count based on known data
+                if (data.errors) throw new Error(data.data.errors[0].message);
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
                 results.innerHTML = `<p style="color: #A0AEC0;">Found ${mockTotal} emails across departments. (Free tier shows 10, upgrade for all)</p>`;
 
-                // Group emails by department
                 const emailsByDept = {};
                 data.data.emails.slice(0, 10).forEach(email => {
                     const dept = email.department || 'Unknown';
@@ -188,13 +188,13 @@
                     { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 80 },
                     { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 },
                     { name: 'Sarah Lee', role: 'HR Specialist', email: 'sarah.lee@' + query.split('.')[0] + '.com', dept: 'Human Resources', confidence: 70 },
-                    { name: 'Tom Brown', role: 'IT Lead', email: 'tom.brown@' + query.split('[0]}.com', dept: 'IT', confidence: 75 },
-                    { name: 'Emily Davis', role: 'Finance Analyst', email: 'emily.davis@' + query.split('[0]}.com', dept: 'Finance', confidence: 78 },
-                    { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('[0]}.com', dept: 'Product', confidence: 82 },
-                    { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('[0]}.com', dept: 'Operations', confidence: 77 },
-                    { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('[0]}.com', dept: 'Marketing', confidence: 73 },
-                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('[0]}.com', dept: 'Sales', confidence: 76 },
-                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('[0]}.com', dept: 'Executive', confidence: 75 }
+                    { name: 'Tom Brown', role: 'IT Lead', email: 'tom.brown@' + query.split('.')[0] + '.com', dept: 'IT', confidence: 75 },
+                    { name: 'Emily Davis', role: 'Finance Analyst', email: 'emily.davis@' + query.split('.')[0] + '.com', dept: 'Finance', confidence: 78 },
+                    { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('.')[0] + '.com', dept: 'Product', confidence: 82 },
+                    { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('.')[0] + '.com', dept: 'Operations', confidence: 77 },
+                    { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 73 },
+                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 76 },
+                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('.')[0] + '.com', dept: 'Executive', confidence: 75 }
                 ];
                 const mockEmailsByDept = {};
                 mockEmails.forEach(email => {
@@ -242,14 +242,10 @@
             try {
                 const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
                 const ocResponse = await fetch(ocApiUrl);
-                if (!ocResponse.ok) {
-                    throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
-                }
+                if (!ocResponse.ok) throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
                 const ocData = await ocResponse.json();
                 results.innerHTML = '';
-                if (!ocData.results || ocData.results.companies.length === 0) {
-                    throw new Error('No companies from OpenCorporates');
-                }
+                if (!ocData.results || ocData.results.companies.length === 0) throw new Error('No companies from OpenCorporates');
                 ocData.results.companies.forEach(company => {
                     const name = company.company.name || 'N/A';
                     const url = company.company.company_number ? `https://opencorporates.com/companies/${company.company.jurisdiction_code}/${company.company.company_number}` : '#';
@@ -260,9 +256,7 @@
                 try {
                     const ddApiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent('list of ' + query + ' site:*.com -inurl:(signup | login)')}&format=json`;
                     const ddResponse = await fetch(ddApiUrl);
-                    if (!ddResponse.ok) {
-                        throw new Error(`DuckDuckGo error! Status: ${ddResponse.status}`);
-                    }
+                    if (!ddResponse.ok) throw new Error(`DuckDuckGo error! Status: ${ddResponse.status}`);
                     const ddData = await ddResponse.json();
                     results.innerHTML = '';
                     if (!ddData.RelatedTopics || ddData.RelatedTopics.length === 0) {
@@ -313,7 +307,7 @@
                     currentPage = i;
                     displayPage();
                 });
-                if (i === currentPage) button.style.background = '#00FFCC';
+                if (i === currentPage) button.classList.add('active');
                 pagination.appendChild(button);
             }
             displayPage();
@@ -367,7 +361,7 @@
             }
         }
 
-        // Country coordinates (simplified mapping)
+        // Country coordinates
         function getCountryCoords(country) {
             const coords = {
                 'China': [35.8617, 104.1954],
@@ -397,7 +391,6 @@
             useMockImports(query, countryFilter, yearFilter, results);
         }
 
-        // Helper function for mock imports with enhanced design
         function useMockImports(query, countryFilter, yearFilter, results) {
             const mockSuppliers = {
                 'acme imports': [
@@ -475,6 +468,15 @@
                     window.location.href = 'plans.html';
                 });
             }
+        });
+
+        // Ensure tab buttons are clickable on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    switchTab(e.target.getAttribute('onclick').match(/switchTab\('([^']+)'.*/)[1], e.target);
+                });
+            });
         });
     </script>
     <style>
