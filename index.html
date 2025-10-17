@@ -37,14 +37,21 @@
         .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
         .pagination button:hover { background: #718096; }
         .department-header { font-size: 1.2em; font-weight: 600; color: #E2E8F0; margin: 10px 0 5px; }
-        .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; padding-bottom: 20px; } /* Added padding for spacing */
+        .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; padding-bottom: 20px; }
         .error { color: #FC8181; font-size: 1em; margin-top: 10px; text-align: center; font-weight: bold; padding: 10px; background: #2D3748; border-radius: 4px; }
         .filter-group { margin-bottom: 10px; }
         .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
-        .toggle-group { margin-bottom: 10px; text-align: center; }
-        .toggle-group label { margin-right: 10px; color: #E2E8F0; }
-        #map { height: 300px; width: 100%; margin-top: 40px; border: 1px solid #4A5568; border-radius: 6px; } /* Reduced height and added margin */
-        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 250px; margin-top: 30px; } }
+        .toggle-group { display: none; } /* Hidden from users */
+        #map { height: 300px; width: 100%; margin-top: 40px; border: 1px solid #4A5568; border-radius: 6px; }
+        .plans-section { padding: 40px 0; }
+        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00FFCC; }
+        .plan-card h3 { color: #00FFCC; margin-bottom: 10px; }
+        .plan-card ul { list-style: none; padding: 0; }
+        .plan-card ul li { margin: 10px 0; color: #A0AEC0; }
+        .plan-card .price { font-size: 1.5em; color: #E2E8F0; margin: 10px 0; }
+        .plan-card .btn { margin-top: 15px; }
+        .back-button { text-align: center; margin: 20px 0; }
+        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 250px; margin-top: 30px; } .plan-card { max-width: 100%; margin: 10px 0; } }
     </style>
 </head>
 <body>
@@ -54,7 +61,7 @@
             <h1>🥷 NovaHunt</h1>
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
             <p>Redefine B2B success with cutting-edge AI precision.</p>
-            <div style="text-align: center; margin-top: 20px;"><a href="signup.html" class="btn">Get Started</a></div>
+            <div style="text-align: center; margin-top: 20px;"><a href="plans.html" class="btn">Get Started</a></div>
             <p style="font-size: 0.9em; color: #90CDF4;">free credits • No credit card required</p>
         </div>
     </section>
@@ -97,9 +104,6 @@
                         <option value="2023">2023</option>
                         <option value="2022">2022</option>
                     </select>
-                </div>
-                <div class="toggle-group">
-                    <label><input type="checkbox" id="liveToggle" checked> Live Data (UN Comtrade API)</label>
                 </div>
                 <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
@@ -296,7 +300,7 @@
             }
         }
 
-        // Import Records Search with UN Comtrade API
+        // Import Records Search
         let sortDirection = 1;
         let currentPage = 1;
         const itemsPerPage = 5;
@@ -356,11 +360,11 @@
                 if (rows.length > 0) {
                     rows.forEach(row => {
                         const country = row.cells[1].textContent.trim();
-                        const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', '')) || 1000; // Default to 1000 if parsing fails
+                        const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', '')) || 1000;
                         const supplier = row.cells[0].textContent.trim();
                         const coords = getCountryCoords(country);
-                        if (coords[0] !== 0 || coords[1] !== 0) { // Avoid default [0, 0]
-                            const radius = Math.min(20, tradeValue / 1000) || 5; // Scale radius by trade value (capped at 20)
+                        if (coords[0] !== 0 || coords[1] !== 0) {
+                            const radius = Math.min(20, tradeValue / 1000) || 5;
                             const marker = L.circleMarker(coords, {
                                 color: '#00FFCC',
                                 fillColor: '#00FFCC',
@@ -402,7 +406,6 @@
             const query = document.getElementById('importsInput').value.toLowerCase().trim();
             const countryFilter = document.getElementById('countryFilter').value;
             const yearFilter = document.getElementById('yearFilter').value;
-            const liveToggle = document.getElementById('liveToggle').checked;
             const results = document.getElementById('importsResults');
             results.innerHTML = '<div class="loading">Searching...</div>';
 
@@ -411,86 +414,8 @@
                 return;
             }
 
-            if (liveToggle) {
-                // Live UN Comtrade API call via proxy
-                try {
-                    const hsCodes = {
-                        'coca-cola': '2202', // Beverages
-                        'monsterenergy': '2202', // Energy drinks
-                        'acme imports': '8471', // Machinery
-                        'pepsi cola': '2202', // Beverages
-                        'default': '9999' // Miscellaneous
-                    };
-                    const hsCode = hsCodes[query] || hsCodes['default'];
-                    const proxyUrl = 'https://api.allorigins.win/raw?url=';
-                    const apiUrl = `https://comtrade.un.org/api/get?max=10&type=C&freq=A&px=HS&ps=${yearFilter || '2023'}&r=all&p=all&rg=1&cc=${hsCode}&fmt=json`;
-                    const response = await fetch(proxyUrl + encodeURIComponent(apiUrl));
-                    if (!response.ok) {
-                        throw new Error(`UN Comtrade API error! Status: ${response.status} - ${response.statusText}`);
-                    }
-                    const data = await response.json();
-
-                    results.innerHTML = `
-                        <div class="summary-box">Trade Insights for ${query.toUpperCase()} | Last Updated: ${new Date().toLocaleDateString()} | <a href="plans.html" class="btn">Upgrade for Full Report</a></div>
-                        <table class="result-table">
-                            <tr>
-                                <th onclick="sortTable(0)">Supplier</th>
-                                <th onclick="sortTable(1)">Country</th>
-                                <th onclick="sortTable(2)">Trade Value</th>
-                                <th onclick="sortTable(3)">Year</th>
-                                <th onclick="sortTable(4)">Product</th>
-                                <th>Action</th>
-                            </tr>
-                    `;
-                    if (data.dataset && data.dataset.length > 0) {
-                        const filteredData = data.dataset.filter(item => {
-                            const matchesCountry = !countryFilter || item.rtTitle === countryFilter;
-                            const matchesYear = !yearFilter || item.period === yearFilter;
-                            return matchesCountry && matchesYear;
-                        });
-                        const totalResults = data.dataset.length; // Total available results
-                        const displayedResults = Math.min(itemsPerPage, filteredData.length); // Results shown per page
-
-                        if (filteredData.length > 0) {
-                            filteredData.slice(0, itemsPerPage).forEach(item => {
-                                const supplier = item.rtTitle || 'Unknown Supplier';
-                                const country = item.rtTitle || 'N/A';
-                                const tradeValue = item.TradeValue ? `$${Number(item.TradeValue).toLocaleString()}` : 'N/A';
-                                const year = item.period || 'N/A';
-                                const product = item.cmdDesc || 'Miscellaneous';
-                                results.innerHTML += `
-                                    <tr>
-                                        <td>${supplier}</td>
-                                        <td>${country}</td>
-                                        <td>${tradeValue}</td>
-                                        <td>${year}</td>
-                                        <td>${product}</td>
-                                        <td><a href="#" class="btn premium">View Report (Premium)</a></td>
-                                    </tr>
-                                `;
-                            });
-                        } else {
-                            results.innerHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
-                        }
-                    } else {
-                        results.innerHTML += '<tr><td colspan="6">No data available for this company.</td></tr>';
-                    }
-                    results.innerHTML += '</table>';
-                    if (data.dataset && data.dataset.length > itemsPerPage) {
-                        results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${itemsPerPage} of ${data.dataset.length} results</p><div class="premium-note"><a href="plans.html" class="btn">Upgrade to See More</a></div><div class="pagination"></div>`;
-                    } else if (data.dataset && data.dataset.length > 0) {
-                        results.innerHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${data.dataset.length} of ${data.dataset.length} results</p><div class="pagination"></div>`;
-                    }
-                    updatePagination();
-                } catch (err) {
-                    console.error('UN Comtrade API failed, falling back to mock:', err);
-                    results.innerHTML = `<div class="error">API Error: ${err.message}. Check console or try again later. Using mock data.</div>`;
-                    useMockImports(query, countryFilter, yearFilter, results);
-                }
-            } else {
-                // Mock mode
-                useMockImports(query, countryFilter, yearFilter, results);
-            }
+            // Mock mode only (hidden live toggle)
+            useMockImports(query, countryFilter, yearFilter, results);
         }
 
         // Helper function for mock imports with enhanced design
@@ -535,8 +460,8 @@
                 const matchesYear = !yearFilter || supplier.year === yearFilter;
                 return matchesCountry && matchesYear;
             });
-            const totalResults = suppliers.length; // Total mock results
-            const displayedResults = Math.min(itemsPerPage, filteredSuppliers.length); // Results shown per page
+            const totalResults = suppliers.length;
+            const displayedResults = Math.min(itemsPerPage, filteredSuppliers.length);
 
             if (filteredSuppliers.length > 0) {
                 filteredSuppliers.slice(0, itemsPerPage).forEach(supplier => {
@@ -579,7 +504,7 @@
         document.querySelectorAll('a.btn, button.btn').forEach(btn => {
             if (btn.textContent.includes('Get Started') || btn.textContent.includes('Sign Up')) {
                 btn.addEventListener('click', () => {
-                    window.location.href = 'signup.html';
+                    window.location.href = 'plans.html';
                 });
             }
         });
