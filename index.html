@@ -54,6 +54,8 @@
         .back-button { text-align: center; margin: 20px 0; }
         .upgrade-message { text-align: center; margin-top: 20px; color: #FC8181; }
         .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
+        .test-mode-toggle { text-align: center; margin: 10px 0; }
+        .test-mode-toggle input { margin-right: 5px; }
         @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 250px; margin-top: 30px; } .plan-card { max-width: 100%; margin: 10px 0; } }
     </style>
 </head>
@@ -66,6 +68,10 @@
             <p>Redefine B2B success with cutting-edge AI precision.</p>
             <div style="text-align: center; margin-top: 20px;"><a href="plans.html" class="btn">Get Started</a></div>
             <p style="font-size: 0.9em; color: #90CDF4;">free credits • No credit card required</p>
+            <div class="test-mode-toggle">
+                <input type="checkbox" id="testMode" onchange="toggleTestMode()">
+                <label for="testMode">Enable Test Mode (Business/Enterprise Access)</label>
+            </div>
         </div>
     </section>
 
@@ -87,18 +93,40 @@
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
-                <div class="upgrade-message">Upgrade to Business or Enterprise to access Hunt Industry Leads.</div>
+                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Companies USA' for live results.</p>
+                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                <button class="btn" onclick="searchAI()">Generate Leads</button>
+                <div id="aiResults" class="results"></div>
             </div>
             <div id="imports-tab" class="tab-content">
-                <div class="upgrade-message">Upgrade to Business or Enterprise to access Hunt Import Records.</div>
+                <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
+                <p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p>
+                <div class="filter-group">
+                    <select id="countryFilter">
+                        <option value="">All Countries</option>
+                        <option value="China">China</option>
+                        <option value="Vietnam">Vietnam</option>
+                        <option value="USA">USA</option>
+                    </select>
+                    <select id="yearFilter">
+                        <option value="">All Years</option>
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                    </select>
+                </div>
+                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                <button class="btn" onclick="searchImports()">Find Suppliers</button>
+                <div id="importsResults" class="results"></div>
+                <div id="map"></div>
             </div>
         </div>
     </section>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Mock user credits (replace with real auth later)
+        // Mock user credits and test mode
         let userCredits = 5;
+        let isTestMode = false;
         let map;
 
         // Initialize map
@@ -112,6 +140,44 @@
             map.getContainer().style.background = '#1A202C';
         }
 
+        // Toggle test mode
+        function toggleTestMode() {
+            isTestMode = document.getElementById('testMode').checked;
+            if (isTestMode) {
+                document.getElementById('ai-tab').innerHTML = `
+                    <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Companies USA' for live results.</p>
+                    <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                    <button class="btn" onclick="searchAI()">Generate Leads</button>
+                    <div id="aiResults" class="results"></div>
+                `;
+                document.getElementById('imports-tab').innerHTML = `
+                    <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
+                    <p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p>
+                    <div class="filter-group">
+                        <select id="countryFilter">
+                            <option value="">All Countries</option>
+                            <option value="China">China</option>
+                            <option value="Vietnam">Vietnam</option>
+                            <option value="USA">USA</option>
+                        </select>
+                        <select id="yearFilter">
+                            <option value="">All Years</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                        </select>
+                    </div>
+                    <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                    <button class="btn" onclick="searchImports()">Find Suppliers</button>
+                    <div id="importsResults" class="results"></div>
+                    <div id="map"></div>
+                `;
+            } else {
+                document.getElementById('ai-tab').innerHTML = '<div class="upgrade-message">Upgrade to Business or Enterprise to access Hunt Industry Leads.</div>';
+                document.getElementById('imports-tab').innerHTML = '<div class="upgrade-message">Upgrade to Business or Enterprise to access Hunt Import Records.</div>';
+            }
+            if (document.querySelector('.tab-btn.active').getAttribute('onclick').match(/switchTab\('([^']+)'.*/)[1] === 'imports' && isTestMode) initMap();
+        }
+
         // Tab switching
         function switchTab(tabName, button) {
             try {
@@ -121,7 +187,7 @@
                 contents.forEach(content => content.classList.remove('active'));
                 button.classList.add('active');
                 document.getElementById(tabName + '-tab').classList.add('active');
-                if (tabName === 'imports' && !map) initMap(); // Initialize map only for imports tab
+                if (tabName === 'imports' && isTestMode && !map) initMap();
                 console.log(`Switched to ${tabName} tab`);
             } catch (err) {
                 console.error('Tab switching failed:', err);
