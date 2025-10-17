@@ -121,7 +121,7 @@
                 }
                 const data = await response.json();
                 if (data.errors) {
-                    throw new Error(data.data.errors[0].message);
+                    throw new Error(data.errors[0].message);
                 }
                 // Mock full count based on known data
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
@@ -254,46 +254,16 @@
             }
         }
 
-        // Import Records Search (Mock Implementation)
+        // Import Records Search (Static fallback)
         function searchImports() {
             const query = document.getElementById('importsInput').value.trim();
             const results = document.getElementById('importsResults');
             results.innerHTML = '<div class="loading">Finding suppliers...</div>';
-
             if (!query) {
                 results.innerHTML = '<div class="result-item">Enter a company name.</div>';
                 return;
             }
-
-            // Mock supplier data based on query
-            const mockSuppliers = {
-                'acme imports': [
-                    { supplier: 'Global Supply Co.', country: 'China', tradeValue: '$5000', year: '2023' },
-                    { supplier: 'East Trade Ltd.', country: 'Vietnam', tradeValue: '$3000', year: '2022' }
-                ],
-                'coca-cola': [
-                    { supplier: 'Beverage Logistics Inc.', country: 'Mexico', tradeValue: '$10000', year: '2023' },
-                    { supplier: 'Sweet Water Suppliers', country: 'Brazil', tradeValue: '$7500', year: '2022' }
-                ],
-                'monsterenergy': [
-                    { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023' }
-                ]
-            };
-
-            const suppliers = mockSuppliers[query.toLowerCase()] || [];
-            results.innerHTML = '';
-            if (suppliers.length > 0) {
-                suppliers.forEach(supplier => {
-                    results.innerHTML += `
-                        <div class="result-item">
-                            <h3>${supplier.supplier}</h3>
-                            <p>Country: ${supplier.country} | Trade Value: ${supplier.tradeValue} | Year: ${supplier.year}</p>
-                        </div>
-                    `;
-                });
-            } else {
-                results.innerHTML = '<div class="result-item">No supplier records found for this company.</div>';
-            }
+            results.innerHTML = '<div class="result-item"><h3>Sample Supplier</h3><p>USA | Trade Value: $1000 | Year: 2023</p></div>';
         }
 
         // Smooth scroll for CTAs
