@@ -15,7 +15,7 @@
         .section { padding: 60px 0; }
         h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
         h2 { font-size: 2em; font-weight: 700; color: #E2E8F0; margin-bottom: 20px; text-align: center; }
-        p { font-size: 1.1em; color: #A0A0EC0; margin-bottom: 20px; text-align: center; }
+        p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
         .btn { background: #00FFCC; color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
         .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
         .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
@@ -42,7 +42,7 @@
         .filter-group { margin-bottom: 10px; }
         .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
         .toggle-group { display: none; }
-        #map { height: 300px; width: 100%; margin-top: 40px; border: 1px solid #4A5568; border-radius: 4px; }
+        #map { height: 300px; width: 100%; margin-top: 40px; border: 1px solid #4A5568; border-radius: 6px; }
         .plans-section { padding: 40px 0; }
         .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00FFCC; }
         .plan-card h3 { color: #00FFCC; margin-bottom: 10px; }
@@ -131,14 +131,20 @@
 
         // Tab switching
         function switchTab(tabName, button) {
-            const tabs = document.querySelectorAll('.tab-btn');
-            const contents = document.querySelectorAll('.tab-content');
-            tabs.forEach(btn => btn.classList.remove('active'));
-            contents.forEach(content => content.classList.remove('active'));
-            button.classList.add('active');
-            document.getElementById(tabName + '-tab').classList.add('active');
-            if (tabName === 'imports' && !map) initMap(); // Initialize map only for imports tab
-            console.log(`Switched to ${tabName} tab`);
+            try {
+                const tabs = document.querySelectorAll('.tab-btn');
+                const contents = document.querySelectorAll('.tab-content');
+                tabs.forEach(btn => btn.classList.remove('active'));
+                contents.forEach(content => content.classList.remove('active'));
+                button.classList.add('active');
+                const tabContent = document.getElementById(tabName + '-tab');
+                if (tabContent) tabContent.classList.add('active');
+                if (tabName === 'imports' && !map) initMap(); // Initialize map only for imports tab
+                console.log(`Switched to ${tabName} tab`);
+            } catch (err) {
+                console.error('Tab switching failed:', err);
+                alert('Error switching tabs. Please try again or refresh the page.');
+            }
         }
 
         // Company Search with Hunter.io API via AllOrigins Proxy
@@ -187,7 +193,7 @@
                         const name = email.first_name || email.last_name ? `${email.first_name || ''} ${email.last_name || ''}`.trim() : 'N/A';
                         const role = email.position || 'N/A';
                         const confidence = email.confidence || 'N/A';
-                        const maskedEmail = `********@${query.split('[0]}.com`;
+                        const maskedEmail = `********@${query.split('.')[0]}.com`;
                         results.innerHTML += `
                             <div class="result-item">
                                 <h3>${name}</h3>
@@ -212,8 +218,8 @@
                     { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('.')[0] + '.com', dept: 'Product', confidence: 82 },
                     { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('.')[0] + '.com', dept: 'Operations', confidence: 77 },
                     { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 73 },
-                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('[0]}.com', dept: 'Sales', confidence: 76 },
-                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('[0]}.com', dept: 'Executive', confidence: 75 }
+                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 76 },
+                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('.')[0] + '.com', dept: 'Executive', confidence: 75 }
                 ];
                 const mockEmailsByDept = {};
                 mockEmails.forEach(email => {
@@ -485,18 +491,6 @@
             results.innerHTML = tableHTML;
             updatePagination();
             updateMap();
-        }
-
-        // Reveal email function
-        function revealEmail(email, button, cost) {
-            if (userCredits >= cost) {
-                userCredits -= cost;
-                button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
-                alert(`Email revealed! ${userCredits} credits remaining.`);
-            } else {
-                alert('Not enough credits. Upgrade to reveal more emails.');
-                window.open('plans.html', '_self');
-            }
         }
 
         // Smooth scroll for CTAs
