@@ -302,7 +302,7 @@
                     const apiUrl = `https://api.census.gov/data/timeseries/International/all?get=trade_value,country,year&commodity=${hsCode}&time=from+2022+to+2023`;
                     const response = await fetch(apiUrl);
                     if (!response.ok) {
-                        throw new Error(`Census API error! Status: ${response.status}`);
+                        throw new Error(`Census API error! Status: ${response.status} - ${response.statusText}`);
                     }
                     const data = await response.json();
 
@@ -335,6 +335,7 @@
                     }
                 } catch (err) {
                     console.error('Census API failed, falling back to mock:', err);
+                    results.innerHTML = `<div class="error">API Error: ${err.message}. Using mock data.</div>`;
                     useMockImports(query, countryFilter, yearFilter, results);
                 }
             } else {
