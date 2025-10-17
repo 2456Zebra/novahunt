@@ -353,21 +353,33 @@
             const table = document.querySelector('#importsResults table');
             if (table) {
                 const rows = Array.from(table.querySelectorAll('tr')).slice(1).filter(row => row.style.display !== 'none');
-                rows.forEach(row => {
-                    const country = row.cells[1].textContent.trim();
-                    const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', ''));
-                    const supplier = row.cells[0].textContent.trim();
-                    const coords = getCountryCoords(country);
-                    if (coords) {
-                        const radius = Math.min(20, tradeValue / 1000) || 5; // Scale radius by trade value (capped at 20)
-                        L.circleMarker(coords, {
-                            color: '#00FFCC',
-                            fillColor: '#00FFCC',
-                            fillOpacity: 0.5,
-                            radius: radius
-                        }).addTo(map).bindTooltip(`${supplier}<br>Trade Value: $${tradeValue.toLocaleString()}<br>Country: ${country}`, { direction: 'top', className: 'map-tooltip' });
-                    }
-                });
+                if (rows.length > 0) {
+                    rows.forEach(row => {
+                        const country = row.cells[1].textContent.trim();
+                        const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', '')) || 1000; // Default to 1000 if parsing fails
+                        const supplier = row.cells[0].textContent.trim();
+                        const coords = getCountryCoords(country);
+                        if (coords[0] !== 0 || coords[1] !== 0) { // Avoid default [0, 0]
+                            const radius = Math.min(20, tradeValue / 1000) || 5; // Scale radius by trade value (capped at 20)
+                            const marker = L.circleMarker(coords, {
+                                color: '#00FFCC',
+                                fillColor: '#00FFCC',
+                                fillOpacity: 0.5,
+                                radius: radius
+                            }).addTo(map);
+                            marker.bindTooltip(`<b>${supplier}</b><br>Trade Value: $${tradeValue.toLocaleString()}<br>Country: ${country}`, {
+                                permanent: false,
+                                direction: 'top',
+                                className: 'map-tooltip'
+                            }).openTooltip();
+                            marker.on('click', () => {
+                                alert(`Supplier: ${supplier}\nTrade Value: $${tradeValue.toLocaleString()}\nCountry: ${country}`);
+                            });
+                        }
+                    });
+                } else {
+                    L.marker([20, 0], { icon: L.divIcon({ className: 'no-data-icon', html: 'No Data' }) }).addTo(map).bindTooltip('No supplier data available', { direction: 'top', className: 'map-tooltip' });
+                }
             }
         }
 
@@ -559,6 +571,7 @@
     </script>
     <style>
         .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 4px; padding: 5px; }
+        .no-data-icon { background: #FC8181; color: #E2E8F0; padding: 5px; border-radius: 50%; text-align: center; }
     </style>
 </body>
 </html>
