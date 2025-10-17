@@ -91,7 +91,7 @@
                     </select>
                 </div>
                 <div class="toggle-group">
-                    <label><input type="checkbox" id="liveToggle" checked> Live Data (Census API)</label>
+                    <label><input type="checkbox" id="liveToggle" checked> Live Data (WITS API)</label>
                 </div>
                 <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #E0E0E0; border-radius: 4px;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
@@ -274,7 +274,7 @@
             }
         }
 
-        // Import Records Search with Census API
+        // Import Records Search with WITS API
         async function searchImports() {
             const query = document.getElementById('importsInput').value.toLowerCase().trim();
             const countryFilter = document.getElementById('countryFilter').value;
@@ -289,7 +289,7 @@
             }
 
             if (liveToggle) {
-                // Live Census API call
+                // Live WITS API call (no key needed)
                 try {
                     // Map company to HS code (simplified; expand as needed)
                     const hsCodes = {
@@ -299,27 +299,27 @@
                         'default': '9999' // Miscellaneous
                     };
                     const hsCode = hsCodes[query] || hsCodes['default'];
-                    const apiUrl = `https://api.census.gov/data/timeseries/International/all?get=trade_value,country,year&commodity=${hsCode}&time=from+2022+to+2023`;
+                    const apiUrl = `https://wits.worldbank.org/api/v1/en/country/usa/product/${hsCode}/reporter/import?startyear=2022&endyear=2023`;
                     const response = await fetch(apiUrl);
                     if (!response.ok) {
-                        throw new Error(`Census API error! Status: ${response.status} - ${response.statusText}`);
+                        throw new Error(`WITS API error! Status: ${response.status} - ${response.statusText}`);
                     }
                     const data = await response.json();
 
                     // Filter and format
                     results.innerHTML = '';
-                    if (data && data.length > 1) { // Skip header
-                        const filteredData = data.slice(1).filter(item => {
-                            const matchesCountry = !countryFilter || item[1] === countryFilter;
-                            const matchesYear = !yearFilter || item[2] === yearFilter;
+                    if (data && data.data && data.data.length > 0) {
+                        const filteredData = data.data.filter(item => {
+                            const matchesCountry = !countryFilter || item.partner_iso === countryFilter;
+                            const matchesYear = !yearFilter || item.year === yearFilter;
                             return matchesCountry && matchesYear;
                         }).slice(0, 10);
 
                         if (filteredData.length > 0) {
                             filteredData.forEach(item => {
-                                const tradeValue = item[0] || 'N/A';
-                                const country = item[1] || 'N/A';
-                                const year = item[2] || 'N/A';
+                                const tradeValue = item.trade_value || 'N/A';
+                                const country = item.partner_name || 'N/A';
+                                const year = item.year || 'N/A';
                                 results.innerHTML += `
                                     <div class="result-item">
                                         <h3>Supplier from ${country}</h3>
@@ -334,7 +334,7 @@
                         results.innerHTML = '<div class="result-item">No data available for this company.</div>';
                     }
                 } catch (err) {
-                    console.error('Census API failed, falling back to mock:', err);
+                    console.error('WITS API failed, falling back to mock:', err);
                     results.innerHTML = `<div class="error">API Error: ${err.message}. Using mock data.</div>`;
                     useMockImports(query, countryFilter, yearFilter, results);
                 }
