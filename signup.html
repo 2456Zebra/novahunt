@@ -1,57 +1,116 @@
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
-<script>
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyBNZ2zOFhwYW-sjD_Vrw3EL5OQyiicRaJs",
-    authDomain: "novahunt-ai.firebaseapp.com",
-    projectId: "novahunt-ai",
-    storageBucket: "novahunt-ai.firebasestorage.app",
-    messagingSenderId: "431364382477",
-    appId: "1:431364382477:web:963c3bd8057aa0f13a1a44",
-    measurementId: "G-3SZM60ZYHV"
-  };
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaHunt - Sign Up</title>
+    <meta name="description" content="Sign up for NovaHunt to start hunting B2B leads with AI precision.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
+        .container { max-width: 500px; margin: 0 auto; padding: 0 20px; }
+        .section { padding: 60px 0; }
+        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
+        p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
+        .btn { background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; font-size: 1em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
+        .back-button { text-align: center; margin: 20px 0; }
+        .error { color: #FC8181; font-size: 0.9em; margin-top: 5px; }
+        @media (max-width: 768px) { h1 { font-size: 2em; } }
+    </style>
+</head>
+<body>
+    <section class="section" style="padding-top: 80px;">
+        <div class="container">
+            <h1>🥷 Sign Up</h1>
+            <p style="font-size: 1.2em;">Join NovaHunt to unlock AI-powered lead generation.</p>
+            <form id="signupForm" onsubmit="handleSignup(event)">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required>
+                    <div id="emailError" class="error"></div>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                    <div id="passwordError" class="error"></div>
+                </div>
+                <div class="form-group">
+                    <label for="plan">Select Plan</label>
+                    <select id="plan" required>
+                        <option value="">Choose a plan</option>
+                        <option value="free">Free (5 email reveals/month)</option>
+                        <option value="pro">Pro ($29/mo, 50 email reveals/month)</option>
+                        <option value="business">Business ($59/mo, 250 email reveals/month)</option>
+                        <option value="enterprise">Enterprise ($99/mo, 1000 email reveals/month + API)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Sign Up</button>
+            </form>
+            <div class="back-button"><a href="index.html" class="btn">Back to Dashboard</a></div>
+        </div>
+    </section>
 
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+    <script>
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyBNZ2zOFhwYW-sjD_Vrw3EL5OQyiicRaJs",
+          authDomain: "novahunt-ai.firebaseapp.com",
+          projectId: "novahunt-ai",
+          storageBucket: "novahunt-ai.firebasestorage.app",
+          messagingSenderId: "431364382477",
+          appId: "1:431364382477:web:11673d1c9e910f4b3a1a44",
+          measurementId: "G-57NH9HMWHM"
+        };
 
-  function handleSignup(event) {
-    event.preventDefault();
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const plan = document.getElementById('plan').value;
-    const emailError = document.getElementById('emailError');
-    const passwordError = document.getElementById('passwordError');
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
 
-    emailError.textContent = '';
-    passwordError.textContent = '';
-    let isValid = true;
+        function handleSignup(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const plan = document.getElementById('plan').value;
+            const emailError = document.getElementById('emailError');
+            const passwordError = document.getElementById('passwordError');
 
-    if (!email.includes('@') || !email.includes('.')) {
-      emailError.textContent = 'Please enter a valid email address.';
-      isValid = false;
-    }
-    if (password.length < 6) {
-      passwordError.textContent = 'Password must be at least 6 characters.';
-      isValid = false;
-    }
-    if (!plan) {
-      alert('Please select a plan.');
-      isValid = false;
-    }
+            emailError.textContent = '';
+            passwordError.textContent = '';
+            let isValid = true;
 
-    if (isValid) {
-      auth.createUserWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-          // Mock plan assignment (replace with Firestore for real storage)
-          alert(`Registration successful! Welcome to the ${plan} plan. Email: ${email}. Redirecting to dashboard...`);
-          window.location.href = 'index.html';
-        })
-        .catch((error) => {
-          alert('Error: ' + error.message);
-        });
-    }
-  }
-</script>
+            if (!email.includes('@') || !email.includes('.')) {
+                emailError.textContent = 'Please enter a valid email address.';
+                isValid = false;
+            }
+            if (password.length < 6) {
+                passwordError.textContent = 'Password must be at least 6 characters.';
+                isValid = false;
+            }
+            if (!plan) {
+                alert('Please select a plan.');
+                isValid = false;
+            }
+
+            if (isValid) {
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        // Mock plan assignment (replace with Firestore for real storage)
+                        alert(`Registration successful! Welcome to the ${plan} plan. Email: ${email}. Redirecting to dashboard...`);
+                        window.location.href = 'index.html';
+                    })
+                    .catch((error) => {
+                        alert('Error: ' + error.message);
+                    });
+            }
+        }
+    </script>
+</body>
+</html>
