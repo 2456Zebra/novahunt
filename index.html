@@ -56,6 +56,7 @@
         .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
+        .map-debug { color: #FC8181; font-size: 0.9em; text-align: center; margin-top: 5px; }
         @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 250px; margin-top: 30px; } .plan-card { max-width: 100%; margin: 10px 0; } }
     </style>
 </head>
@@ -118,6 +119,7 @@
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
                 <div id="importsResults" class="results"></div>
                 <div id="map"></div>
+                <div id="mapDebug" class="map-debug"></div>
             </div>
         </div>
     </section>
@@ -140,9 +142,20 @@
                 }).addTo(map);
                 map.getContainer().style.background = '#1A202C';
                 console.log('Map initialized');
+                document.getElementById('mapDebug').textContent = 'Map initialized.';
             } else {
-                map.invalidateSize(); // Refresh map size if already initialized
+                map.invalidateSize();
                 console.log('Map refreshed');
+                document.getElementById('mapDebug').textContent = 'Map refreshed.';
+            }
+            if (!map.getSize().equals(new L.Point(0, 0))) {
+                map._onResize(); // Force resize if size is valid
+            } else {
+                console.warn('Map size is zero, reinitializing...');
+                document.getElementById('mapDebug').textContent = 'Map size zero, reinitializing...';
+                if (map) map.remove();
+                map = null;
+                setTimeout(initMap, 100); // Retry after delay
             }
         }
 
@@ -176,9 +189,10 @@
                     <button class="btn" onclick="searchImports()">Find Suppliers</button>
                     <div id="importsResults" class="results"></div>
                     <div id="map"></div>
+                    <div id="mapDebug" class="map-debug"></div>
                 `;
                 if (document.getElementById('imports-tab').classList.contains('active')) {
-                    setTimeout(initMap, 0); // Defer map init to ensure DOM is ready
+                    setTimeout(initMap, 0);
                 }
             } else {
                 document.getElementById('ai-tab').innerHTML = '<div class="upgrade-message">Upgrade to Business or Enterprise to access Hunt Industry Leads.</div>';
@@ -186,6 +200,7 @@
                 if (map) {
                     map.remove();
                     map = null;
+                    document.getElementById('mapDebug').textContent = 'Map removed.';
                 }
             }
         }
@@ -200,7 +215,7 @@
                 button.classList.add('active');
                 document.getElementById(tabName + '-tab').classList.add('active');
                 if (tabName === 'imports' && isTestMode) {
-                    setTimeout(initMap, 0); // Defer map init to ensure tab is visible
+                    setTimeout(initMap, 0);
                 }
                 console.log(`Switched to ${tabName} tab`);
             } catch (err) {
