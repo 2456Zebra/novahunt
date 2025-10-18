@@ -52,7 +52,7 @@
         .plan-card .price { font-size: 1.5em; color: #E2E8F0; margin: 10px 0; }
         .plan-card .btn { margin-top: 15px; }
         .back-button { text-align: center; margin: 20px 0; }
-        .upgrade-message { color: #FC8181; text-align: center; margin-top: 20px; font-weight: bold; }
+        .upgrade-message { text-align: center; margin-top: 20px; color: #FC8181; }
         .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
@@ -170,45 +170,6 @@
             updateUI(user);
         });
 
-        // Mock user credits and premium status
-        let userCredits = 5;
-        let isPremium = false;
-        let isTestMode = false;
-
-        // Toggle test mode
-        function toggleTestMode() {
-            isTestMode = !isTestMode;
-            alert(`Test mode ${isTestMode ? 'enabled' : 'disabled'}. Premium features ${isTestMode ? 'available' : 'restricted'}.`);
-            checkAccess();
-        }
-
-        // Check access for premium sections
-        function checkAccess() {
-            const aiTab = document.getElementById('ai-tab');
-            const importsTab = document.getElementById('imports-tab');
-            const user = auth.currentUser;
-            if (!isTestMode && !user && !isPremium) {
-                aiTab.innerHTML = '<div class="upgrade-message">This section is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                importsTab.innerHTML = '<div class="upgrade-message">This section is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                aiTab.classList.remove('active');
-                importsTab.classList.remove('active');
-            } else {
-                aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
-                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"></div>';
-            }
-        }
-
-        // Initialize on load
-        document.addEventListener('DOMContentLoaded', () => {
-            checkAccess();
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.onclick = (e) => {
-                    const tabName = e.target.getAttribute('onclick').match(/switchTab\('([^']+)'.*/)[1];
-                    switchTab(tabName, e.target);
-                };
-            });
-        });
-
         let map;
 
         // Initialize map
@@ -234,9 +195,18 @@
             } else if (map) {
                 map.invalidateSize();
             }
-            checkAccess(); // Re-check access on tab switch
             console.log(`Switched to ${tabName} tab`);
         }
+
+        // Ensure tab buttons are clickable on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const tabName = e.target.getAttribute('onclick').match(/switchTab\('([^']+)'.*/)[1];
+                    switchTab(tabName, e.target);
+                });
+            });
+        });
 
         // Company Search with Hunter.io API via AllOrigins Proxy
         async function searchCompany() {
@@ -266,7 +236,7 @@
                     throw new Error(data.data.errors[0].message);
                 }
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
-                results.innerHTML = `<p style="color: #A0AEC0;">Found ${mockTotal} emails across departments.</p>`;
+                results.innerHTML = `<p style="color: #A0AEC0;">Found ${mockTotal} emails across departments. (Free tier shows 10, upgrade for all)</p>`;
 
                 const emailsByDept = {};
                 data.data.emails.slice(0, 10).forEach(email => {
@@ -277,7 +247,7 @@
 
                 for (const [dept, emails] of Object.entries(emailsByDept)) {
                     results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
-                    emails.slice(0, 10).forEach(email => {
+                    emails.forEach(email => {
                         const name = email.first_name || email.last_name ? `${email.first_name || ''} ${email.last_name || ''}`.trim() : 'N/A';
                         const role = email.position || 'N/A';
                         const confidence = email.confidence || 'N/A';
@@ -291,25 +261,23 @@
                         `;
                     });
                 }
-                if (!isPremium && !isTestMode) {
-                    results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
-                }
+                results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to Premium</a> for full ${mockTotal} emails.</div>`;
             } catch (err) {
                 console.error('API fetch failed:', err);
                 results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data for ${query}...</div>`;
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : 10);
-                results.innerHTML += `<p style="color: #A0AEC0;">Mock data: Found ${mockTotal} emails across departments.</p>`;
+                results.innerHTML += `<p style="color: #A0AEC0;">Mock data: Found ${mockTotal} emails across departments. (Free tier shows 10)</p>`;
                 const mockEmails = [
                     { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 80 },
                     { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 },
                     { name: 'Sarah Lee', role: 'HR Specialist', email: 'sarah.lee@' + query.split('.')[0] + '.com', dept: 'Human Resources', confidence: 70 },
-                    { name: 'Tom Brown', role: 'IT Lead', email: 'tom.brown@' + query.split('.')[0] + '.com', dept: 'IT', confidence: 75 },
-                    { name: 'Emily Davis', role: 'Finance Analyst', email: 'emily.davis@' + query.split('.')[0] + '.com', dept: 'Finance', confidence: 78 },
-                    { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('.')[0] + '.com', dept: 'Product', confidence: 82 },
-                    { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('.')[0] + '.com', dept: 'Operations', confidence: 77 },
-                    { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 73 },
-                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 76 },
-                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('.')[0] + '.com', dept: 'Executive', confidence: 75 }
+                    { name: 'Tom Brown', role: 'IT Lead', email: 'tom.brown@' + query.split('[0]}.com', dept: 'IT', confidence: 75 },
+                    { name: 'Emily Davis', role: 'Finance Analyst', email: 'emily.davis@' + query.split('[0]}.com', dept: 'Finance', confidence: 78 },
+                    { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('[0]}.com', dept: 'Product', confidence: 82 },
+                    { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('[0]}.com', dept: 'Operations', confidence: 77 },
+                    { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('[0]}.com', dept: 'Marketing', confidence: 73 },
+                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('[0]}.com', dept: 'Sales', confidence: 76 },
+                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('[0]}.com', dept: 'Executive', confidence: 75 }
                 ];
                 const mockEmailsByDept = {};
                 mockEmails.forEach(email => {
@@ -318,7 +286,7 @@
                 });
                 for (const [dept, emails] of Object.entries(mockEmailsByDept)) {
                     results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
-                    emails.slice(0, 2).forEach(email => { // Limit to 2 for free/pro
+                    emails.forEach(email => {
                         const maskedEmail = `********@${query.split('.')[0]}.com`;
                         results.innerHTML += `
                             <div class="result-item">
@@ -329,9 +297,7 @@
                         `;
                     });
                 }
-                if (!isPremium && !isTestMode) {
-                    results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 2} Additional Emails</a></div>`;
-                }
+                results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to Premium</a> for full ${mockTotal} emails.</div>`;
             }
         }
 
@@ -356,10 +322,6 @@
                 results.innerHTML = '<div class="result-item">Enter a query.</div>';
                 return;
             }
-            if (!isTestMode && !auth.currentUser && !isPremium) {
-                results.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                return;
-            }
             try {
                 const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
                 const ocResponse = await fetch(ocApiUrl);
@@ -371,14 +333,11 @@
                 if (!ocData.results || ocData.results.companies.length === 0) {
                     throw new Error('No companies from OpenCorporates');
                 }
-                ocData.results.companies.slice(0, 2).forEach(company => { // Limit to 2 for free/pro
+                ocData.results.companies.forEach(company => {
                     const name = company.company.name || 'N/A';
                     const url = company.company.company_number ? `https://opencorporates.com/companies/${company.company.jurisdiction_code}/${company.company.company_number}` : '#';
                     results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                 });
-                if (!isPremium && !isTestMode) {
-                    results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${ocData.results.companies.length - 2} Additional Companies</a></div>`;
-                }
             } catch (err) {
                 console.error('OpenCorporates failed, falling back to DuckDuckGo:', err);
                 try {
@@ -392,14 +351,11 @@
                     if (!ddData.RelatedTopics || ddData.RelatedTopics.length === 0) {
                         results.innerHTML = '<div class="result-item">No companies found. Try a different query (e.g., adjust location or industry).</div>';
                     } else {
-                        ddData.RelatedTopics.slice(0, 2).forEach(topic => { // Limit to 2 for free/pro
+                        ddData.RelatedTopics.forEach(topic => {
                             const name = topic.Text || 'N/A';
                             const url = topic.FirstURL || '#';
                             results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                         });
-                        if (!isPremium && !isTestMode) {
-                            results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${ddData.RelatedTopics.length - 2} Additional Companies</a></div>`;
-                        }
                     }
                 } catch (ddErr) {
                     results.innerHTML = '<div class="result-item">Error: Both APIs failed. Check console for details.</div>';
@@ -411,7 +367,7 @@
         // Import Records Search
         let sortDirection = 1;
         let currentPage = 1;
-        const itemsPerPage = 2; // Limit to 2 for free/pro
+        const itemsPerPage = 5;
 
         function sortTable(columnIndex) {
             const table = document.querySelector('#importsResults table');
@@ -507,119 +463,14 @@
                 'default': [0, 0]
             };
             return coords[country] || coords['default'];
-        }
+          }
 
-        async function searchImports() {
-            const query = document.getElementById('importsInput').value.toLowerCase().trim();
-            const countryFilter = document.getElementById('countryFilter').value;
-            const yearFilter = document.getElementById('yearFilter').value;
-            const results = document.getElementById('importsResults');
-            results.innerHTML = '<div class="loading">Searching...</div>';
-
-            if (!query) {
-                results.innerHTML = '<div class="result-item">Enter a company name.</div>';
-                return;
-            }
-            if (!isTestMode && !auth.currentUser && !isPremium) {
-                results.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                return;
-            }
-
-            useMockImports(query, countryFilter, yearFilter, results);
-        }
-
-        function useMockImports(query, countryFilter, yearFilter, results) {
-            const mockSuppliers = {
-                'acme imports': [
-                    { supplier: 'Global Supply Co.', country: 'China', tradeValue: '$5000', year: '2023', product: 'Machinery Parts' },
-                    { supplier: 'East Trade Ltd.', country: 'Vietnam', tradeValue: '$3000', year: '2022', product: 'Machinery Parts' }
-                ],
-                'coca-cola': [
-                    { supplier: 'Beverage Logistics Inc.', country: 'Mexico', tradeValue: '$10000', year: '2023', product: 'Soft Drinks' },
-                    { supplier: 'Sweet Water Suppliers', country: 'Brazil', tradeValue: '$7500', year: '2022', product: 'Soft Drinks' },
-                    { supplier: 'Pacific Beverage Corp.', country: 'China', tradeValue: '$6000', year: '2023', product: 'Soft Drinks' }
-                ],
-                'monsterenergy': [
-                    { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023', product: 'Energy Drinks' },
-                    { supplier: 'Asia Energy Import', country: 'India', tradeValue: '$2500', year: '2022', product: 'Energy Drinks' }
-                ],
-                'pepsi cola': [
-                    { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
-                ],
-                'default': [
-                    { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
-                ]
-            };
-
-            const suppliers = mockSuppliers[query] || mockSuppliers['default'];
-            let tableHTML = `
-                <div class="summary-box">Trade Insights for ${query.toUpperCase()} | Last Updated: ${new Date().toLocaleDateString()} | <a href="plans.html" class="btn">Upgrade for Full Report</a></div>
-                <table class="result-table">
-                    <tr>
-                        <th onclick="sortTable(0)">Supplier</th>
-                        <th onclick="sortTable(1)">Country</th>
-                        <th onclick="sortTable(2)">Trade Value</th>
-                        <th onclick="sortTable(3)">Year</th>
-                        <th onclick="sortTable(4)">Product</th>
-                        <th>Action</th>
-                    </tr>
-            `;
-            const filteredSuppliers = suppliers.filter(supplier => {
-                const matchesCountry = !countryFilter || supplier.country === countryFilter;
-                const matchesYear = !yearFilter || supplier.year === yearFilter;
-                return matchesCountry && matchesYear;
-            });
-            const totalResults = suppliers.length;
-
-            if (filteredSuppliers.length > 0) {
-                filteredSuppliers.slice(0, 2).forEach(supplier => { // Limit to 2 for free/pro
-                    tableHTML += `
-                        <tr>
-                            <td>${supplier.supplier}</td>
-                            <td>${supplier.country}</td>
-                            <td>${supplier.tradeValue}</td>
-                            <td>${supplier.year}</td>
-                            <td>${supplier.product}</td>
-                            <td><button class="btn premium" onclick="viewReport()">View Report (Premium)</button></td>
-                        </tr>
-                    `;
-                });
-            } else {
-                tableHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
-            }
-            tableHTML += '</table>';
-            if (filteredSuppliers.length > itemsPerPage) {
-                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${itemsPerPage} of ${totalResults} results</p><div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${totalResults - 2} Additional Suppliers</a></div><div class="pagination"></div>`;
-            } else if (filteredSuppliers.length > 0) {
-                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${filteredSuppliers.length} of ${totalResults} results</p><div class="pagination"></div>`;
-            }
-            results.innerHTML = tableHTML;
-            updatePagination();
-            updateMap();
-        }
-
-        // View Report function
-        function viewReport() {
-            if (!isPremium && !isTestMode) {
-                alert('This feature requires a Business/Enterprise plan. Upgrade to access full reports.');
-                window.location.href = 'plans.html';
-            } else {
-                alert('Full report available! (Placeholder - implement premium content here)');
-            }
-        }
-
-        // Smooth scroll for CTAs
-        document.querySelectorAll('a.btn, button.btn').forEach(btn => {
-            if (btn.textContent.includes('Get Started') || btn.textContent.includes('Sign Up')) {
-                btn.addEventListener('click', () => {
-                    window.location.href = 'plans.html';
-                });
-            }
-        });
+        // Load the Google Maps API
+        const script = document.createElement("script");
+        script.src = "https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY";
+        script.async = true;
+        script.onload = function() { initMap(); }; // Ensure map loads after script
+        document.head.appendChild(script);
     </script>
-    <style>
-        .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 4px; padding: 5px; }
-        .no-data-icon { background: #FC8181; color: #E2E8F0; padding: 5px; border-radius: 50%; text-align: center; }
-    </style>
 </body>
 </html>
