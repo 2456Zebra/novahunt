@@ -56,6 +56,7 @@
         .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
+        .nav { position: fixed; top: 20px; right: 20px; }
         @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 250px; margin-top: 30px; } .plan-card { max-width: 100%; margin: 10px 0; } }
     </style>
 </head>
@@ -74,6 +75,9 @@
             </div>
         </div>
     </section>
+
+    <!-- Navigation (Auth) -->
+    <div class="nav" id="navLinks"></div>
 
     <!-- Multi-Mode Search Section -->
     <section class="section">
@@ -123,7 +127,49 @@
     </section>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script>
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
+            authDomain: "novahunt-web-app-v2.firebaseapp.com",
+            projectId: "novahunt-web-app-v2",
+            storageBucket: "novahunt-web-app-v2.firebasestorage.app",
+            messagingSenderId: "915754711081",
+            appId: "1:915754711081:web:f563cc734c901812954438"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Update UI based on auth state
+        function updateUI(user) {
+            const navLinks = document.getElementById('navLinks');
+            if (user) {
+                navLinks.innerHTML = `<div class="user-info">Logged in as: ${user.email}</div><button class="btn" onclick="logout()">Logout</button>`;
+            } else {
+                navLinks.innerHTML = `<a href="login.html" class="btn">Login</a> <a href="signup.html" class="btn">Sign Up</a>`;
+            }
+        }
+
+        // Logout function
+        function logout() {
+            auth.signOut().then(() => {
+                updateUI(null);
+                alert('Logged out successfully!');
+            }).catch((error) => {
+                alert('Error logging out: ' + error.message);
+            });
+        }
+
+        // Monitor auth state
+        auth.onAuthStateChanged((user) => {
+            updateUI(user);
+        });
+
         // Mock user credits (replace with real auth later)
         let userCredits = 5;
         let map;
@@ -138,7 +184,7 @@
             map.getContainer().style.background = '#1A202C';
         }
 
-        // Tab switching
+        // Tab switching with map refresh
         function switchTab(tabName, button) {
             const tabs = document.querySelectorAll('.tab-btn');
             const contents = document.querySelectorAll('.tab-content');
@@ -146,9 +192,23 @@
             contents.forEach(content => content.classList.remove('active'));
             button.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
-            if (tabName === 'imports' && !map) initMap(); // Initialize map only for imports tab
+            if (tabName === 'imports' && !map) {
+                initMap();
+            } else if (map) {
+                map.invalidateSize(); // Fix map size after tab switch
+            }
             console.log(`Switched to ${tabName} tab`);
         }
+
+        // Ensure tab buttons are clickable on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    const tabName = e.target.getAttribute('onclick').match(/switchTab\('([^']+)'.*/)[1];
+                    switchTab(tabName, e.target);
+                };
+            });
+        });
 
         // Company Search with Hunter.io API via AllOrigins Proxy
         async function searchCompany() {
@@ -157,7 +217,6 @@
             const errorDiv = document.getElementById('companyError');
             errorDiv.style.display = 'none';
 
-            // Validate input format
             if (!query.includes('.com') && !query.includes('.org') && !query.includes('.net')) {
                 errorDiv.textContent = 'Incorrect format. Please enter a valid domain (e.g., coca-cola.com).';
                 errorDiv.style.display = 'block';
@@ -178,11 +237,9 @@
                 if (data.errors) {
                     throw new Error(data.data.errors[0].message);
                 }
-                // Mock full count based on known data
                 const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
                 results.innerHTML = `<p style="color: #A0AEC0;">Found ${mockTotal} emails across departments. (Free tier shows 10, upgrade for all)</p>`;
 
-                // Group emails by department
                 const emailsByDept = {};
                 data.data.emails.slice(0, 10).forEach(email => {
                     const dept = email.department || 'Unknown';
@@ -218,11 +275,11 @@
                     { name: 'Sarah Lee', role: 'HR Specialist', email: 'sarah.lee@' + query.split('.')[0] + '.com', dept: 'Human Resources', confidence: 70 },
                     { name: 'Tom Brown', role: 'IT Lead', email: 'tom.brown@' + query.split('.')[0] + '.com', dept: 'IT', confidence: 75 },
                     { name: 'Emily Davis', role: 'Finance Analyst', email: 'emily.davis@' + query.split('.')[0] + '.com', dept: 'Finance', confidence: 78 },
-                    { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('[0]}.com', dept: 'Product', confidence: 82 },
-                    { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('[0]}.com', dept: 'Operations', confidence: 77 },
-                    { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('[0]}.com', dept: 'Marketing', confidence: 73 },
-                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('[0]}.com', dept: 'Sales', confidence: 76 },
-                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('[0]}.com', dept: 'Executive', confidence: 75 }
+                    { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('.')[0] + '.com', dept: 'Product', confidence: 82 },
+                    { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('.')[0] + '.com', dept: 'Operations', confidence: 77 },
+                    { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 73 },
+                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 76 },
+                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('.')[0] + '.com', dept: 'Executive', confidence: 75 }
                 ];
                 const mockEmailsByDept = {};
                 mockEmails.forEach(email => {
@@ -504,14 +561,10 @@
             }
         });
 
-        // Ensure tab buttons are clickable on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    switchTab(e.target.getAttribute('onclick').match(/switchTab\('([^']+)'.*/)[1], e.target);
-                });
-            });
-        });
+        // Toggle test mode (placeholder)
+        function toggleTestMode() {
+            alert('Test mode toggled! (Placeholder functionality)');
+        }
     </script>
     <style>
         .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 4px; padding: 5px; }
