@@ -139,8 +139,10 @@
                     lang: 'en'
                 }).addTo(map);
                 map.getContainer().style.background = '#1A202C';
+                console.log('Map initialized');
             } else {
                 map.invalidateSize(); // Refresh map size if already initialized
+                console.log('Map refreshed');
             }
         }
 
@@ -175,7 +177,9 @@
                     <div id="importsResults" class="results"></div>
                     <div id="map"></div>
                 `;
-                if (document.getElementById('imports-tab').classList.contains('active')) initMap();
+                if (document.getElementById('imports-tab').classList.contains('active')) {
+                    setTimeout(initMap, 0); // Defer map init to ensure DOM is ready
+                }
             } else {
                 document.getElementById('ai-tab').innerHTML = '<div class="upgrade-message">Upgrade to Business or Enterprise to access Hunt Industry Leads.</div>';
                 document.getElementById('imports-tab').innerHTML = '<div class="upgrade-message">Upgrade to Business or Enterprise to access Hunt Import Records.</div>';
@@ -195,7 +199,9 @@
                 contents.forEach(content => content.classList.remove('active'));
                 button.classList.add('active');
                 document.getElementById(tabName + '-tab').classList.add('active');
-                if (tabName === 'imports' && isTestMode) initMap();
+                if (tabName === 'imports' && isTestMode) {
+                    setTimeout(initMap, 0); // Defer map init to ensure tab is visible
+                }
                 console.log(`Switched to ${tabName} tab`);
             } catch (err) {
                 console.error('Tab switching failed:', err);
@@ -300,7 +306,7 @@
                 alert(`Email revealed! ${userCredits} credits remaining.`);
             } else {
                 alert('Not enough credits. Upgrade to reveal more emails.');
-                window.open('plans.html', '_self');
+                window.location.href = 'plans.html';
             }
         }
 
