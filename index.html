@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
         .container { max-width: 500px; margin: 20px auto; padding: 20px; background: #2D3748; border: 2px solid #00CCFF; border-radius: 10px; box-shadow: 0 0 15px #00CCFF; }
         .section { padding: 25px 0; }
         h1 { font-size: 2.2em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 12px; text-shadow: 0 0 8px #00FFCC; }
@@ -19,8 +19,8 @@
         .btn { background: #00FFCC; color: #1A202C; padding: 5px 10px; border: none; border-radius: 3px; font-size: 0.8em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
         .btn:hover { transform: scale(1.05); box-shadow: 0 0 12px #00FFCC; }
         .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1em; padding: 10px 20px; border-radius: 5px; }
-        .search-tabs { display: flex; flex-wrap: wrap; background: #1A202C; border-radius: 5px; overflow: hidden; margin-bottom: 12px; }
-        .tab-btn { flex: 1 1 100%; padding: 8px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 0.85em; transition: background 0.3s; }
+        .search-tabs { display: block; background: #1A202C; border-radius: 5px; overflow: hidden; margin-bottom: 12px; }
+        .tab-btn { width: 100%; padding: 8px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 0.85em; transition: background 0.3s; display: block; }
         .tab-btn.active { background: #00FFCC; color: #1A202C; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -59,12 +59,12 @@
         .nav { position: fixed; top: 15px; right: 15px; }
         @media (min-width: 769px) {
             .container { max-width: 1200px; }
-            .search-tabs { flex-direction: row; }
+            .search-tabs { display: flex; flex-direction: row; }
             .tab-btn { flex: 1 1 auto; }
             #map { width: 50%; float: right; }
             .results { width: 48%; float: left; }
         }
-        @media (max-width: 768px) { h1 { font-size: 1.8em; } h2 { font-size: 1.3em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 180px; margin-top: 20px; } .plan-card { max-width: 100%; margin: 6px 0; } }
+        @media (max-width: 768px) { h1 { font-size: 1.8em; } h2 { font-size: 1.3em; } .search-tabs { display: block; } .result-table { display: block; overflow-x: auto; } #map { height: 180px; margin-top: 20px; } .plan-card { max-width: 100%; margin: 6px 0; } }
     </style>
 </head>
 <body>
