@@ -132,7 +132,7 @@
                 <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
                 <div id="importsResults" class="results"></div>
-                <div id="map"></div>
+                <div id="map"><div style="text-align: center; color: #A0AEC0; padding: 180px 0;">Awaiting Search Results To Display Map</div></div>
             </div>
         </div>
     </section>
@@ -212,7 +212,7 @@
                 importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"><div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div></div><div id="map"><div style="text-align: center; color: #A0AEC0; padding: 180px 0;">Awaiting Search Results To Display Map</div></div>';
             } else {
                 aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
-                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"></div>';
+                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div style="text-align: center; color: #A0AEC0; padding: 180px 0;">Awaiting Search Results To Display Map</div></div>';
             }
         }
 
@@ -243,6 +243,7 @@
                     if (layer instanceof L.Marker && layer.options.icon.options.className === 'map-placeholder') map.removeLayer(layer);
                 });
             }
+            const placeholder = L.marker([20, 0], { icon: L.divIcon({ className: 'map-placeholder', html: '<div style="color: #A0AEC0;">Awaiting Search Results To Display Map</div>' }) }).addTo(map);
         }
 
         // Tab switching with map refresh
@@ -315,7 +316,7 @@
                     });
                 }
                 if (!isPremium && !isTestMode && !auth.currentUser) {
-                    results.innerHTML += '<div class="premium-note">Please <a href="signup.html" class="btn">Sign Up</a> for a Free or Premium plan to use the Reveal function.</div>';
+                    results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features.</div>';
                 } else if (!isPremium && !isTestMode) {
                     results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                 }
@@ -355,7 +356,7 @@
                     });
                 }
                 if (!isPremium && !isTestMode && !auth.currentUser) {
-                    results.innerHTML += '<div class="premium-note">Please <a href="signup.html" class="btn">Sign Up</a> for a Free or Premium plan to use the Reveal function.</div>';
+                    results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features.</div>';
                 } else if (!isPremium && !isTestMode) {
                     results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                 }
@@ -364,12 +365,12 @@
 
         // Reveal email function
         function revealEmail(email, button, cost) {
-            if (userCredits >= cost && auth.currentUser) {
+            if (auth.currentUser && userCredits >= cost) {
                 userCredits -= cost;
                 button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
                 alert(`Email revealed! ${userCredits} credits remaining.`);
             } else if (!auth.currentUser) {
-                alert('Please sign in to use the Reveal function. <a href="login.html">Sign In</a> or <a href="signup.html">Sign Up</a> for a Free plan.');
+                alert('Please log in or sign up to reveal emails and unlock more features.');
             } else {
                 alert('Not enough credits. Upgrade to reveal more emails.');
                 window.location.href = 'plans.html';
@@ -526,7 +527,7 @@
                     });
                     map.fitBounds(rows.map(row => getCountryCoords(row.cells[1].textContent.trim())).filter(coord => coord[0] !== 0 || coord[1] !== 0));
                 } else {
-                    L.marker([20, 0], { icon: L.divIcon({ className: 'no-data-icon', html: 'No Data' }) }).addTo(map).bindTooltip('No supplier data available for current filters', { direction: 'top', className: 'map-tooltip' });
+                    const placeholder = L.marker([20, 0], { icon: L.divIcon({ className: 'map-placeholder', html: '<div style="color: #A0AEC0;">Awaiting Search Results To Display Map</div>' }) }).addTo(map);
                 }
             }
         }
@@ -674,6 +675,7 @@
     <style>
         .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 4px; padding: 5px; }
         .no-data-icon { background: #FC8181; color: #E2E8F0; padding: 5px; border-radius: 50%; text-align: center; }
+        .map-placeholder { text-align: center; padding: 180px 0; color: #A0AEC0; }
     </style>
 </body>
 </html>
