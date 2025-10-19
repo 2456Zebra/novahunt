@@ -10,19 +10,18 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1A202C 0%, #2D3748 100%); color: #E2E8F0; line-height: 1.6; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-        .section { padding: 60px 0; position: relative; }
-        .section::before { content: ''; position: absolute; top: 0; left: 5%; width: 90%; height: 2px; background: linear-gradient(to right, transparent, #00FFCC, transparent); }
-        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC, 0 0 20px #00CCFF; }
+        .section { padding: 60px 0; }
+        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
         h2 { font-size: 2em; font-weight: 700; color: #E2E8F0; margin-bottom: 20px; text-align: center; }
         p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
-        .btn { background: linear-gradient(45deg, #00FFCC, #00CCFF); color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
+        .btn { background: #00FFCC; color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
         .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
-        .btn-primary { background: linear-gradient(45deg, #00FFCC, #00CCFF); color: #1A202C; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
-        .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 20px; justify-content: center; }
+        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
+        .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
         .tab-btn { flex: 1; padding: 12px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
-        .tab-btn.active { background: linear-gradient(45deg, #00FFCC, #00CCFF); color: #1A202C; }
+        .tab-btn.active { background: #00FFCC; color: #1A202C; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .results { margin-top: 20px; }
@@ -33,7 +32,7 @@
         .result-table td { background: #2D3748; }
         .result-table .premium { color: #1A202C; font-style: italic; background: #00FFCC; padding: 5px 10px; border-radius: 4px; text-align: center; }
         .loading { color: #90CDF4; font-style: italic; text-align: center; }
-        .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00CCFF; }
+        .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00FFCC; }
         .pagination { text-align: center; margin-top: 10px; }
         .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
         .pagination button:hover { background: #718096; }
@@ -41,12 +40,12 @@
         .department-header { font-size: 1.2em; font-weight: 600; color: #E2E8F0; margin: 10px 0 5px; }
         .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; padding-bottom: 20px; }
         .error { color: #FC8181; font-size: 1em; margin-top: 10px; text-align: center; font-weight: bold; padding: 10px; background: #2D3748; border-radius: 4px; }
-        .filter-group { margin-bottom: 10px; display: flex; gap: 10px; justify-content: center; }
+        .filter-group { margin-bottom: 10px; }
         .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
         .toggle-group { display: none; }
-        #map { height: 400px; width: 100%; margin-top: 40px; border: 2px solid #00CCFF; border-radius: 6px; }
+        #map { height: 300px; width: 100%; margin-top: 40px; border: 1px solid #4A5568; border-radius: 6px; }
         .plans-section { padding: 40px 0; }
-        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00CCFF; }
+        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00FFCC; }
         .plan-card h3 { color: #00FFCC; margin-bottom: 10px; }
         .plan-card ul { list-style: none; padding: 0; }
         .plan-card ul li { margin: 10px 0; color: #A0AEC0; }
@@ -58,20 +57,12 @@
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
         .nav { position: fixed; top: 20px; right: 20px; }
-        @media (max-width: 768px) {
-            h1 { font-size: 2em; }
-            h2 { font-size: 1.5em; }
-            .search-tabs { flex-direction: column; }
-            .result-table { display: block; overflow-x: auto; }
-            #map { height: 250px; margin-top: 30px; }
-            .plan-card { max-width: 100%; margin: 10px 0; }
-            .filter-group { flex-direction: column; }
-        }
+        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 250px; margin-top: 30px; } .plan-card { max-width: 100%; margin: 10px 0; } }
     </style>
 </head>
 <body>
     <!-- Hero Section -->
-    <section class="section" style="padding-top: 80px; background: linear-gradient(135deg, #1A202C 0%, #2D3748 50%); box-shadow: 0 4px 20px rgba(0, 255, 204, 0.3);">
+    <section class="section" style="padding-top: 80px; background: #1A202C; box-shadow: 0 4px 20px rgba(0, 255, 204, 0.3);">
         <div class="container">
             <h1>🥷 NovaHunt</h1>
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
@@ -137,8 +128,8 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
     <script>
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -179,8 +170,7 @@
             updateUI(user);
         });
 
-        // Mock user credits and premium status
-        let userCredits = 5;
+        let userCredits = 5; // Default credits for logged-in free users
         let isPremium = false;
         let isTestMode = false;
 
@@ -243,7 +233,7 @@
             } else if (map) {
                 map.invalidateSize();
             }
-            checkAccess();
+            checkAccess(); // Re-check access on tab switch
             console.log(`Switched to ${tabName} tab`);
         }
 
@@ -310,15 +300,15 @@
                 results.innerHTML += `<p style="color: #A0AEC0;">Mock data: Found ${mockTotal} emails across departments.</p>`;
                 const mockEmails = [
                     { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 80 },
-                    { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 },
-                    { name: 'Sarah Lee', role: 'HR Specialist', email: 'sarah.lee@' + query.split('.')[0] + '.com', dept: 'Human Resources', confidence: 70 },
-                    { name: 'Tom Brown', role: 'IT Lead', email: 'tom.brown@' + query.split('.')[0] + '.com', dept: 'IT', confidence: 75 },
-                    { name: 'Emily Davis', role: 'Finance Analyst', email: 'emily.davis@' + query.split('.')[0] + '.com', dept: 'Finance', confidence: 78 },
-                    { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('.')[0] + '.com', dept: 'Product', confidence: 82 },
-                    { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('.')[0] + '.com', dept: 'Operations', confidence: 77 },
-                    { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 73 },
-                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 76 },
-                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('.')[0] + '.com', dept: 'Executive', confidence: 75 }
+                    { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('[0]}.com', dept: 'Sales', confidence: 85 },
+                    { name: 'Sarah Lee', role: 'HR Specialist', email: 'sarah.lee@' + query.split('[0]}.com', dept: 'Human Resources', confidence: 70 },
+                    { name: 'Tom Brown', role: 'IT Lead', email: 'tom.brown@' + query.split('[0]}.com', dept: 'IT', confidence: 75 },
+                    { name: 'Emily Davis', role: 'Finance Analyst', email: 'emily.davis@' + query.split('[0]}.com', dept: 'Finance', confidence: 78 },
+                    { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('[0]}.com', dept: 'Product', confidence: 82 },
+                    { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('[0]}.com', dept: 'Operations', confidence: 77 },
+                    { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('[0]}.com', dept: 'Marketing', confidence: 73 },
+                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('[0]}.com', dept: 'Sales', confidence: 76 },
+                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('[0]}.com', dept: 'Executive', confidence: 75 }
                 ];
                 const mockEmailsByDept = {};
                 mockEmails.forEach(email => {
@@ -327,8 +317,8 @@
                 });
                 for (const [dept, emails] of Object.entries(mockEmailsByDept)) {
                     results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
-                    emails.slice(0, 2).forEach(email => {
-                        const maskedEmail = `********@${query.split('.')[0]}.com`;
+                    emails.slice(0, 10).forEach(email => {
+                        const maskedEmail = `********@${query.split('[0]}.com`;
                         results.innerHTML += `
                             <div class="result-item">
                                 <h3>${email.name}</h3>
@@ -339,7 +329,7 @@
                     });
                 }
                 if (!isPremium && !isTestMode) {
-                    results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 2} Additional Emails</a></div>`;
+                    results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                 }
             }
         }
@@ -375,7 +365,7 @@
                 if (!ocResponse.ok) {
                     throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
                 }
-                const ocData = await ocResponse.json();
+                const ocData = await fetch(ocApiUrl);
                 results.innerHTML = '';
                 if (!ocData.results || ocData.results.companies.length === 0) {
                     throw new Error('No companies from OpenCorporates');
