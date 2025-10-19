@@ -56,7 +56,8 @@
         .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
-        .nav { position: fixed; top: 20px; right: 20px; }
+        .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+        .nav .user-info, .nav button { display: inline-block; margin-right: 10px; }
         .tour-btn { position: fixed; bottom: 20px; right: 20px; background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
         .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
         @media (max-width: 768px) {
@@ -68,6 +69,7 @@
             .plan-card { max-width: 100%; margin: 10px 0; }
             .filter-group { flex-direction: column; }
             .tour-btn { bottom: 10px; right: 10px; }
+            .nav { top: 10px; right: 10px; }
         }
     </style>
 </head>
@@ -208,8 +210,11 @@
             const importsTab = document.getElementById('imports-tab');
             const user = auth.currentUser;
             if (!isTestMode && !user && !isPremium) {
-                aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"><div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div></div>';
-                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"><div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div></div><div id="map"><div style="text-align: center; color: #A0AEC0; padding: 180px 0;">Awaiting Search Results To Display Map</div></div>';
+                aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
+                importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
+            } else if (!isTestMode && user && !isPremium) {
+                aiTab.innerHTML = '<div class="upgrade-message">This feature requires a Business/Enterprise plan. <a href="plans.html" class="btn">Upgrade Now</a></div>';
+                importsTab.innerHTML = '<div class="upgrade-message">This feature requires a Business/Enterprise plan. <a href="plans.html" class="btn">Upgrade Now</a></div>';
             } else {
                 aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
                 importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div style="text-align: center; color: #A0AEC0; padding: 180px 0;">Awaiting Search Results To Display Map</div></div>';
