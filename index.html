@@ -10,75 +10,74 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
-        .container { max-width: 450px; margin: 20px auto; padding: 20px; background: #2D3748; border: 2px solid #00CCFF; border-radius: 10px; box-shadow: 0 0 15px #00CCFF; }
-        .section { padding: 25px 0; }
-        h1 { font-size: 2.2em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 12px; text-shadow: 0 0 8px #00FFCC; }
-        h2 { font-size: 1.6em; font-weight: 700; color: #E2E8F0; margin-bottom: 12px; text-align: center; }
-        p { font-size: 0.95em; color: #A0AEC0; margin-bottom: 12px; text-align: center; }
-        .btn { background: #00FFCC; color: #1A202C; padding: 5px 10px; border: none; border-radius: 3px; font-size: 0.8em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
-        .btn:hover { transform: scale(1.05); box-shadow: 0 0 12px #00FFCC; }
-        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1em; padding: 10px 20px; border-radius: 5px; }
-        .search-tabs { display: block; background: #1A202C; border-radius: 5px; overflow: hidden; margin-bottom: 12px; }
-        .tab-btn { width: 100%; padding: 8px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 0.85em; transition: background 0.3s; display: block; }
-        .tab-btn.active { background: #00FFCC; color: #1A202C; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1A202C 0%, #2D3748 100%); color: #E2E8F0; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .section { padding: 60px 0; position: relative; }
+        .section::before { content: ''; position: absolute; top: 0; left: 5%; width: 90%; height: 2px; background: linear-gradient(to right, transparent, #00FFCC, transparent); }
+        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC, 0 0 20px #00CCFF; }
+        h2 { font-size: 2em; font-weight: 700; color: #E2E8F0; margin-bottom: 20px; text-align: center; }
+        p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
+        .btn { background: linear-gradient(45deg, #00FFCC, #00CCFF); color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
+        .btn-primary { background: linear-gradient(45deg, #00FFCC, #00CCFF); color: #1A202C; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
+        .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 20px; justify-content: center; }
+        .tab-btn { flex: 1; padding: 12px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
+        .tab-btn.active { background: linear-gradient(45deg, #00FFCC, #00CCFF); color: #1A202C; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .results { margin-top: 12px; }
+        .results { margin-top: 20px; }
         .result-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .result-table th, .result-table td { padding: 6px; text-align: left; border-bottom: 1px solid #4A5568; word-wrap: break-word; }
-        .result-table th { background: #1A202C; font-weight: 600; color: #E2E8F0; cursor: pointer; }
+        .result-table th, .result-table td { padding: 10px; text-align: left; border-bottom: 1px solid #4A5568; word-wrap: break-word; }
+        .result-table th { background: #2D3748; font-weight: 600; color: #E2E8F0; cursor: pointer; }
         .result-table th:hover { background: #4A5568; }
         .result-table td { background: #2D3748; }
-        .result-table .premium { color: #1A202C; font-style: italic; background: #00FFCC; padding: 4px 8px; border-radius: 3px; text-align: center; }
+        .result-table .premium { color: #1A202C; font-style: italic; background: #00FFCC; padding: 5px 10px; border-radius: 4px; text-align: center; }
         .loading { color: #90CDF4; font-style: italic; text-align: center; }
-        .summary-box { background: #1A202C; border: 1px solid #4A5568; border-radius: 5px; padding: 10px; margin-bottom: 12px; box-shadow: 0 0 8px #00CCFF; }
-        .pagination { text-align: center; margin-top: 8px; }
-        .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 3px; padding: 3px 6px; margin: 0 3px; cursor: pointer; }
+        .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00CCFF; }
+        .pagination { text-align: center; margin-top: 10px; }
+        .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
         .pagination button:hover { background: #718096; }
         .pagination button.active { background: #00FFCC; color: #1A202C; }
-        .department-header { font-size: 1em; font-weight: 600; color: #E2E8F0; margin: 6px 0 4px; }
-        .premium-note { font-size: 0.75em; color: #90CDF4; margin-top: 8px; text-align: center; padding-bottom: 12px; }
-        .error { color: #FC8181; font-size: 0.85em; margin-top: 8px; text-align: center; font-weight: bold; padding: 6px; background: #2D3748; border-radius: 3px; }
-        .filter-group { margin-bottom: 8px; }
-        .filter-group select { padding: 5px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0; }
+        .department-header { font-size: 1.2em; font-weight: 600; color: #E2E8F0; margin: 10px 0 5px; }
+        .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; padding-bottom: 20px; }
+        .error { color: #FC8181; font-size: 1em; margin-top: 10px; text-align: center; font-weight: bold; padding: 10px; background: #2D3748; border-radius: 4px; }
+        .filter-group { margin-bottom: 10px; display: flex; gap: 10px; justify-content: center; }
+        .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
         .toggle-group { display: none; }
-        #map { height: 250px; width: 100%; margin-top: 25px; border: 1px solid #4A5568; border-radius: 5px; }
-        .plans-section { padding: 25px 0; }
-        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 12px; margin: 8px; text-align: center; max-width: 200px; display: inline-block; vertical-align: top; box-shadow: 0 0 6px #00CCFF; }
-        .plan-card h3 { color: #00FFCC; margin-bottom: 8px; }
+        #map { height: 400px; width: 100%; margin-top: 40px; border: 2px solid #00CCFF; border-radius: 6px; }
+        .plans-section { padding: 40px 0; }
+        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00CCFF; }
+        .plan-card h3 { color: #00FFCC; margin-bottom: 10px; }
         .plan-card ul { list-style: none; padding: 0; }
-        .plan-card ul li { margin: 6px 0; color: #A0AEC0; }
-        .plan-card .price { font-size: 1.2em; color: #E2E8F0; margin: 8px 0; }
-        .plan-card .btn { margin-top: 10px; }
-        .back-button { text-align: center; margin: 12px 0; }
-        .upgrade-message { text-align: center; margin-top: 12px; color: #FC8181; }
-        .badge { background: #FFCC00; color: #1A202C; padding: 3px 6px; border-radius: 3px; font-size: 0.7em; font-weight: bold; display: inline-block; margin-bottom: 6px; }
-        .test-mode-toggle { text-align: center; margin: 8px 0; }
+        .plan-card ul li { margin: 10px 0; color: #A0AEC0; }
+        .plan-card .price { font-size: 1.5em; color: #E2E8F0; margin: 10px 0; }
+        .plan-card .btn { margin-top: 15px; }
+        .back-button { text-align: center; margin: 20px 0; }
+        .upgrade-message { color: #FC8181; text-align: center; margin-top: 20px; font-weight: bold; }
+        .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
+        .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
-        .nav { position: fixed; top: 15px; right: 15px; }
-        @media (min-width: 769px) {
-            .container { max-width: 800px; }
-            .search-tabs { display: flex; flex-direction: row; }
-            .tab-btn { flex: 1 1 auto; }
-            #map { height: 350px; }
-            .results { width: 100%; }
+        .nav { position: fixed; top: 20px; right: 20px; }
+        @media (max-width: 768px) {
+            h1 { font-size: 2em; }
+            h2 { font-size: 1.5em; }
+            .search-tabs { flex-direction: column; }
+            .result-table { display: block; overflow-x: auto; }
+            #map { height: 250px; margin-top: 30px; }
+            .plan-card { max-width: 100%; margin: 10px 0; }
+            .filter-group { flex-direction: column; }
         }
-        @media (max-width: 768px) { h1 { font-size: 1.8em; } h2 { font-size: 1.3em; } .search-tabs { display: block; } .result-table { display: block; overflow-x: auto; } #map { height: 200px; margin-top: 20px; } .plan-card { max-width: 100%; margin: 6px 0; } }
     </style>
 </head>
 <body>
     <!-- Hero Section -->
-    <section class="section" style="padding-top: 50px; background: #1A202C; box-shadow: 0 3px 12px rgba(0, 255, 204, 0.3);">
+    <section class="section" style="padding-top: 80px; background: linear-gradient(135deg, #1A202C 0%, #2D3748 50%); box-shadow: 0 4px 20px rgba(0, 255, 204, 0.3);">
         <div class="container">
             <h1>🥷 NovaHunt</h1>
-            <p style="font-size: 1em;">AI-Powered Lead Generation That Hunts for You</p>
+            <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
             <p>Redefine B2B success with cutting-edge AI precision.</p>
-            <div style="text-align: center; margin-top: 12px;">
-                <a href="plans.html" class="btn">Get Started</a>
-                <a href="tour-step1.html" class="btn">Take a Tour</a>
-            </div>
-            <p style="font-size: 0.75em; color: #90CDF4;">free credits • No credit card required</p>
+            <div style="text-align: center; margin-top: 20px;"><a href="plans.html" class="btn">Get Started</a></div>
+            <p style="font-size: 0.9em; color: #90CDF4;">free credits • No credit card required</p>
             <div class="test-mode-toggle">
                 <input type="checkbox" id="testMode" onchange="toggleTestMode()">
                 <label for="testMode">Enable Test Mode (Business/Enterprise Access)</label>
@@ -101,14 +100,14 @@
             </div>
             <div id="company-tab" class="tab-content active">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., coca-cola.com).</p>
-                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 300px; margin: 0 auto 8px; display: block; padding: 6px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0;">
+                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <div id="companyError" class="error" style="display: none;"></div>
                 <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
                 <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Companies USA' for live results.</p>
-                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 300px; margin: 0 auto 8px; display: block; padding: 6px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0;">
+                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <button class="btn" onclick="searchAI()">Generate Leads</button>
                 <div id="aiResults" class="results"></div>
             </div>
@@ -128,7 +127,7 @@
                         <option value="2022">2022</option>
                     </select>
                 </div>
-                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 300px; margin: 0 auto 8px; display: block; padding: 6px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0;">
+                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
                 <div id="importsResults" class="results"></div>
                 <div id="map"></div>
@@ -203,8 +202,8 @@
                 aiTab.classList.remove('active');
                 importsTab.classList.remove('active');
             } else {
-                aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 300px; margin: 0 auto 8px; display: block; padding: 6px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
-                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 300px; margin: 0 auto 8px; display: block; padding: 6px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"></div>';
+                aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
+                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"></div>';
             }
         }
 
@@ -223,14 +222,12 @@
 
         // Initialize map
         function initMap() {
-            if (!map) {
-                map = L.map('map').setView([20, 0], 2);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                }).addTo(map);
-                map.getContainer().style.background = '#1A202C';
-            }
+            map = L.map('map').setView([20, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+            map.getContainer().style.background = '#1A202C';
         }
 
         // Tab switching with map refresh
@@ -630,8 +627,8 @@
         });
     </script>
     <style>
-        .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 3px; padding: 3px; }
-        .no-data-icon { background: #FC8181; color: #E2E8F0; padding: 3px; border-radius: 50%; text-align: center; }
+        .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 4px; padding: 5px; }
+        .no-data-icon { background: #FC8181; color: #E2E8F0; padding: 5px; border-radius: 50%; text-align: center; }
     </style>
 </body>
 </html>
