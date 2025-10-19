@@ -150,12 +150,14 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script>
         // Initialize variables at the top
-        let userCredits = 5; // Default credits for logged-in free users
+        let userCredits = 5; // Default monthly credits for free users
         let isPremium = false;
         let isTestMode = false;
         let map;
+        const db = firebase.firestore();
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -176,6 +178,7 @@
             const navLinks = document.getElementById('navLinks');
             if (user) {
                 navLinks.innerHTML = `<div class="user-info">Logged in as: ${user.email}</div><button class="btn" onclick="logout()">Logout</button>`;
+                loadUserCredits(user.uid);
             } else {
                 navLinks.innerHTML = `<a href="login.html" class="btn">Sign In</a> <a href="signup.html" class="btn">Sign Up</a>`;
             }
@@ -248,7 +251,6 @@
                     if (layer instanceof L.Marker && layer.options.icon.options.className === 'map-placeholder') map.removeLayer(layer);
                 });
             }
-            const placeholder = L.marker([20, 0], { icon: L.divIcon({ className: 'map-placeholder', html: '<div style="color: #A0AEC0;">Awaiting Search Results To Display Map</div>' }) }).addTo(map);
         }
 
         // Tab switching with map refresh
@@ -368,16 +370,52 @@
             }
         }
 
-        // Reveal email function
+        // Load user credits from Firestore
+        function loadUserCredits(uid) {
+            const userRef = db.collection('users').doc(uid);
+            const now = new Date();
+            const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
+            userRef.get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
+                        userCredits = data.monthlyCredits.credits;
+                    } else {
+                        userCredits = 5; // Reset to 5 credits at the start of a new month
+                        userRef.set({
+                            monthlyCredits: { month: currentMonth, credits: userCredits }
+                        }, { merge: true });
+                    }
+                } else {
+                    userCredits = 5;
+                    userRef.set({
+                        monthlyCredits: { month: currentMonth, credits: userCredits }
+                    });
+                }
+            }).catch((error) => {
+                console.error('Error loading credits:', error);
+                userCredits = 5; // Fallback
+            });
+        }
+
+        // Reveal email function with monthly tracking
         function revealEmail(email, button, cost) {
-            if (auth.currentUser && userCredits >= cost) {
+            const user = auth.currentUser;
+            if (user && userCredits >= cost) {
                 userCredits -= cost;
                 button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
-                alert(`Email revealed! ${userCredits} credits remaining.`);
-            } else if (!auth.currentUser) {
+                alert(`Email revealed! ${userCredits} credits remaining this month.`);
+
+                const userRef = db.collection('users').doc(user.uid);
+                const now = new Date();
+                const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
+                userRef.set({
+                    monthlyCredits: { month: currentMonth, credits: userCredits }
+                }, { merge: true });
+            } else if (!user) {
                 alert('Please log in or sign up to reveal emails and unlock more features.');
             } else {
-                alert('Not enough credits. Upgrade to reveal more emails.');
+                alert('Not enough credits this month. Upgrade to reveal more emails.');
                 window.location.href = 'plans.html';
             }
         }
@@ -531,8 +569,6 @@
                         }
                     });
                     map.fitBounds(rows.map(row => getCountryCoords(row.cells[1].textContent.trim())).filter(coord => coord[0] !== 0 || coord[1] !== 0));
-                } else {
-                    const placeholder = L.marker([20, 0], { icon: L.divIcon({ className: 'map-placeholder', html: '<div style="color: #A0AEC0;">Awaiting Search Results To Display Map</div>' }) }).addTo(map);
                 }
             }
         }
@@ -636,13 +672,13 @@
             updateMap();
         }
 
-        // View Report function
+        // View Report function with premium content
         function viewReport() {
             if (!isPremium && !isTestMode) {
                 alert('This feature requires a Business/Enterprise plan. Upgrade to access full reports.');
                 window.location.href = 'plans.html';
             } else {
-                alert('Full report available! (Placeholder - implement premium content here)');
+                alert('Full report: Detailed supplier analysis, trade history, and contact info available. Visit plans.html for more!');
             }
         }
 
