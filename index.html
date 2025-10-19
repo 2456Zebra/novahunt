@@ -11,7 +11,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
-        .container { max-width: 500px; margin: 20px auto; padding: 20px; background: #2D3748; border: 2px solid #00CCFF; border-radius: 10px; box-shadow: 0 0 15px #00CCFF; }
+        .container { max-width: 450px; margin: 20px auto; padding: 20px; background: #2D3748; border: 2px solid #00CCFF; border-radius: 10px; box-shadow: 0 0 15px #00CCFF; }
         .section { padding: 25px 0; }
         h1 { font-size: 2.2em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 12px; text-shadow: 0 0 8px #00FFCC; }
         h2 { font-size: 1.6em; font-weight: 700; color: #E2E8F0; margin-bottom: 12px; text-align: center; }
@@ -42,575 +42,575 @@
         .error { color: #FC8181; font-size: 0.85em; margin-top: 8px; text-align: center; font-weight: bold; padding: 6px; background: #2D3748; border-radius: 3px; }
         .filter-group { margin-bottom: 8px; }
         .filter-group select { padding: 5px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0; }
-        .toggle-group { display: none; }
-        #map { height: 200px; width: 100%; margin-top: 25px; border: 1px solid #4A5568; border-radius: 5px; }
-        .plans-section { padding: 25px 0; }
-        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 12px; margin: 8px; text-align: center; max-width: 200px; display: inline-block; vertical-align: top; box-shadow: 0 0 6px #00CCFF; }
-        .plan-card h3 { color: #00FFCC; margin-bottom: 8px; }
-        .plan-card ul { list-style: none; padding: 0; }
-        .plan-card ul li { margin: 6px 0; color: #A0AEC0; }
-        .plan-card .price { font-size: 1.2em; color: #E2E8F0; margin: 8px 0; }
-        .plan-card .btn { margin-top: 10px; }
-        .back-button { text-align: center; margin: 12px 0; }
-        .upgrade-message { text-align: center; margin-top: 12px; color: #FC8181; }
-        .badge { background: #FFCC00; color: #1A202C; padding: 3px 6px; border-radius: 3px; font-size: 0.7em; font-weight: bold; display: inline-block; margin-bottom: 6px; }
-        .test-mode-toggle { text-align: center; margin: 8px 0; }
-        .test-mode-toggle input { margin-right: 5px; }
-        .nav { position: fixed; top: 15px; right: 15px; }
-        @media (min-width: 769px) {
-            .container { max-width: 1200px; }
-            .search-tabs { display: flex; flex-direction: row; }
-            .tab-btn { flex: 1 1 auto; }
-            #map { width: 50%; float: right; }
-            .results { width: 48%; float: left; }
-        }
-        @media (max-width: 768px) { h1 { font-size: 1.8em; } h2 { font-size: 1.3em; } .search-tabs { display: block; } .result-table { display: block; overflow-x: auto; } #map { height: 180px; margin-top: 20px; } .plan-card { max-width: 100%; margin: 6px 0; } }
-    </style>
-</head>
-<body>
-    <!-- Hero Section -->
-    <section class="section" style="padding-top: 50px; background: #1A202C; box-shadow: 0 3px 12px rgba(0, 255, 204, 0.3);">
-        <div class="container">
-            <h1>🥷 NovaHunt</h1>
-            <p style="font-size: 1em;">AI-Powered Lead Generation That Hunts for You</p>
-            <p>Redefine B2B success with cutting-edge AI precision.</p>
-            <div style="text-align: center; margin-top: 12px;">
-                <a href="plans.html" class="btn">Get Started</a>
-                <a href="tour-step1.html" class="btn">Take a Tour</a>
-            </div>
-            <p style="font-size: 0.75em; color: #90CDF4;">free credits • No credit card required</p>
-            <div class="test-mode-toggle">
-                <input type="checkbox" id="testMode" onchange="toggleTestMode()">
-                <label for="testMode">Enable Test Mode (Business/Enterprise Access)</label>
-            </div>
-        </div>
-    </section>
+          .toggle-group { display: none; }
+          #map { height: 250px; width: 100%; margin-top: 25px; border: 1px solid #4A5568; border-radius: 5px; }
+          .plans-section { padding: 25px 0; }
+          .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 12px; margin: 8px; text-align: center; max-width: 200px; display: inline-block; vertical-align: top; box-shadow: 0 0 6px #00CCFF; }
+          .plan-card h3 { color: #00FFCC; margin-bottom: 8px; }
+          .plan-card ul { list-style: none; padding: 0; }
+          .plan-card ul li { margin: 6px 0; color: #A0AEC0; }
+          .plan-card .price { font-size: 1.2em; color: #E2E8F0; margin: 8px 0; }
+          .plan-card .btn { margin-top: 10px; }
+          .back-button { text-align: center; margin: 12px 0; }
+          .upgrade-message { text-align: center; margin-top: 12px; color: #FC8181; }
+          .badge { background: #FFCC00; color: #1A202C; padding: 3px 6px; border-radius: 3px; font-size: 0.7em; font-weight: bold; display: inline-block; margin-bottom: 6px; }
+          .test-mode-toggle { text-align: center; margin: 8px 0; }
+          .test-mode-toggle input { margin-right: 5px; }
+          .nav { position: fixed; top: 15px; right: 15px; }
+          @media (min-width: 769px) {
+              .container { max-width: 800px; }
+              .search-tabs { display: flex; flex-direction: row; }
+              .tab-btn { flex: 1 1 auto; }
+              #map { height: 350px; }
+              .results { width: 100%; }
+          }
+          @media (max-width: 768px) { h1 { font-size: 1.8em; } h2 { font-size: 1.3em; } .search-tabs { display: block; } .result-table { display: block; overflow-x: auto; } #map { height: 200px; margin-top: 20px; } .plan-card { max-width: 100%; margin: 6px 0; } }
+      </style>
+  </head>
+  <body>
+      <!-- Hero Section -->
+      <section class="section" style="padding-top: 50px; background: #1A202C; box-shadow: 0 3px 12px rgba(0, 255, 204, 0.3);">
+          <div class="container">
+              <h1>🥷 NovaHunt</h1>
+              <p style="font-size: 1em;">AI-Powered Lead Generation That Hunts for You</p>
+              <p>Redefine B2B success with cutting-edge AI precision.</p>
+              <div style="text-align: center; margin-top: 12px;">
+                  <a href="plans.html" class="btn">Get Started</a>
+                  <a href="tour-step1.html" class="btn">Take a Tour</a>
+              </div>
+              <p style="font-size: 0.75em; color: #90CDF4;">free credits • No credit card required</p>
+              <div class="test-mode-toggle">
+                  <input type="checkbox" id="testMode" onchange="toggleTestMode()">
+                  <label for="testMode">Enable Test Mode (Business/Enterprise Access)</label>
+              </div>
+          </div>
+      </section>
 
-    <!-- Navigation (Auth) -->
-    <div class="nav" id="navLinks"></div>
+      <!-- Navigation (Auth) -->
+      <div class="nav" id="navLinks"></div>
 
-    <!-- Multi-Mode Search Section -->
-    <section class="section">
-        <div class="container">
-            <h2>Search for Leads</h2>
-            <p>Unleash NovaHunt’s power across multiple modes.</p>
-            <div class="search-tabs">
-                <button class="tab-btn active" onclick="switchTab('company')">Hunt Corporate Emails</button>
-                <button class="tab-btn" onclick="switchTab('ai')">Hunt Industry Leads</button>
-                <button class="tab-btn" onclick="switchTab('imports')">Hunt Import Records</button>
-            </div>
-            <div id="company-tab" class="tab-content active">
-                <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., coca-cola.com).</p>
-                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 300px; margin: 0 auto 8px; display: block; padding: 6px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0;">
-                <div id="companyError" class="error" style="display: none;"></div>
-                <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
-                <div id="companyResults" class="results"></div>
-            </div>
-            <div id="ai-tab" class="tab-content">
-                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Companies USA' for live results.</p>
-                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 300px; margin: 0 auto 8px; display: block; padding: 6px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0;">
-                <button class="btn" onclick="searchAI()">Generate Leads</button>
-                <div id="aiResults" class="results"></div>
-            </div>
-            <div id="imports-tab" class="tab-content">
-                <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
-                <p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p>
-                <div class="filter-group">
-                    <select id="countryFilter">
-                        <option value="">All Countries</option>
-                        <option value="China">China</option>
-                        <option value="Vietnam">Vietnam</option>
-                        <option value="USA">USA</option>
-                    </select>
-                    <select id="yearFilter">
-                        <option value="">All Years</option>
-                        <option value="2023">2023</option>
-                        <option value="2022">2022</option>
-                    </select>
-                </div>
-                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 300px; margin: 0 auto 8px; display: block; padding: 6px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0;">
-                <button class="btn" onclick="searchImports()">Find Suppliers</button>
-                <div id="importsResults" class="results"></div>
-                <div id="map"></div>
-            </div>
-        </div>
-    </section>
+      <!-- Multi-Mode Search Section -->
+      <section class="section">
+          <div class="container">
+              <h2>Search for Leads</h2>
+              <p>Unleash NovaHunt’s power across multiple modes.</p>
+              <div class="search-tabs">
+                  <button class="tab-btn active" onclick="switchTab('company')">Hunt Corporate Emails</button>
+                  <button class="tab-btn" onclick="switchTab('ai')">Hunt Industry Leads</button>
+                  <button class="tab-btn" onclick="switchTab('imports')">Hunt Import Records</button>
+              </div>
+              <div id="company-tab" class="tab-content active">
+                  <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., coca-cola.com).</p>
+                  <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 300px; margin: 0 auto 8px; display: block; padding: 6px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0;">
+                  <div id="companyError" class="error" style="display: none;"></div>
+                  <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
+                  <div id="companyResults" class="results"></div>
+              </div>
+              <div id="ai-tab" class="tab-content">
+                  <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Companies USA' for live results.</p>
+                  <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 300px; margin: 0 auto 8px; display: block; padding: 6px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0;">
+                  <button class="btn" onclick="searchAI()">Generate Leads</button>
+                  <div id="aiResults" class="results"></div>
+              </div>
+              <div id="imports-tab" class="tab-content">
+                  <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
+                  <p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p>
+                  <div class="filter-group">
+                      <select id="countryFilter">
+                          <option value="">All Countries</option>
+                          <option value="China">China</option>
+                          <option value="Vietnam">Vietnam</option>
+                          <option value="USA">USA</option>
+                      </select>
+                      <select id="yearFilter">
+                          <option value="">All Years</option>
+                          <option value="2023">2023</option>
+                          <option value="2022">2022</option>
+                      </select>
+                  </div>
+                  <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 300px; margin: 0 auto 8px; display: block; padding: 6px; border: 1px solid #4A5568; border-radius: 3px; background: #1A202C; color: #E2E8F0;">
+                  <button class="btn" onclick="searchImports()">Find Suppliers</button>
+                  <div id="importsResults" class="results"></div>
+                  <div id="map"></div>
+              </div>
+          </div>
+      </section>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script>
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
-            authDomain: "novahunt-web-app-v2.firebaseapp.com",
-            projectId: "novahunt-web-app-v2",
-            storageBucket: "novahunt-web-app-v2.firebasestorage.app",
-            messagingSenderId: "915754711081",
-            appId: "1:915754711081:web:f563cc734c901812954438"
-        };
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+      <!-- Firebase SDK -->
+      <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+      <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+      <script>
+          // Your web app's Firebase configuration
+          const firebaseConfig = {
+              apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
+              authDomain: "novahunt-web-app-v2.firebaseapp.com",
+              projectId: "novahunt-web-app-v2",
+              storageBucket: "novahunt-web-app-v2.firebasestorage.app",
+              messagingSenderId: "915754711081",
+              appId: "1:915754711081:web:f563cc734c901812954438"
+          };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
+          // Initialize Firebase
+          firebase.initializeApp(firebaseConfig);
+          const auth = firebase.auth();
 
-        // Update UI based on auth state
-        function updateUI(user) {
-            const navLinks = document.getElementById('navLinks');
-            if (user) {
-                navLinks.innerHTML = `<div class="user-info">Logged in as: ${user.email}</div><button class="btn" onclick="logout()">Logout</button>`;
-            } else {
-                navLinks.innerHTML = `<a href="login.html" class="btn">Login</a> <a href="signup.html" class="btn">Sign Up</a>`;
-            }
-        }
+          // Update UI based on auth state
+          function updateUI(user) {
+              const navLinks = document.getElementById('navLinks');
+              if (user) {
+                  navLinks.innerHTML = `<div class="user-info">Logged in as: ${user.email}</div><button class="btn" onclick="logout()">Logout</button>`;
+              } else {
+                  navLinks.innerHTML = `<a href="login.html" class="btn">Login</a> <a href="signup.html" class="btn">Sign Up</a>`;
+              }
+          }
 
-        // Logout function
-        function logout() {
-            auth.signOut().then(() => {
-                updateUI(null);
-                alert('Logged out successfully!');
-            }).catch((error) => {
-                alert('Error logging out: ' + error.message);
-            });
-        }
+          // Logout function
+          function logout() {
+              auth.signOut().then(() => {
+                  updateUI(null);
+                  alert('Logged out successfully!');
+              }).catch((error) => {
+                  alert('Error logging out: ' + error.message);
+              });
+          }
 
-        // Monitor auth state
-        auth.onAuthStateChanged((user) => {
-            updateUI(user);
-        });
+          // Monitor auth state
+          auth.onAuthStateChanged((user) => {
+              updateUI(user);
+          });
 
-        let userCredits = 5; // Default credits for logged-in free users
-        let isPremium = false;
-        let isTestMode = false;
+          let userCredits = 5; // Default credits for logged-in free users
+          let isPremium = false;
+          let isTestMode = false;
 
-        // Toggle test mode
-        function toggleTestMode() {
-            isTestMode = !isTestMode;
-            alert(`Test mode ${isTestMode ? 'enabled' : 'disabled'}. Premium features ${isTestMode ? 'available' : 'restricted'}.`);
-        }
+          // Toggle test mode
+          function toggleTestMode() {
+              isTestMode = !isTestMode;
+              alert(`Test mode ${isTestMode ? 'enabled' : 'disabled'}. Premium features ${isTestMode ? 'available' : 'restricted'}.`);
+          }
 
-        let map;
+          let map;
 
-        // Initialize map
-        function initMap() {
-            if (!map) {
-                map = L.map('map').setView([20, 0], 2);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                }).addTo(map);
-                map.getContainer().style.background = '#1A202C';
-            }
-        }
+          // Initialize map
+          function initMap() {
+              if (!map) {
+                  map = L.map('map').setView([20, 0], 2);
+                  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                      maxZoom: 19,
+                      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  }).addTo(map);
+                  map.getContainer().style.background = '#1A202C';
+              }
+          }
 
-        // Tab switching with map refresh
-        function switchTab(tabName) {
-            const tabs = document.querySelectorAll('.tab-btn');
-            const contents = document.querySelectorAll('.tab-content');
-            tabs.forEach(btn => btn.classList.remove('active'));
-            contents.forEach(content => content.classList.remove('active'));
-            document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
-            document.getElementById(`${tabName}-tab`).classList.add('active');
-            if (tabName === 'imports') {
-                initMap();
-                if (map) map.invalidateSize();
-            }
-            console.log(`Switched to ${tabName} tab`);
-        }
+          // Tab switching with map refresh
+          function switchTab(tabName) {
+              const tabs = document.querySelectorAll('.tab-btn');
+              const contents = document.querySelectorAll('.tab-content');
+              tabs.forEach(btn => btn.classList.remove('active'));
+              contents.forEach(content => content.classList.remove('active'));
+              document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
+              document.getElementById(`${tabName}-tab`).classList.add('active');
+              if (tabName === 'imports') {
+                  initMap();
+                  if (map) map.invalidateSize();
+              }
+              console.log(`Switched to ${tabName} tab`);
+          }
 
-        // Ensure tab buttons are clickable on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const tabName = e.target.getAttribute('onclick').match(/switchTab$$ '([^']+)' $$/)[1];
-                    switchTab(tabName);
-                });
-            });
-            // Display welcome message on dashboard load
-            const welcomeMessage = localStorage.getItem('welcomeMessage');
-            if (welcomeMessage) {
-                alert(welcomeMessage);
-                localStorage.removeItem('welcomeMessage');
-            }
-        });
+          // Ensure tab buttons are clickable on page load
+          document.addEventListener('DOMContentLoaded', () => {
+              document.querySelectorAll('.tab-btn').forEach(btn => {
+                  btn.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      const tabName = e.target.getAttribute('onclick').match(/switchTab\('([^']+)'\)/)[1];
+                      switchTab(tabName);
+                  });
+              });
+              // Display welcome message on dashboard load
+              const welcomeMessage = localStorage.getItem('welcomeMessage');
+              if (welcomeMessage) {
+                  alert(welcomeMessage);
+                  localStorage.removeItem('welcomeMessage');
+              }
+          });
 
-        // Company Search with Hunter.io API via AllOrigins Proxy
-        async function searchCompany() {
-            const query = document.getElementById('companyInput').value.trim();
-            const results = document.getElementById('companyResults');
-            const errorDiv = document.getElementById('companyError');
-            errorDiv.style.display = 'none';
+          // Company Search with Hunter.io API via AllOrigins Proxy
+          async function searchCompany() {
+              const query = document.getElementById('companyInput').value.trim();
+              const results = document.getElementById('companyResults');
+              const errorDiv = document.getElementById('companyError');
+              errorDiv.style.display = 'none';
 
-            if (!query.includes('.com') && !query.includes('.org') && !query.includes('.net')) {
-                errorDiv.textContent = 'Incorrect format. Please enter a valid domain (e.g., coca-cola.com).';
-                errorDiv.style.display = 'block';
-                results.innerHTML = '';
-                return;
-            }
+              if (!query.includes('.com') && !query.includes('.org') && !query.includes('.net')) {
+                  errorDiv.textContent = 'Incorrect format. Please enter a valid domain (e.g., coca-cola.com).';
+                  errorDiv.style.display = 'block';
+                  results.innerHTML = '';
+                  return;
+              }
 
-            results.innerHTML = '<div class="loading">Searching...</div>';
-            try {
-                const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a';
-                const proxyUrl = 'https://api.allorigins.win/raw?url=';
-                const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
-                const response = await fetch(proxyUrl + encodeURIComponent(apiUrl));
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                const data = await response.json();
-                if (data.errors) {
-                    throw new Error(data.data.errors[0].message);
-                }
-                const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
-                results.innerHTML = `<p style="color: #A0AEC0;">Found ${mockTotal} emails across departments.</p>`;
+              results.innerHTML = '<div class="loading">Searching...</div>';
+              try {
+                  const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a';
+                  const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                  const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
+                  const response = await fetch(proxyUrl + encodeURIComponent(apiUrl));
+                  if (!response.ok) {
+                      throw new Error(`HTTP error! Status: ${response.status}`);
+                  }
+                  const data = await response.json();
+                  if (data.errors) {
+                      throw new Error(data.data.errors[0].message);
+                  }
+                  const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
+                  results.innerHTML = `<p style="color: #A0AEC0;">Found ${mockTotal} emails across departments.</p>`;
 
-                const emailsByDept = {};
-                data.data.emails.slice(0, 10).forEach(email => {
-                    const dept = email.department || 'Unknown';
-                    if (!emailsByDept[dept]) emailsByDept[dept] = [];
-                    emailsByDept[dept].push(email);
-                });
+                  const emailsByDept = {};
+                  data.data.emails.slice(0, 10).forEach(email => {
+                      const dept = email.department || 'Unknown';
+                      if (!emailsByDept[dept]) emailsByDept[dept] = [];
+                      emailsByDept[dept].push(email);
+                  });
 
-                for (const [dept, emails] of Object.entries(emailsByDept)) {
-                    results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
-                    emails.slice(0, 10).forEach(email => {
-                        const name = email.first_name || email.last_name ? `${email.first_name || ''} ${email.last_name || ''}`.trim() : 'N/A';
-                        const role = email.position || 'N/A';
-                        const confidence = email.confidence || 'N/A';
-                        const maskedEmail = `********@${query.split('.')[0]}.com`;
-                        results.innerHTML += `
-                            <div class="result-item">
-                                <h3>${name}</h3>
-                                <p class="result-desc">Role: ${role}</p>
-                                <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.value}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${confidence}%</p>
-                            </div>
-                        `;
-                    });
-                }
-                if (!isPremium && !isTestMode && auth.currentUser) {
-                    results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
-                }
-            } catch (err) {
-                console.error('API fetch failed:', err);
-                results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data for ${query}...</div>`;
-                const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : 10);
-                results.innerHTML += `<p style="color: #A0AEC0;">Mock data: Found ${mockTotal} emails across departments.</p>`;
-                const mockEmails = [
-                    { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 80 },
-                    { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 },
-                    { name: 'Sarah Lee', role: 'HR Specialist', email: 'sarah.lee@' + query.split('.')[0] + '.com', dept: 'Human Resources', confidence: 70 },
-                    { name: 'Tom Brown', role: 'IT Lead', email: 'tom.brown@' + query.split('.')[0] + '.com', dept: 'IT', confidence: 75 },
-                    { name: 'Emily Davis', role: 'Finance Analyst', email: 'emily.davis@' + query.split('.')[0] + '.com', dept: 'Finance', confidence: 78 },
-                    { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('.')[0] + '.com', dept: 'Product', confidence: 82 },
-                    { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('.')[0] + '.com', dept: 'Operations', confidence: 77 },
-                    { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 73 },
-                    { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 76 },
-                    { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('.')[0] + '.com', dept: 'Executive', confidence: 75 }
-                ];
-                const mockEmailsByDept = {};
-                mockEmails.forEach(email => {
-                    if (!mockEmailsByDept[email.dept]) mockEmailsByDept[email.dept] = [];
-                    mockEmailsByDept[email.dept].push(email);
-                });
-                for (const [dept, emails] of Object.entries(mockEmailsByDept)) {
-                    results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
-                    emails.slice(0, 10).forEach(email => {
-                        const maskedEmail = `********@${query.split('.')[0]}.com`;
-                        results.innerHTML += `
-                            <div class="result-item">
-                                <h3>${email.name}</h3>
-                                <p class="result-desc">Role: ${email.role}</p>
-                                <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.email}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${email.confidence}%</p>
-                            </div>
-                        `;
-                    });
-                }
-                if (!isPremium && !isTestMode && auth.currentUser) {
-                    results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
-                }
-            }
-        }
+                  for (const [dept, emails] of Object.entries(emailsByDept)) {
+                      results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
+                      emails.slice(0, 10).forEach(email => {
+                          const name = email.first_name || email.last_name ? `${email.first_name || ''} ${email.last_name || ''}`.trim() : 'N/A';
+                          const role = email.position || 'N/A';
+                          const confidence = email.confidence || 'N/A';
+                          const maskedEmail = `********@${query.split('.')[0]}.com`;
+                          results.innerHTML += `
+                              <div class="result-item">
+                                  <h3>${name}</h3>
+                                  <p class="result-desc">Role: ${role}</p>
+                                  <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.value}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${confidence}%</p>
+                              </div>
+                          `;
+                      });
+                  }
+                  if (!isPremium && !isTestMode && auth.currentUser) {
+                      results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                  }
+              } catch (err) {
+                  console.error('API fetch failed:', err);
+                  results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data for ${query}...</div>`;
+                  const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : 10);
+                  results.innerHTML += `<p style="color: #A0AEC0;">Mock data: Found ${mockTotal} emails across departments.</p>`;
+                  const mockEmails = [
+                      { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@' + query.split('[0]}.com', dept: 'Marketing', confidence: 80 },
+                      { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('[0]}.com', dept: 'Sales', confidence: 85 },
+                      { name: 'Sarah Lee', role: 'HR Specialist', email: 'sarah.lee@' + query.split('[0]}.com', dept: 'Human Resources', confidence: 70 },
+                      { name: 'Tom Brown', role: 'IT Lead', email: 'tom.brown@' + query.split('[0]}.com', dept: 'IT', confidence: 75 },
+                      { name: 'Emily Davis', role: 'Finance Analyst', email: 'emily.davis@' + query.split('[0]}.com', dept: 'Finance', confidence: 78 },
+                      { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('[0]}.com', dept: 'Product', confidence: 82 },
+                      { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('[0]}.com', dept: 'Operations', confidence: 77 },
+                      { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('[0]}.com', dept: 'Marketing', confidence: 73 },
+                      { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('[0]}.com', dept: 'Sales', confidence: 76 },
+                      { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('[0]}.com', dept: 'Executive', confidence: 75 }
+                  ];
+                  const mockEmailsByDept = {};
+                  mockEmails.forEach(email => {
+                      if (!mockEmailsByDept[email.dept]) mockEmailsByDept[email.dept] = [];
+                      mockEmailsByDept[email.dept].push(email);
+                  });
+                  for (const [dept, emails] of Object.entries(mockEmailsByDept)) {
+                      results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
+                      emails.slice(0, 10).forEach(email => {
+                          const maskedEmail = `********@${query.split('[0]}.com`;
+                          results.innerHTML += `
+                              <div class="result-item">
+                                  <h3>${email.name}</h3>
+                                  <p class="result-desc">Role: ${email.role}</p>
+                                  <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.email}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${email.confidence}%</p>
+                              </div>
+                          `;
+                      });
+                  }
+                  if (!isPremium && !isTestMode && auth.currentUser) {
+                      results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                  }
+              }
+          }
 
-        // Reveal email function
-        function revealEmail(email, button, cost) {
-            if (!auth.currentUser) {
-                alert('Sign up for the Free plan or our Premium plans to reveal emails.');
-                window.location.href = 'signup.html';
-                return;
-            }
-            if (userCredits >= cost) {
-                userCredits -= cost;
-                button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
-                alert(`Email revealed! ${userCredits} credits remaining.`);
-            } else {
-                alert('Not enough credits. Upgrade to reveal more emails.');
-                window.location.href = 'plans.html';
-            }
-        }
+          // Reveal email function
+          function revealEmail(email, button, cost) {
+              if (!auth.currentUser) {
+                  alert('Sign up for the Free plan or our Premium plans to reveal emails.');
+                  window.location.href = 'signup.html';
+                  return;
+              }
+              if (userCredits >= cost) {
+                  userCredits -= cost;
+                  button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
+                  alert(`Email revealed! ${userCredits} credits remaining.`);
+              } else {
+                  alert('Not enough credits. Upgrade to reveal more emails.');
+                  window.location.href = 'plans.html';
+              }
+          }
 
-        // AI Industry Search with OpenCorporates and DuckDuckGo Fallback
-        async function searchAI() {
-            const query = document.getElementById('aiInput').value.trim().toLowerCase().replace('stores', 'companies');
-            const results = document.getElementById('aiResults');
-            results.innerHTML = '<div class="loading">Searching...</div>';
-            if (!query) {
-                results.innerHTML = '<div class="result-item">Enter a query.</div>';
-                return;
-            }
-            try {
-                const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=10`;
-                const ocResponse = await fetch(ocApiUrl);
-                if (!ocResponse.ok) {
-                    throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
-                }
-                const ocData = await ocResponse.json();
-                results.innerHTML = '';
-                if (!ocData.results || ocData.results.companies.length === 0) {
-                    throw new Error('No companies from OpenCorporates');
-                }
-                const totalResults = ocData.results.companies.length;
-                ocData.results.companies.slice(0, 3).forEach(company => {
-                    const name = company.company.name || 'N/A';
-                    const url = company.company.company_number ? `https://opencorporates.com/companies/${company.company.jurisdiction_code}/${company.company.company_number}` : '#';
-                    results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
-                });
-                if (totalResults > 3 && !isPremium && !isTestMode) {
-                    results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${totalResults - 3} Additional Companies</a></div>`;
-                }
-            } catch (err) {
-                console.error('OpenCorporates failed, falling back to DuckDuckGo:', err);
-                try {
-                    const ddApiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent('list of ' + query.replace('companies', '') + ' companies site:*.com -inurl:(signup | login)')}&format=json`;
-                    const ddResponse = await fetch(ddApiUrl);
-                    if (!ddResponse.ok) {
-                        throw new Error(`DuckDuckGo error! Status: ${ddResponse.status}`);
-                    }
-                    const ddData = await ddResponse.json();
-                    results.innerHTML = '';
-                    if (!ddData.RelatedTopics || ddData.RelatedTopics.length === 0) {
-                        results.innerHTML = '<div class="result-item">No companies found. Try a different query (e.g., "Ice Cream Manufacturers" or "Dairy Companies USA").</div>';
-                    } else {
-                        const totalResults = ddData.RelatedTopics.length;
-                        ddData.RelatedTopics.slice(0, 3).forEach(topic => {
-                            const name = topic.Text || 'N/A';
-                            const url = topic.FirstURL || '#';
-                            results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
-                        });
-                        if (totalResults > 3 && !isPremium && !isTestMode) {
-                            results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${totalResults - 3} Additional Companies</a></div>`;
-                        }
-                    }
-                } catch (ddErr) {
-                    results.innerHTML = '<div class="result-item">Error: Both APIs failed. Check console for details.</div>';
-                    console.error('DuckDuckGo fallback failed:', ddErr);
-                }
-            }
-        }
+          // AI Industry Search with OpenCorporates and DuckDuckGo Fallback
+          async function searchAI() {
+              const query = document.getElementById('aiInput').value.trim().toLowerCase().replace('stores', 'companies');
+              const results = document.getElementById('aiResults');
+              results.innerHTML = '<div class="loading">Searching...</div>';
+              if (!query) {
+                  results.innerHTML = '<div class="result-item">Enter a query.</div>';
+                  return;
+              }
+              try {
+                  const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=10`;
+                  const ocResponse = await fetch(ocApiUrl);
+                  if (!ocResponse.ok) {
+                      throw new Error(`OpenCorporates error! Status: ${ocResponse.status}`);
+                  }
+                  const ocData = await ocResponse.json();
+                  results.innerHTML = '';
+                  if (!ocData.results || ocData.results.companies.length === 0) {
+                      throw new Error('No companies from OpenCorporates');
+                  }
+                  const totalResults = ocData.results.companies.length;
+                  ocData.results.companies.slice(0, 3).forEach(company => {
+                      const name = company.company.name || 'N/A';
+                      const url = company.company.company_number ? `https://opencorporates.com/companies/${company.company.jurisdiction_code}/${company.company.company_number}` : '#';
+                      results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
+                  });
+                  if (totalResults > 3 && !isPremium && !isTestMode) {
+                      results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${totalResults - 3} Additional Companies</a></div>`;
+                  }
+              } catch (err) {
+                  console.error('OpenCorporates failed, falling back to DuckDuckGo:', err);
+                  try {
+                      const ddApiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent('list of ' + query.replace('companies', '') + ' companies site:*.com -inurl:(signup | login)')}&format=json`;
+                      const ddResponse = await fetch(ddApiUrl);
+                      if (!ddResponse.ok) {
+                          throw new Error(`DuckDuckGo error! Status: ${ddResponse.status}`);
+                      }
+                      const ddData = await ddResponse.json();
+                      results.innerHTML = '';
+                      if (!ddData.RelatedTopics || ddData.RelatedTopics.length === 0) {
+                          results.innerHTML = '<div class="result-item">No companies found. Try a different query (e.g., "Ice Cream Manufacturers" or "Dairy Companies USA").</div>';
+                      } else {
+                          const totalResults = ddData.RelatedTopics.length;
+                          ddData.RelatedTopics.slice(0, 3).forEach(topic => {
+                              const name = topic.Text || 'N/A';
+                              const url = topic.FirstURL || '#';
+                              results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
+                          });
+                          if (totalResults > 3 && !isPremium && !isTestMode) {
+                              results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${totalResults - 3} Additional Companies</a></div>`;
+                          }
+                      }
+                  } catch (ddErr) {
+                      results.innerHTML = '<div class="result-item">Error: Both APIs failed. Check console for details.</div>';
+                      console.error('DuckDuckGo fallback failed:', ddErr);
+                  }
+              }
+          }
 
-        // Import Records Search
-        let sortDirection = 1;
-        let currentPage = 1;
-        const itemsPerPage = 5;
+          // Import Records Search
+          let sortDirection = 1;
+          let currentPage = 1;
+          const itemsPerPage = 5;
 
-        function sortTable(columnIndex) {
-            const table = document.querySelector('#importsResults table');
-            const rows = Array.from(table.querySelectorAll('tr')).slice(1);
-            rows.sort((a, b) => {
-                const aValue = a.cells[columnIndex].textContent;
-                const bValue = b.cells[columnIndex].textContent;
-                return aValue.localeCompare(bValue, undefined, { numeric: true }) * sortDirection;
-            });
-            rows.forEach(row => table.appendChild(row));
-            sortDirection *= -1;
-            updatePagination();
-            updateMap();
-        }
+          function sortTable(columnIndex) {
+              const table = document.querySelector('#importsResults table');
+              const rows = Array.from(table.querySelectorAll('tr')).slice(1);
+              rows.sort((a, b) => {
+                  const aValue = a.cells[columnIndex].textContent;
+                  const bValue = b.cells[columnIndex].textContent;
+                  return aValue.localeCompare(bValue, undefined, { numeric: true }) * sortDirection;
+              });
+              rows.forEach(row => table.appendChild(row));
+              sortDirection *= -1;
+              updatePagination();
+              updateMap();
+          }
 
-        function updatePagination() {
-            const table = document.querySelector('#importsResults table');
-            const rows = Array.from(table.querySelectorAll('tr')).slice(1);
-            const totalPages = Math.ceil(rows.length / itemsPerPage);
-            const pagination = document.querySelector('.pagination');
-            pagination.innerHTML = '';
-            for (let i = 1; i <= totalPages; i++) {
-                const button = document.createElement('button');
-                button.textContent = i;
-                button.addEventListener('click', () => {
-                    currentPage = i;
-                    displayPage();
-                });
-                if (i === currentPage) button.classList.add('active');
-                pagination.appendChild(button);
-            }
-            displayPage();
-        }
+          function updatePagination() {
+              const table = document.querySelector('#importsResults table');
+              const rows = Array.from(table.querySelectorAll('tr')).slice(1);
+              const totalPages = Math.ceil(rows.length / itemsPerPage);
+              const pagination = document.querySelector('.pagination');
+              pagination.innerHTML = '';
+              for (let i = 1; i <= totalPages; i++) {
+                  const button = document.createElement('button');
+                  button.textContent = i;
+                  button.addEventListener('click', () => {
+                      currentPage = i;
+                      displayPage();
+                  });
+                  if (i === currentPage) button.classList.add('active');
+                  pagination.appendChild(button);
+              }
+              displayPage();
+          }
 
-        function displayPage() {
-            const table = document.querySelector('#importsResults table');
-            const rows = Array.from(table.querySelectorAll('tr')).slice(1);
-            const start = (currentPage - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            rows.forEach((row, index) => {
-                row.style.display = (index >= start && index < end) ? '' : 'none';
-            });
-            updateMap();
-        }
+          function displayPage() {
+              const table = document.querySelector('#importsResults table');
+              const rows = Array.from(table.querySelectorAll('tr')).slice(1);
+              const start = (currentPage - 1) * itemsPerPage;
+              const end = start + itemsPerPage;
+              rows.forEach((row, index) => {
+                  row.style.display = (index >= start && index < end) ? '' : 'none';
+              });
+              updateMap();
+          }
 
-        function updateMap() {
-            if (!map) return;
-            map.eachLayer(layer => {
-                if (layer instanceof L.Marker || layer instanceof L.CircleMarker) map.removeLayer(layer);
-            });
-            const table = document.querySelector('#importsResults table');
-            if (table) {
-                const rows = Array.from(table.querySelectorAll('tr')).slice(1).filter(row => row.style.display !== 'none');
-                if (rows.length > 0) {
-                    rows.forEach(row => {
-                        const country = row.cells[1].textContent.trim();
-                        const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', '')) || 1000;
-                        const supplier = row.cells[0].textContent.trim();
-                        const coords = getCountryCoords(country);
-                        if (coords[0] !== 0 || coords[1] !== 0) {
-                            const radius = Math.min(20, tradeValue / 1000) || 5;
-                            L.circleMarker(coords, {
-                                color: '#00CCFF',
-                                fillColor: '#00CCFF',
-                                fillOpacity: 0.6,
-                                radius: radius
-                            }).addTo(map).bindTooltip(`<b>${supplier}</b><br>Trade Value: $${tradeValue.toLocaleString()}<br>Country: ${country}`, {
-                                permanent: false,
-                                direction: 'top',
-                                className: 'map-tooltip'
-                            }).on('click', () => {
-                                alert(`Supplier: ${supplier}\nTrade Value: $${tradeValue.toLocaleString()}\nCountry: ${country}`);
-                            });
-                        }
-                    });
-                    map.fitBounds(rows.map(row => getCountryCoords(row.cells[1].textContent.trim())).filter(coord => coord[0] !== 0 || coord[1] !== 0));
-                } else {
-                    L.marker([20, 0], { icon: L.divIcon({ className: 'no-data-icon', html: 'No Data' }) }).addTo(map).bindTooltip('No supplier data available for current filters', { direction: 'top', className: 'map-tooltip' });
-                }
-            }
-        }
+          function updateMap() {
+              if (!map) return;
+              map.eachLayer(layer => {
+                  if (layer instanceof L.Marker || layer instanceof L.CircleMarker) map.removeLayer(layer);
+              });
+              const table = document.querySelector('#importsResults table');
+              if (table) {
+                  const rows = Array.from(table.querySelectorAll('tr')).slice(1).filter(row => row.style.display !== 'none');
+                  if (rows.length > 0) {
+                      rows.forEach(row => {
+                          const country = row.cells[1].textContent.trim();
+                          const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', '')) || 1000;
+                          const supplier = row.cells[0].textContent.trim();
+                          const coords = getCountryCoords(country);
+                          if (coords[0] !== 0 || coords[1] !== 0) {
+                              const radius = Math.min(20, tradeValue / 1000) || 5;
+                              L.circleMarker(coords, {
+                                  color: '#00CCFF',
+                                  fillColor: '#00CCFF',
+                                  fillOpacity: 0.6,
+                                  radius: radius
+                              }).addTo(map).bindTooltip(`<b>${supplier}</b><br>Trade Value: $${tradeValue.toLocaleString()}<br>Country: ${country}`, {
+                                  permanent: false,
+                                  direction: 'top',
+                                  className: 'map-tooltip'
+                              }).on('click', () => {
+                                  alert(`Supplier: ${supplier}\nTrade Value: $${tradeValue.toLocaleString()}\nCountry: ${country}`);
+                              });
+                          }
+                      });
+                      map.fitBounds(rows.map(row => getCountryCoords(row.cells[1].textContent.trim())).filter(coord => coord[0] !== 0 || coord[1] !== 0));
+                  } else {
+                      L.marker([20, 0], { icon: L.divIcon({ className: 'no-data-icon', html: 'No Data' }) }).addTo(map).bindTooltip('No supplier data available for current filters', { direction: 'top', className: 'map-tooltip' });
+                  }
+              }
+          }
 
-        // Country coordinates
-        function getCountryCoords(country) {
-            const coords = {
-                'China': [35.8617, 104.1954],
-                'Vietnam': [14.0583, 108.2772],
-                'Mexico': [23.6345, -102.5528],
-                'Brazil': [-14.2350, -51.9253],
-                'Thailand': [15.8700, 100.9925],
-                'India': [20.5937, 78.9629],
-                'USA': [37.0902, -95.7129],
-                'default': [0, 0]
-            };
-            return coords[country] || coords['default'];
-        }
+          // Country coordinates
+          function getCountryCoords(country) {
+              const coords = {
+                  'China': [35.8617, 104.1954],
+                  'Vietnam': [14.0583, 108.2772],
+                  'Mexico': [23.6345, -102.5528],
+                  'Brazil': [-14.2350, -51.9253],
+                  'Thailand': [15.8700, 100.9925],
+                  'India': [20.5937, 78.9629],
+                  'USA': [37.0902, -95.7129],
+                  'default': [0, 0]
+              };
+              return coords[country] || coords['default'];
+          }
 
-        async function searchImports() {
-            const query = document.getElementById('importsInput').value.toLowerCase().trim();
-            const countryFilter = document.getElementById('countryFilter').value;
-            const yearFilter = document.getElementById('yearFilter').value;
-            const results = document.getElementById('importsResults');
-            results.innerHTML = '<div class="loading">Searching...</div>';
+          async function searchImports() {
+              const query = document.getElementById('importsInput').value.toLowerCase().trim();
+              const countryFilter = document.getElementById('countryFilter').value;
+              const yearFilter = document.getElementById('yearFilter').value;
+              const results = document.getElementById('importsResults');
+              results.innerHTML = '<div class="loading">Searching...</div>';
 
-            if (!query) {
-                results.innerHTML = '<div class="result-item">Enter a company name.</div>';
-                return;
-            }
+              if (!query) {
+                  results.innerHTML = '<div class="result-item">Enter a company name.</div>';
+                  return;
+              }
 
-            useMockImports(query, countryFilter, yearFilter, results);
-        }
+              useMockImports(query, countryFilter, yearFilter, results);
+          }
 
-        function useMockImports(query, countryFilter, yearFilter, results) {
-            const mockSuppliers = {
-                'microsoft': [
-                    { supplier: 'Tech Supply Inc.', country: 'USA', tradeValue: '$8000', year: '2023', product: 'Software Components' }
-                ],
-                'acme imports': [
-                    { supplier: 'Global Supply Co.', country: 'China', tradeValue: '$5000', year: '2023', product: 'Machinery Parts' },
-                    { supplier: 'East Trade Ltd.', country: 'Vietnam', tradeValue: '$3000', year: '2022', product: 'Machinery Parts' }
-                ],
-                'coca-cola': [
-                    { supplier: 'Beverage Logistics Inc.', country: 'Mexico', tradeValue: '$10000', year: '2023', product: 'Soft Drinks' },
-                    { supplier: 'Sweet Water Suppliers', country: 'Brazil', tradeValue: '$7500', year: '2022', product: 'Soft Drinks' },
-                    { supplier: 'Pacific Beverage Corp.', country: 'China', tradeValue: '$6000', year: '2023', product: 'Soft Drinks' }
-                ],
-                'monsterenergy': [
-                    { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023', product: 'Energy Drinks' },
-                    { supplier: 'Asia Energy Import', country: 'India', tradeValue: '$2500', year: '2022', product: 'Energy Drinks' }
-                ],
-                'pepsi cola': [
-                    { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
-                ],
-                'default': [
-                    { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
-                ]
-            };
+          function useMockImports(query, countryFilter, yearFilter, results) {
+              const mockSuppliers = {
+                  'microsoft': [
+                      { supplier: 'Tech Supply Inc.', country: 'USA', tradeValue: '$8000', year: '2023', product: 'Software Components' }
+                  ],
+                  'acme imports': [
+                      { supplier: 'Global Supply Co.', country: 'China', tradeValue: '$5000', year: '2023', product: 'Machinery Parts' },
+                      { supplier: 'East Trade Ltd.', country: 'Vietnam', tradeValue: '$3000', year: '2022', product: 'Machinery Parts' }
+                  ],
+                  'coca-cola': [
+                      { supplier: 'Beverage Logistics Inc.', country: 'Mexico', tradeValue: '$10000', year: '2023', product: 'Soft Drinks' },
+                      { supplier: 'Sweet Water Suppliers', country: 'Brazil', tradeValue: '$7500', year: '2022', product: 'Soft Drinks' },
+                      { supplier: 'Pacific Beverage Corp.', country: 'China', tradeValue: '$6000', year: '2023', product: 'Soft Drinks' }
+                  ],
+                  'monsterenergy': [
+                      { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023', product: 'Energy Drinks' },
+                      { supplier: 'Asia Energy Import', country: 'India', tradeValue: '$2500', year: '2022', product: 'Energy Drinks' }
+                  ],
+                  'pepsi cola': [
+                      { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
+                  ],
+                  'default': [
+                      { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
+                  ]
+              };
 
-            const suppliers = mockSuppliers[query] || mockSuppliers['default'];
-            let tableHTML = `
-                <div class="summary-box">Trade Insights for ${query.toUpperCase()} | Last Updated: ${new Date().toLocaleDateString()}</div>
-                <table class="result-table">
-                    <tr>
-                        <th onclick="sortTable(0)">Supplier</th>
-                        <th onclick="sortTable(1)">Country</th>
-                        <th onclick="sortTable(2)">Trade Value</th>
-                        <th onclick="sortTable(3)">Year</th>
-                        <th onclick="sortTable(4)">Product</th>
-                        <th>Action</th>
-                    </tr>
-            `;
-            const filteredSuppliers = suppliers.filter(supplier => {
-                const matchesCountry = !countryFilter || supplier.country === countryFilter;
-                const matchesYear = !yearFilter || supplier.year === yearFilter;
-                return matchesCountry && matchesYear;
-            });
-            const totalResults = filteredSuppliers.length;
+              const suppliers = mockSuppliers[query] || mockSuppliers['default'];
+              let tableHTML = `
+                  <div class="summary-box">Trade Insights for ${query.toUpperCase()} | Last Updated: ${new Date().toLocaleDateString()}</div>
+                  <table class="result-table">
+                      <tr>
+                          <th onclick="sortTable(0)">Supplier</th>
+                          <th onclick="sortTable(1)">Country</th>
+                          <th onclick="sortTable(2)">Trade Value</th>
+                          <th onclick="sortTable(3)">Year</th>
+                          <th onclick="sortTable(4)">Product</th>
+                          <th>Action</th>
+                      </tr>
+              `;
+              const filteredSuppliers = suppliers.filter(supplier => {
+                  const matchesCountry = !countryFilter || supplier.country === countryFilter;
+                  const matchesYear = !yearFilter || supplier.year === yearFilter;
+                  return matchesCountry && matchesYear;
+              });
+              const totalResults = filteredSuppliers.length;
 
-            if (filteredSuppliers.length > 0) {
-                filteredSuppliers.slice(0, 3).forEach(supplier => {
-                    tableHTML += `
-                        <tr>
-                            <td>${supplier.supplier}</td>
-                            <td>${supplier.country}</td>
-                            <td>${supplier.tradeValue}</td>
-                            <td>${supplier.year}</td>
-                            <td>${supplier.product}</td>
-                            <td><button class="btn premium" onclick="viewReport()">View Report (Premium)</button></td>
-                        </tr>
-                    `;
-                });
-            } else {
-                tableHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
-            }
-            tableHTML += '</table>';
-            if (filteredSuppliers.length > 3 && !isPremium && !isTestMode) {
-                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing 3 of ${totalResults} results</p><div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${totalResults - 3} Additional Suppliers</a></div>`;
-            } else if (filteredSuppliers.length > 0) {
-                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${filteredSuppliers.length} of ${totalResults} results</p>`;
-            }
-            results.innerHTML = tableHTML;
-            updatePagination();
-            updateMap();
-        }
+              if (filteredSuppliers.length > 0) {
+                  filteredSuppliers.slice(0, 3).forEach(supplier => {
+                      tableHTML += `
+                          <tr>
+                              <td>${supplier.supplier}</td>
+                              <td>${supplier.country}</td>
+                              <td>${supplier.tradeValue}</td>
+                              <td>${supplier.year}</td>
+                              <td>${supplier.product}</td>
+                              <td><button class="btn premium" onclick="viewReport()">View Report (Premium)</button></td>
+                          </tr>
+                      `;
+                  });
+              } else {
+                  tableHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
+              }
+              tableHTML += '</table>';
+              if (filteredSuppliers.length > 3 && !isPremium && !isTestMode) {
+                  tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing 3 of ${totalResults} results</p><div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${totalResults - 3} Additional Suppliers</a></div>`;
+              } else if (filteredSuppliers.length > 0) {
+                  tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${filteredSuppliers.length} of ${totalResults} results</p>`;
+              }
+              results.innerHTML = tableHTML;
+              updatePagination();
+              updateMap();
+          }
 
-        // View Report function
-        function viewReport() {
-            if (!isPremium && !isTestMode) {
-                alert('This feature requires a Business/Enterprise plan. Upgrade to access full reports.');
-                window.location.href = 'plans.html';
-            } else {
-                alert('Full report available! (Placeholder - implement premium content here)');
-            }
-        }
-    </script>
-    <style>
-        .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 3px; padding: 3px; }
-        .no-data-icon { background: #FC8181; color: #E2E8F0; padding: 3px; border-radius: 50%; text-align: center; }
-    </style>
-</body>
-</html>
+          // View Report function
+          function viewReport() {
+              if (!isPremium && !isTestMode) {
+                  alert('This feature requires a Business/Enterprise plan. Upgrade to access full reports.');
+                  window.location.href = 'plans.html';
+              } else {
+                  alert('Full report available! (Placeholder - implement premium content here)');
+              }
+          }
+      </script>
+      <style>
+          .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 3px; padding: 3px; }
+          .no-data-icon { background: #FC8181; color: #E2E8F0; padding: 3px; border-radius: 50%; text-align: center; }
+      </style>
+  </body>
+  </html>
