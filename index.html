@@ -10,18 +10,18 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1A202C 0%, #2D3748 100%); color: #E2E8F0; line-height: 1.6; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
         .section { padding: 60px 0; }
         h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
         h2 { font-size: 2em; font-weight: 700; color: #E2E8F0; margin-bottom: 20px; text-align: center; }
         p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
-        .btn { background: linear-gradient(45deg, #00FFCC, #00CCFF); color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
+        .btn { background: #00FFCC; color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
         .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
-        .btn-primary { background: linear-gradient(45deg, #00FFCC, #00CCFF); color: #1A202C; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
+        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
         .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 20px; justify-content: center; }
         .tab-btn { flex: 1; padding: 12px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
-        .tab-btn.active { background: linear-gradient(45deg, #00FFCC, #00CCFF); color: #1A202C; }
+        .tab-btn.active { background: #00FFCC; color: #1A202C; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .results { margin-top: 20px; }
@@ -32,7 +32,7 @@
         .result-table td { background: #2D3748; }
         .result-table .premium { color: #1A202C; font-style: italic; background: #00FFCC; padding: 5px 10px; border-radius: 4px; text-align: center; }
         .loading { color: #90CDF4; font-style: italic; text-align: center; }
-        .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00CCFF; }
+        .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00FFCC; }
         .pagination { text-align: center; margin-top: 10px; }
         .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
         .pagination button:hover { background: #718096; }
@@ -43,9 +43,9 @@
         .filter-group { margin-bottom: 10px; display: flex; gap: 10px; justify-content: center; }
         .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
         .toggle-group { display: none; }
-        #map { height: 400px; width: 100%; margin-top: 40px; border: 2px solid #00CCFF; border-radius: 6px; }
+        #map { height: 400px; width: 100%; margin-top: 40px; border: 2px solid #00FFCC; border-radius: 6px; }
         .plans-section { padding: 40px 0; }
-        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00CCFF; }
+        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00FFCC; }
         .plan-card h3 { color: #00FFCC; margin-bottom: 10px; }
         .plan-card ul { list-style: none; padding: 0; }
         .plan-card ul li { margin: 10px 0; color: #A0AEC0; }
@@ -57,7 +57,7 @@
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
         .nav { position: fixed; top: 20px; right: 20px; }
-        .tour-btn { position: fixed; bottom: 20px; right: 20px; background: linear-gradient(45deg, #00FFCC, #00CCFF); color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
+        .tour-btn { position: fixed; bottom: 20px; right: 20px; background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
         .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
         @media (max-width: 768px) {
             h1 { font-size: 2em; }
@@ -73,7 +73,7 @@
 </head>
 <body>
     <!-- Hero Section -->
-    <section class="section" style="padding-top: 80px; background: linear-gradient(135deg, #1A202C 0%, #2D3748 50%); box-shadow: 0 4px 20px rgba(0, 255, 204, 0.3);">
+    <section class="section" style="padding-top: 80px; background: #1A202C; box-shadow: 0 4px 20px rgba(0, 255, 204, 0.3);">
         <div class="container">
             <h1>🥷 NovaHunt</h1>
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
@@ -145,6 +145,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
     <script>
+        // Initialize variables at the top
+        let userCredits = 5; // Default credits for logged-in free users
+        let isPremium = false;
+        let isTestMode = false;
+
         // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
@@ -165,7 +170,7 @@
             if (user) {
                 navLinks.innerHTML = `<div class="user-info">Logged in as: ${user.email}</div><button class="btn" onclick="logout()">Logout</button>`;
             } else {
-                navLinks.innerHTML = `<a href="login.html" class="btn">Login</a> <a href="signup.html" class="btn">Sign Up</a>`;
+                navLinks.innerHTML = `<a href="login.html" class="btn">Sign In</a> <a href="signup.html" class="btn">Sign Up</a>`;
             }
         }
 
@@ -183,10 +188,6 @@
         auth.onAuthStateChanged((user) => {
             updateUI(user);
         });
-
-        let userCredits = 5; // Default credits for logged-in free users
-        let isPremium = false;
-        let isTestMode = false;
 
         // Toggle test mode
         function toggleTestMode() {
@@ -226,7 +227,7 @@
 
         // Initialize map
         function initMap() {
-            map = L.map('map').setView([20, 0], 2);
+            map = L.map('map', { preferCanvas: true }).setView([20, 0], 2);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -359,7 +360,7 @@
                 button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
                 alert(`Email revealed! ${userCredits} credits remaining.`);
             } else if (!auth.currentUser) {
-                alert('Please sign in to use the Reveal function. <a href="login.html">Login</a> or <a href="signup.html">Sign Up</a> for a Free plan.');
+                alert('Please sign in to use the Reveal function. <a href="login.html">Sign In</a> or <a href="signup.html">Sign Up</a> for a Free plan.');
             } else {
                 alert('Not enough credits. Upgrade to reveal more emails.');
                 window.location.href = 'plans.html';
@@ -409,7 +410,14 @@
                     const ddData = await ddResponse.json();
                     results.innerHTML = '';
                     if (!ddData.RelatedTopics || ddData.RelatedTopics.length === 0) {
-                        results.innerHTML = '<div class="result-item">No companies found. Try a different query (e.g., adjust location or industry).</div>';
+                        results.innerHTML = '<div class="result-item">No companies found. Showing mock data for ' + query + '...</div>';
+                        const mockCompanies = [
+                            { name: 'Ice Cream Co. USA', url: 'https://example.com/icecreamusa' },
+                            { name: 'Frosty Treats Inc.', url: 'https://example.com/frostytreats' }
+                        ];
+                        mockCompanies.forEach(company => {
+                            results.innerHTML += `<div class="result-item"><h3>${company.name}</h3><a href="${company.url}" target="_blank" class="btn">View Profile</a></div>`;
+                        });
                     } else {
                         ddData.RelatedTopics.slice(0, 2).forEach(topic => {
                             const name = topic.Text || 'N/A';
@@ -421,7 +429,14 @@
                         }
                     }
                 } catch (ddErr) {
-                    results.innerHTML = '<div class="result-item">Error: Both APIs failed. Check console for details.</div>';
+                    results.innerHTML = '<div class="result-item">Error: Both APIs failed. Showing mock data for ' + query + '...</div>';
+                    const mockCompanies = [
+                        { name: 'Ice Cream Co. USA', url: 'https://example.com/icecreamusa' },
+                        { name: 'Frosty Treats Inc.', url: 'https://example.com/frostytreats' }
+                    ];
+                    mockCompanies.forEach(company => {
+                        results.innerHTML += `<div class="result-item"><h3>${company.name}</h3><a href="${company.url}" target="_blank" class="btn">View Profile</a></div>`;
+                    });
                     console.error('DuckDuckGo fallback failed:', ddErr);
                 }
             }
@@ -630,7 +645,6 @@
         // Tour function (placeholder)
         function startTour() {
             alert('Tour starting! This is a placeholder. Steps will guide you through NovaHunt features.');
-            // Implement tour logic here (e.g., using a library like Intro.js)
         }
 
         // Smooth scroll for CTAs
