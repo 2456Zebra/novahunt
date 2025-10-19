@@ -140,6 +140,11 @@
     <!-- Tour Button -->
     <button class="tour-btn" onclick="startTour()">Take a Tour</button>
 
+    <!-- Footer -->
+    <footer style="text-align: center; padding: 20px 0; color: #A0AEC0; font-size: 0.9em;">
+        © 2025 NovaHunt.ai | All rights reserved | <a href="terms.html" style="color: #90CDF4; text-decoration: none;">Terms of Service</a> | <a href="privacy.html" style="color: #90CDF4; text-decoration: none;">Privacy Policy</a> | <a href="faq.html" style="color: #90CDF4; text-decoration: none;">FAQ</a>
+    </footer>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -203,13 +208,11 @@
             const importsTab = document.getElementById('imports-tab');
             const user = auth.currentUser;
             if (!isTestMode && !user && !isPremium) {
-                aiTab.innerHTML = '<div class="upgrade-message">This section is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                importsTab.innerHTML = '<div class="upgrade-message">This section is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                aiTab.classList.remove('active');
-                importsTab.classList.remove('active');
+                aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"><div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div></div>';
+                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"><div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div></div><div id="map"><div style="text-align: center; color: #A0AEC0; padding: 180px 0;">Awaiting Search Results To Display Map</div></div>';
             } else {
                 aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
-                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"></div>';
+                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div style="text-align: center; color: #A0AEC0; padding: 180px 0;">Awaiting Search Results To Display Map</div></div>';
             }
         }
 
@@ -225,7 +228,7 @@
             initMap();
         });
 
-        // Initialize map
+        // Initialize map with placeholder
         function initMap() {
             if (!map) {
                 map = L.map('map', { preferCanvas: true }).setView([20, 0], 2);
@@ -234,6 +237,7 @@
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 }).addTo(map);
                 map.getContainer().style.background = '#1A202C';
+                const placeholder = L.marker([20, 0], { icon: L.divIcon({ className: 'map-placeholder', html: '<div style="color: #A0AEC0;">Awaiting Search Results To Display Map</div>' }) }).addTo(map);
             } else {
                 map.invalidateSize();
             }
@@ -378,10 +382,6 @@
                 results.innerHTML = '<div class="result-item">Enter a query.</div>';
                 return;
             }
-            if (!isTestMode && !auth.currentUser && !isPremium) {
-                results.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                return;
-            }
             try {
                 const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
                 const ocResponse = await fetch(ocApiUrl);
@@ -398,9 +398,7 @@
                     const url = company.company.company_number ? `https://opencorporates.com/companies/${company.company.jurisdiction_code}/${company.company.company_number}` : '#';
                     results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                 });
-                if (!isPremium && !isTestMode) {
-                    results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${ocData.results.companies.length - 2} Additional Companies</a></div>`;
-                }
+                results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${ocData.results.companies.length - 2} Additional Companies</a></div>`;
             } catch (err) {
                 console.error('OpenCorporates failed, falling back to DuckDuckGo:', err);
                 try {
@@ -420,15 +418,14 @@
                         mockCompanies.forEach(company => {
                             results.innerHTML += `<div class="result-item"><h3>${company.name}</h3><a href="${company.url}" target="_blank" class="btn">View Profile</a></div>`;
                         });
+                        results.innerHTML += '<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All 142 Additional Companies</a></div>';
                     } else {
                         ddData.RelatedTopics.slice(0, 2).forEach(topic => {
                             const name = topic.Text || 'N/A';
                             const url = topic.FirstURL || '#';
                             results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                         });
-                        if (!isPremium && !isTestMode) {
-                            results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${ddData.RelatedTopics.length - 2} Additional Companies</a></div>`;
-                        }
+                        results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${ddData.RelatedTopics.length - 2} Additional Companies</a></div>`;
                     }
                 } catch (ddErr) {
                     results.innerHTML = '<div class="result-item">Error: Both APIs failed. Showing mock data for ' + query + '...</div>';
@@ -439,6 +436,7 @@
                     mockCompanies.forEach(company => {
                         results.innerHTML += `<div class="result-item"><h3>${company.name}</h3><a href="${company.url}" target="_blank" class="btn">View Profile</a></div>`;
                     });
+                    results.innerHTML += '<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All 142 Additional Companies</a></div>';
                     console.error('DuckDuckGo fallback failed:', ddErr);
                 }
             }
@@ -556,10 +554,6 @@
                 results.innerHTML = '<div class="result-item">Enter a company name.</div>';
                 return;
             }
-            if (!isTestMode && !auth.currentUser && !isPremium) {
-                results.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                return;
-            }
 
             useMockImports(query, countryFilter, yearFilter, results);
         }
@@ -607,7 +601,7 @@
             });
             const totalResults = suppliers.length;
 
-            if (filteredSuppliers.length > 0) {
+            if (filteredSuppliers.length > 0 && (isTestMode || auth.currentUser || isPremium)) {
                 filteredSuppliers.slice(0, 3).forEach(supplier => {
                     tableHTML += `
                         <tr>
@@ -620,15 +614,14 @@
                         </tr>
                     `;
                 });
+                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${Math.min(3, filteredSuppliers.length)} of ${totalResults} results</p>`;
+                if (totalResults > 3) {
+                    tableHTML += `<div class="premium-note">Upgrade to see all ${totalResults} results</div><div class="pagination"></div>`;
+                }
             } else {
                 tableHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
             }
             tableHTML += '</table>';
-            if (filteredSuppliers.length > itemsPerPage) {
-                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${itemsPerPage} of ${totalResults} results</p><div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${totalResults - 3} Additional Suppliers</a></div><div class="pagination"></div>`;
-            } else if (filteredSuppliers.length > 0) {
-                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${filteredSuppliers.length} of ${totalResults} results</p><div class="pagination"></div>`;
-            }
             results.innerHTML = tableHTML;
             updatePagination();
             updateMap();
@@ -644,9 +637,26 @@
             }
         }
 
-        // Tour function (placeholder)
+        // Tour function with basic steps
         function startTour() {
-            alert('Tour starting! This is a placeholder. Steps will guide you through NovaHunt features.');
+            let step = 1;
+            const steps = [
+                "Welcome to NovaHunt! This tour will guide you through key features.",
+                "Use the 'Hunt Corporate Emails' tab to find emails by domain.",
+                "Try 'Hunt Industry Leads' for industry-specific leads.",
+                "Explore 'Hunt Import Records' for supplier data with the map.",
+                "Toggle 'Test Mode' to access premium features for testing.",
+                "End of tour! Sign in or upgrade for full access."
+            ];
+            alert(steps[step - 1]);
+            const interval = setInterval(() => {
+                if (step < steps.length) {
+                    step++;
+                    alert(steps[step - 1]);
+                } else {
+                    clearInterval(interval);
+                }
+            }, 3000);
         }
 
         // Smooth scroll for CTAs
@@ -661,6 +671,7 @@
     <style>
         .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 4px; padding: 5px; }
         .no-data-icon { background: #FC8181; color: #E2E8F0; padding: 5px; border-radius: 50%; text-align: center; }
+        .map-placeholder { text-align: center; padding: 180px 0; color: #A0AEC0; }
     </style>
 </body>
 </html>
