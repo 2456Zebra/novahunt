@@ -11,67 +11,67 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-        .section { padding: 60px 0; }
-        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
-        h2 { font-size: 2em; font-weight: 700; color: #E2E8F0; margin-bottom: 20px; text-align: center; }
-        p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0 15px; }
+        .section { padding: 40px 0; }
+        h1 { font-size: 2.5em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
+        h2 { font-size: 1.8em; font-weight: 700; color: #E2E8F0; margin-bottom: 15px; text-align: center; }
+        p { font-size: 1em; color: #A0AEC0; margin-bottom: 15px; text-align: center; }
         .btn { background: #00FFCC; color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
         .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
-        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
-        .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 12px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
+        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1.1em; padding: 12px 25px; border-radius: 6px; }
+        .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 10px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 0.9em; transition: background 0.3s; }
         .tab-btn.active { background: #00FFCC; color: #1A202C; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .results { margin-top: 20px; }
+        .results { margin-top: 15px; }
         .result-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .result-table th, .result-table td { padding: 10px; text-align: left; border-bottom: 1px solid #4A5568; word-wrap: break-word; }
+        .result-table th, .result-table td { padding: 8px; text-align: left; border-bottom: 1px solid #4A5568; word-wrap: break-word; }
         .result-table th { background: #2D3748; font-weight: 600; color: #E2E8F0; cursor: pointer; }
         .result-table th:hover { background: #4A5568; }
         .result-table td { background: #2D3748; }
-        .result-table .premium { color: #1A202C; font-style: italic; background: #00FFCC; padding: 5px 10px; border-radius: 4px; text-align: center; }
+        .result-table .premium { color: #1A202C; font-style: italic; background: #00FFCC; padding: 5px 8px; border-radius: 4px; text-align: center; }
         .loading { color: #90CDF4; font-style: italic; text-align: center; }
-        .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00FFCC; }
+        .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 12px; margin-bottom: 15px; box-shadow: 0 0 8px #00FFCC; }
         .pagination { text-align: center; margin-top: 10px; }
-        .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
+        .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 4px; padding: 4px 8px; margin: 0 4px; cursor: pointer; }
         .pagination button:hover { background: #718096; }
         .pagination button.active { background: #00FFCC; color: #1A202C; }
-        .department-header { font-size: 1.2em; font-weight: 600; color: #E2E8F0; margin: 10px 0 5px; }
-        .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; padding-bottom: 20px; }
-        .error { color: #FC8181; font-size: 1em; margin-top: 10px; text-align: center; font-weight: bold; padding: 10px; background: #2D3748; border-radius: 4px; }
+        .department-header { font-size: 1.1em; font-weight: 600; color: #E2E8F0; margin: 8px 0 4px; }
+        .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; padding-bottom: 15px; }
+        .error { color: #FC8181; font-size: 0.9em; margin-top: 10px; text-align: center; font-weight: bold; padding: 8px; background: #2D3748; border-radius: 4px; }
         .filter-group { margin-bottom: 10px; }
-        .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
+        .filter-group select { padding: 6px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
         .toggle-group { display: none; }
-        #map { height: 300px; width: 100%; margin-top: 40px; border: 1px solid #4A5568; border-radius: 6px; }
-        .plans-section { padding: 40px 0; }
-        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00FFCC; }
+        #map { height: 250px; width: 100%; margin-top: 30px; border: 1px solid #4A5568; border-radius: 6px; }
+        .plans-section { padding: 30px 0; }
+        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin: 10px; text-align: center; max-width: 220px; display: inline-block; vertical-align: top; box-shadow: 0 0 8px #00FFCC; }
         .plan-card h3 { color: #00FFCC; margin-bottom: 10px; }
         .plan-card ul { list-style: none; padding: 0; }
-        .plan-card ul li { margin: 10px 0; color: #A0AEC0; }
-        .plan-card .price { font-size: 1.5em; color: #E2E8F0; margin: 10px 0; }
-        .plan-card .btn { margin-top: 15px; }
-        .back-button { text-align: center; margin: 20px 0; }
-        .upgrade-message { text-align: center; margin-top: 20px; color: #FC8181; }
-        .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
+        .plan-card ul li { margin: 8px 0; color: #A0AEC0; }
+        .plan-card .price { font-size: 1.3em; color: #E2E8F0; margin: 10px 0; }
+        .plan-card .btn { margin-top: 12px; }
+        .back-button { text-align: center; margin: 15px 0; }
+        .upgrade-message { text-align: center; margin-top: 15px; color: #FC8181; }
+        .badge { background: #FFCC00; color: #1A202C; padding: 3px 6px; border-radius: 4px; font-size: 0.7em; font-weight: bold; display: inline-block; margin-bottom: 8px; }
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
-        .nav { position: fixed; top: 20px; right: 20px; }
-        @media (max-width: 768px) { h1 { font-size: 2em; } h2 { font-size: 1.5em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 250px; margin-top: 30px; } .plan-card { max-width: 100%; margin: 10px 0; } }
+        .nav { position: fixed; top: 15px; right: 15px; }
+        @media (max-width: 768px) { h1 { font-size: 1.8em; } h2 { font-size: 1.3em; } .search-tabs { flex-direction: column; } .result-table { display: block; overflow-x: auto; } #map { height: 200px; margin-top: 25px; } .plan-card { max-width: 100%; margin: 8px 0; } }
     </style>
 </head>
 <body>
     <!-- Hero Section -->
-    <section class="section" style="padding-top: 80px; background: #1A202C; box-shadow: 0 4px 20px rgba(0, 255, 204, 0.3);">
+    <section class="section" style="padding-top: 60px; background: #1A202C; box-shadow: 0 3px 15px rgba(0, 255, 204, 0.3);">
         <div class="container">
             <h1>🥷 NovaHunt</h1>
-            <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
+            <p style="font-size: 1.1em;">AI-Powered Lead Generation That Hunts for You</p>
             <p>Redefine B2B success with cutting-edge AI precision.</p>
-            <div style="text-align: center; margin-top: 20px;">
+            <div style="text-align: center; margin-top: 15px;">
                 <a href="plans.html" class="btn">Get Started</a>
-                <a href="tour.html" class="btn">Take a Tour</a>
+                <a href="tour-step1.html" class="btn">Take a Tour</a>
             </div>
-            <p style="font-size: 0.9em; color: #90CDF4;">free credits • No credit card required</p>
+            <p style="font-size: 0.8em; color: #90CDF4;">free credits • No credit card required</p>
             <div class="test-mode-toggle">
                 <input type="checkbox" id="testMode" onchange="toggleTestMode()">
                 <label for="testMode">Enable Test Mode (Business/Enterprise Access)</label>
@@ -94,14 +94,14 @@
             </div>
             <div id="company-tab" class="tab-content active">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., coca-cola.com).</p>
-                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 350px; margin: 0 auto 10px; display: block; padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <div id="companyError" class="error" style="display: none;"></div>
                 <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
                 <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Companies USA' for live results.</p>
-                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 350px; margin: 0 auto 10px; display: block; padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <button class="btn" onclick="searchAI()">Generate Leads</button>
                 <div id="aiResults" class="results"></div>
             </div>
@@ -121,7 +121,7 @@
                         <option value="2022">2022</option>
                     </select>
                 </div>
-                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 350px; margin: 0 auto 10px; display: block; padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <button class="btn" onclick="searchImports()">Find Suppliers</button>
                 <div id="importsResults" class="results"></div>
                 <div id="map"></div>
@@ -468,9 +468,9 @@
                         if (coords[0] !== 0 || coords[1] !== 0) {
                             const radius = Math.min(20, tradeValue / 1000) || 5;
                             L.circleMarker(coords, {
-                                color: '#00FFCC',
-                                fillColor: '#00FFCC',
-                                fillOpacity: 0.5,
+                                color: '#00CCFF', // Changed to blue
+                                fillColor: '#00CCFF',
+                                fillOpacity: 0.6,
                                 radius: radius
                             }).addTo(map).bindTooltip(`<b>${supplier}</b><br>Trade Value: $${tradeValue.toLocaleString()}<br>Country: ${country}`, {
                                 permanent: false,
@@ -602,8 +602,8 @@
         }
     </script>
     <style>
-        .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 4px; padding: 5px; }
-        .no-data-icon { background: #FC8181; color: #E2E8F0; padding: 5px; border-radius: 50%; text-align: center; }
+        .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 4px; padding: 4px; }
+        .no-data-icon { background: #FC8181; color: #E2E8F0; padding: 4px; border-radius: 50%; text-align: center; }
     </style>
 </body>
 </html>
