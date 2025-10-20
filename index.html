@@ -115,25 +115,7 @@
                 <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>
             </div>
             <div id="imports-tab" class="tab-content">
-                <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
-                <p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p>
-                <div class="filter-group">
-                    <select id="countryFilter">
-                        <option value="">All Countries</option>
-                        <option value="China">China</option>
-                        <option value="Vietnam">Vietnam</option>
-                        <option value="USA">USA</option>
-                    </select>
-                    <select id="yearFilter">
-                        <option value="">All Years</option>
-                        <option value="2023">2023</option>
-                        <option value="2022">2022</option>
-                    </select>
-                </div>
-                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
-                <button class="btn" onclick="searchImports()">Find Suppliers</button>
-                <div id="importsResults" class="results"></div>
-                <div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>
+                <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>
             </div>
         </div>
     </section>
@@ -222,13 +204,10 @@
             const aiTab = document.getElementById('ai-tab');
             const importsTab = document.getElementById('imports-tab');
             const user = auth.currentUser;
-            if (!isTestMode && !user && !isPremium) {
+            if (!isTestMode && (!user || !isPremium)) {
                 aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
                 importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-            } else if (!isTestMode && user && !isPremium) {
-                aiTab.innerHTML = '<div class="upgrade-message">This feature requires a Business/Enterprise plan. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                importsTab.innerHTML = '<div class="upgrade-message">This feature requires a Business/Enterprise plan. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-            } else {
+            } else if (isTestMode || (user && isPremium)) {
                 aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
                 importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>';
             }
@@ -271,7 +250,7 @@
             contents.forEach(content => content.classList.remove('active'));
             button.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
-            if (tabName === 'imports') {
+            if (tabName === 'imports' && (isTestMode || (auth.currentUser && isPremium))) {
                 initMap();
                 if (document.getElementById('importsResults').innerHTML.includes('table')) updateMap();
             }
