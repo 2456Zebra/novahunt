@@ -77,7 +77,7 @@
                 // Check if email is already in use
                 const methods = await fetchSignInMethodsForEmail(auth, email);
                 if (methods.length > 0) {
-                    signupError.textContent = 'Email already in use. Please log in.';
+                    signupError.textContent = 'Email already in use. Please log in or use a different email.';
                     signupError.style.display = 'block';
                     return;
                 }
@@ -89,6 +89,8 @@
                 console.log('Signup successful, showing plan selection.');
                 signupForm.style.display = 'none';
                 planSection.style.display = 'block';
+                signupBtn.disabled = false;
+                signupBtn.textContent = 'Sign Up';
             } catch (error) {
                 console.error('Signup error:', error);
                 signupError.textContent = error.message;
@@ -109,14 +111,15 @@
                 const response = await fetch('/create-checkout-session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lookup_key: plan }) // 'pro', 'business', or 'enterprise'
+                    body: JSON.stringify({ lookup_key: plan })
                 });
+                if (!response.ok) throw new Error('Server error: ' + response.status);
                 const session = await response.json();
                 const stripe = Stripe('YOUR_NEW_PK_TEST_KEY_HERE'); // Replace with your new publishable key
                 await stripe.redirectToCheckout({ sessionId: session.id });
             } catch (error) {
                 console.error('Error creating checkout:', error);
-                alert('Error creating checkout session. Please try again.');
+                alert('Error creating checkout session. Please try again or contact support.');
             }
         }
 
