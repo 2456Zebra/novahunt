@@ -37,12 +37,13 @@
         <p><a href="forgot-password.html" class="link">Forgot Password?</a></p>
         <p>Don't have an account? <a href="signup.html" class="link">Sign Up</a></p>
         <div id="loginError" class="error" style="display: none;"></div>
+        <div id="dashboardLink" style="display: none; margin-top: 10px;"><a href="index.html" class="btn">Return to Dashboard</a></div>
     </div>
 
     <script type="module">
         console.log('Script loading...');
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
-        import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 
         console.log('Firebase imports attempted');
         const firebaseConfig = {
@@ -58,14 +59,24 @@
         const auth = getAuth(app);
         console.log('Firebase initialized');
 
+        // Check auth state to show/hide dashboard link
+        onAuthStateChanged(auth, (user) => {
+            const dashboardLink = document.getElementById('dashboardLink');
+            if (user) {
+                dashboardLink.style.display = 'block';
+            } else {
+                dashboardLink.style.display = 'none';
+            }
+        });
+
         document.getElementById('loginForm').addEventListener('submit', (e) => {
-            e.preventDefault(); // Prevent default form submission
+            e.preventDefault();
             console.log('Form submitted, default prevented');
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorDiv = document.getElementById('loginError');
 
-            errorDiv.style.display = 'none'; // Clear previous errors
+            errorDiv.style.display = 'none';
             console.log('Attempting login for:', email);
 
             signInWithEmailAndPassword(auth, email, password)
