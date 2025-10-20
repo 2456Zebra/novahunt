@@ -58,7 +58,7 @@
         .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
-        .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; } /* Ensured fixed */
+        .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; }
         .nav .user-info, .nav button, .nav a { display: inline-block; margin-right: 10px; }
         .tour-btn { position: fixed; bottom: 20px; right: 20px; background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
         .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
@@ -560,6 +560,7 @@
                         const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', '')) || 1000;
                         const supplier = row.cells[0].textContent.trim();
                         const coords = getCountryCoords(country);
+                        console.log(`Mapping: ${supplier}, ${country}, ${coords}, Trade Value: ${tradeValue}`); // Debug log
                         if (coords[0] !== 0 || coords[1] !== 0) {
                             const radius = Math.min(20, tradeValue / 1000) || 5;
                             L.circleMarker(coords, {
