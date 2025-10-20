@@ -83,7 +83,7 @@
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
             <p>Redefine B2B success with cutting-edge AI precision.</p>
             <div style="text-align: center; margin-top: 20px;">
-                <button id="checkout-button" class="btn">Subscribe Now</button>
+                <button id="checkout-button" class="btn btn-primary">Subscribe Now</button>
             </div>
             <p style="font-size: 0.9em; color: #90CDF4;">free credits • No credit card required</p>
             <div class="test-mode-toggle">
@@ -138,15 +138,15 @@
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
-        import { getAuth } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-        import { getFirestore, collection, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+        import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
         // Initialize Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
             authDomain: "novahunt-web-app-v2.firebaseapp.com",
             projectId: "novahunt-web-app-v2",
-            storageBucket: "novahunt-web-app-v2.firebasestrorage.app",
+            storageBucket: "novahunt-web-app-v2.firebasestorage.app",
             messagingSenderId: "915754711081",
             appId: "1:915754711081:web:f563cc734c901812954438"
         };
@@ -156,19 +156,24 @@
         const db = getFirestore(app);
 
         // Initialize global variables
-        let userCredits = 5; // Default monthly credits for free users
+        let userCredits = 5;
         let isPremium = false;
         let isTestMode = false;
         let map;
 
         // Redirect to login if not authenticated
-        auth.onAuthStateChanged((user) => {
+        onAuthStateChanged(auth, (user) => {
             if (!user) {
                 updateUI(null);
                 checkAccess();
             } else {
                 updateUI(user);
                 loadUserCredits(user.uid).then(() => checkAccess());
+            }
+            // Add Subscribe Now button listener
+            const subscribeBtn = document.getElementById('checkout-button');
+            if (subscribeBtn) {
+                subscribeBtn.addEventListener('click', () => createCheckout('business', user));
             }
         });
 
@@ -312,7 +317,9 @@
                             `;
                         });
                     }
-                    if (!isPremium && !isTestMode && !auth.currentUser) {
+                    if (!isPremium && !isTestMode && auth.currentUser) {
+                        results.innerHTML += `<div class="premium-note"><button class="btn" onclick="upgradePlan()">Upgrade to See All ${mockTotal - 10} Additional Emails</button></div>`;
+                    } else if (!isPremium && !isTestMode && !auth.currentUser) {
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     } else if (!isPremium && !isTestMode) {
                         results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
@@ -362,7 +369,7 @@
         }
         window.searchCompany = searchCompany;
 
-        // Load user credits from Firestore (async to ensure latest data)
+        // Load user credits from Firestore
         async function loadUserCredits(uid) {
             const userRef = doc(db, 'users', uid);
             const now = new Date();
@@ -375,15 +382,11 @@
                         userCredits = data.monthlyCredits.credits;
                     } else {
                         userCredits = 5;
-                        await setDoc(userRef, {
-                            monthlyCredits: { month: currentMonth, credits: userCredits }
-                        }, { merge: true });
+                        await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                     }
                 } else {
                     userCredits = 5;
-                    await setDoc(userRef, {
-                        monthlyCredits: { month: currentMonth, credits: userCredits }
-                    });
+                    await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } });
                 }
             } catch (error) {
                 console.error('Error loading credits:', error);
@@ -393,11 +396,11 @@
         }
         window.loadUserCredits = loadUserCredits;
 
-        // Reveal email function with monthly tracking per user
+        // Reveal email function
         async function revealEmail(email, button, cost) {
             const user = auth.currentUser;
             if (user) {
-                await loadUserCredits(user.uid); // Reload credits before checking
+                await loadUserCredits(user.uid);
                 if (userCredits >= cost) {
                     userCredits -= cost;
                     button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
@@ -406,20 +409,18 @@
                     const userRef = doc(db, 'users', user.uid);
                     const now = new Date();
                     const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
-                    await setDoc(userRef, {
-                        monthlyCredits: { month: currentMonth, credits: userCredits }
-                    }, { merge: true });
+                    await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                 } else {
                     alert('Not enough credits this month. Upgrade to reveal more emails.');
                     window.location.href = 'plans.html';
                 }
             } else {
-                alert('Please log in or sign up to reveal emails and unlock more features.');
+                alert('Please log in or sign up to reveal emails.');
             }
         }
         window.revealEmail = revealEmail;
 
-        // AI Industry Search with OpenCorporates and DuckDuckGo Fallback
+        // AI Industry Search
         function searchAI() {
             const query = document.getElementById('aiInput').value.trim().toLowerCase().replace('stores', 'companies');
             const results = document.getElementById('aiResults');
@@ -563,7 +564,7 @@
                         const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', '')) || 1000;
                         const supplier = row.cells[0].textContent.trim();
                         const coords = getCountryCoords(country);
-                        console.log(`Mapping: ${supplier}, ${country}, ${coords}, Trade Value: ${tradeValue}`); // Debug log
+                        console.log(`Mapping: ${supplier}, ${country}, ${coords}, Trade Value: ${tradeValue}`);
                         if (coords[0] !== 0 || coords[1] !== 0) {
                             const radius = Math.min(20, tradeValue / 1000) || 5;
                             L.circleMarker(coords, {
@@ -665,7 +666,7 @@
             });
             const totalResults = suppliers.length;
 
-            if (filteredSuppliers.length > 0 && (isTestMode || auth.currentUser || isPremium)) {
+            if (filteredSuppliers.length > 0 && (isTestMode || auth.currentUser && isPremium)) {
                 filteredSuppliers.slice(0, 3).forEach(supplier => {
                     tableHTML += `
                         <tr>
@@ -692,7 +693,7 @@
         }
         window.useMockImports = useMockImports;
 
-        // View Report function with premium content
+        // View Report function
         function viewReport() {
             if (!isPremium && !isTestMode) {
                 alert('This feature requires a Business/Enterprise plan. Upgrade to access full reports.');
@@ -718,18 +719,41 @@
             }
         });
 
-        // Stripe Checkout Integration
-        const stripe = Stripe('rk_test_51SKOGgGyuj9BgGEUK3GOYod4lgIdwO5ERA7IMfhrTKRJIv8aMauBnTSPSiMIFjZsZ2Yd8OBQ9z229e2Kr2sPw3tG00y3Cew6MN'); // Replace with your new publishable key
-        document.getElementById('checkout-button').addEventListener('click', () => {
-            fetch('/create-checkout-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lookup_key: 'your_lookup_key_here' }) // Replace with your price lookup key
-            })
-            .then(response => response.json())
-            .then(session => stripe.redirectToCheckout({ sessionId: session.id }))
-            .catch(error => console.error('Error:', error));
-        });
+        // Upgrade plan function
+        function upgradePlan() {
+            const user = auth.currentUser;
+            if (user) {
+                createCheckout('business', user); // Default to Business upgrade
+            } else {
+                window.location.href = 'login.html';
+            }
+        }
+        window.upgradePlan = upgradePlan;
+
+        // Checkout function
+        async function createCheckout(plan, user) {
+            if (!user) {
+                alert('Please log in to subscribe.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('/create-checkout-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lookup_key: plan })
+                });
+                if (!response.ok) throw new Error('Server error: ' + response.status);
+                const session = await response.json();
+                const stripe = Stripe('YOUR_NEW_PK_TEST_KEY_HERE'); // Replace with your new publishable key
+                await stripe.redirectToCheckout({ sessionId: session.id });
+            } catch (error) {
+                console.error('Error creating checkout:', error);
+                alert('Error subscribing. Please try again or contact support.');
+            }
+        }
+        window.createCheckout = createCheckout;
     </script>
     <style>
         .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 4px; padding: 5px; }
