@@ -18,7 +18,8 @@
         p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
         .btn { background: #00FFCC; color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
         .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
-        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1em; padding: 10px 20px; border-radius: 6px; } /* Reduced size */
+        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1em; padding: 10px 20px; border-radius: 6px; }
+        .btn-inline { padding: 4px 8px; font-size: 0.8em; margin: 0 5px; }
         .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 20px; justify-content: center; }
         .tab-btn { flex: 1; padding: 12px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
         .tab-btn.active { background: #00FFCC; color: #1A202C; }
@@ -57,7 +58,7 @@
         .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
-        .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; } /* Fixed position */
+        .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; } /* Ensured fixed */
         .nav .user-info, .nav button { display: inline-block; margin-right: 10px; }
         .tour-btn { position: fixed; bottom: 20px; right: 20px; background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
         .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
@@ -182,8 +183,7 @@
                 checkAccess();
             } else {
                 updateUI(user);
-                loadUserCredits(user.uid);
-                checkAccess();
+                loadUserCredits(user.uid).then(() => checkAccess());
             }
         });
 
@@ -202,7 +202,7 @@
             auth.signOut().then(() => {
                 updateUI(null);
                 alert('Logged out successfully!');
-                window.location.href = 'login.html'; // Fixed redirect to login.html
+                window.location.href = 'login.html';
             }).catch((error) => {
                 alert('Error logging out: ' + error.message);
             });
@@ -224,10 +224,10 @@
             const user = auth.currentUser;
             if (!isTestMode && !user && !isPremium) {
                 aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>';
+                importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
             } else if (!isTestMode && user && !isPremium) {
                 aiTab.innerHTML = '<div class="upgrade-message">This feature requires a Business/Enterprise plan. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>';
+                importsTab.innerHTML = '<div class="upgrade-message">This feature requires a Business/Enterprise plan. <a href="plans.html" class="btn">Upgrade Now</a></div>';
             } else {
                 aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
                 importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>';
@@ -331,7 +331,7 @@
                         });
                     }
                     if (!isPremium && !isTestMode && !auth.currentUser) {
-                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features.</div>';
+                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     } else if (!isPremium && !isTestMode) {
                         results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                     }
@@ -372,7 +372,7 @@
                         });
                     }
                     if (!isPremium && !isTestMode && !auth.currentUser) {
-                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features.</div>';
+                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     } else if (!isPremium && !isTestMode) {
                         results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                     }
@@ -380,40 +380,42 @@
         }
         window.searchCompany = searchCompany;
 
-        // Load user credits from Firestore
-        function loadUserCredits(uid) {
+        // Load user credits from Firestore (async to ensure latest data)
+        async function loadUserCredits(uid) {
             const userRef = doc(db, 'users', uid);
             const now = new Date();
             const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
-            getDoc(userRef).then((docSnap) => {
+            try {
+                const docSnap = await getDoc(userRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
                         userCredits = data.monthlyCredits.credits;
                     } else {
                         userCredits = 5;
-                        setDoc(userRef, {
+                        await setDoc(userRef, {
                             monthlyCredits: { month: currentMonth, credits: userCredits }
                         }, { merge: true });
                     }
                 } else {
                     userCredits = 5;
-                    setDoc(userRef, {
+                    await setDoc(userRef, {
                         monthlyCredits: { month: currentMonth, credits: userCredits }
                     });
                 }
-            }).catch((error) => {
+            } catch (error) {
                 console.error('Error loading credits:', error);
                 userCredits = 5;
-            });
+            }
+            return userCredits;
         }
         window.loadUserCredits = loadUserCredits;
 
         // Reveal email function with monthly tracking per user
-        function revealEmail(email, button, cost) {
+        async function revealEmail(email, button, cost) {
             const user = auth.currentUser;
             if (user) {
-                loadUserCredits(user.uid); // Ensure current credits are loaded
+                await loadUserCredits(user.uid); // Reload credits before checking
                 if (userCredits >= cost) {
                     userCredits -= cost;
                     button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
@@ -422,7 +424,7 @@
                     const userRef = doc(db, 'users', user.uid);
                     const now = new Date();
                     const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
-                    setDoc(userRef, {
+                    await setDoc(userRef, {
                         monthlyCredits: { month: currentMonth, credits: userCredits }
                     }, { merge: true });
                 } else {
@@ -714,7 +716,7 @@
         }
         window.viewReport = viewReport;
 
-        // Placeholder for visual tour (to be developed)
+        // Placeholder for visual tour
         function startTour() {
             alert('Visual tour coming soon! This will showcase examples of lead hunting results.');
         }
