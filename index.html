@@ -18,7 +18,7 @@
         p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
         .btn { background: #00FFCC; color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
         .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
-        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1.2em; padding: 14px 30px; border-radius: 6px; }
+        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1em; padding: 10px 20px; border-radius: 6px; } /* Reduced size */
         .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 20px; justify-content: center; }
         .tab-btn { flex: 1; padding: 12px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
         .tab-btn.active { background: #00FFCC; color: #1A202C; }
@@ -43,7 +43,8 @@
         .filter-group { margin-bottom: 10px; display: flex; gap: 10px; justify-content: center; }
         .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
         .toggle-group { display: none; }
-        #map { height: 400px; width: 100%; margin-top: 40px; border: 2px solid #00FFCC; border-radius: 6px; }
+        #map { height: 400px; width: 100%; margin-top: 40px; border: 2px solid #00FFCC; border-radius: 6px; position: relative; }
+        .map-placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #A0AEC0; font-style: italic; }
         .plans-section { padding: 40px 0; }
         .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00FFCC; }
         .plan-card h3 { color: #00FFCC; margin-bottom: 10px; }
@@ -56,7 +57,7 @@
         .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
-        .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+        .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; } /* Fixed position */
         .nav .user-info, .nav button { display: inline-block; margin-right: 10px; }
         .tour-btn { position: fixed; bottom: 20px; right: 20px; background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
         .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
@@ -113,7 +114,25 @@
                 <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>
             </div>
             <div id="imports-tab" class="tab-content">
-                <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>
+                <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
+                <p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p>
+                <div class="filter-group">
+                    <select id="countryFilter">
+                        <option value="">All Countries</option>
+                        <option value="China">China</option>
+                        <option value="Vietnam">Vietnam</option>
+                        <option value="USA">USA</option>
+                    </select>
+                    <select id="yearFilter">
+                        <option value="">All Years</option>
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                    </select>
+                </div>
+                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                <button class="btn" onclick="searchImports()">Find Suppliers</button>
+                <div id="importsResults" class="results"></div>
+                <div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>
             </div>
         </div>
     </section>
@@ -183,7 +202,7 @@
             auth.signOut().then(() => {
                 updateUI(null);
                 alert('Logged out successfully!');
-                window.location.href = 'login.html'; // Explicit redirect to login.html
+                window.location.href = 'login.html'; // Fixed redirect to login.html
             }).catch((error) => {
                 alert('Error logging out: ' + error.message);
             });
@@ -205,13 +224,13 @@
             const user = auth.currentUser;
             if (!isTestMode && !user && !isPremium) {
                 aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
+                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>';
             } else if (!isTestMode && user && !isPremium) {
                 aiTab.innerHTML = '<div class="upgrade-message">This feature requires a Business/Enterprise plan. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                importsTab.innerHTML = '<div class="upgrade-message">This feature requires a Business/Enterprise plan. <a href="plans.html" class="btn">Upgrade Now</a></div>';
+                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>';
             } else {
                 aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
-                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div style="text-align: center; color: #A0AEC0; padding: 180px 0;">Awaiting Search Results To Display Map</div></div>';
+                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>';
             }
         }
         window.checkAccess = checkAccess;
@@ -390,25 +409,28 @@
         }
         window.loadUserCredits = loadUserCredits;
 
-        // Reveal email function with monthly tracking
+        // Reveal email function with monthly tracking per user
         function revealEmail(email, button, cost) {
             const user = auth.currentUser;
-            if (user && userCredits >= cost) {
-                userCredits -= cost;
-                button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
-                alert(`Email revealed! ${userCredits} credits remaining this month.`);
+            if (user) {
+                loadUserCredits(user.uid); // Ensure current credits are loaded
+                if (userCredits >= cost) {
+                    userCredits -= cost;
+                    button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
+                    alert(`Email revealed! ${userCredits} credits remaining this month.`);
 
-                const userRef = doc(db, 'users', user.uid);
-                const now = new Date();
-                const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
-                setDoc(userRef, {
-                    monthlyCredits: { month: currentMonth, credits: userCredits }
-                }, { merge: true });
-            } else if (!user) {
-                alert('Please log in or sign up to reveal emails and unlock more features.');
+                    const userRef = doc(db, 'users', user.uid);
+                    const now = new Date();
+                    const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
+                    setDoc(userRef, {
+                        monthlyCredits: { month: currentMonth, credits: userCredits }
+                    }, { merge: true });
+                } else {
+                    alert('Not enough credits this month. Upgrade to reveal more emails.');
+                    window.location.href = 'plans.html';
+                }
             } else {
-                alert('Not enough credits this month. Upgrade to reveal more emails.');
-                window.location.href = 'plans.html';
+                alert('Please log in or sign up to reveal emails and unlock more features.');
             }
         }
         window.revealEmail = revealEmail;
@@ -574,8 +596,6 @@
                         }
                     });
                     map.fitBounds(rows.map(row => getCountryCoords(row.cells[1].textContent.trim())).filter(coord => coord[0] !== 0 || coord[1] !== 0));
-                } else {
-                    map.setView([20, 0], 2); // Reset to default view if no data
                 }
             }
         }
@@ -694,26 +714,9 @@
         }
         window.viewReport = viewReport;
 
-        // Tour function with premium demo
+        // Placeholder for visual tour (to be developed)
         function startTour() {
-            let step = 1;
-            const steps = [
-                "Welcome to NovaHunt! This tour will showcase premium features.",
-                "Use 'Hunt Corporate Emails' to find emails (e.g., coca-cola.com).",
-                "Try 'Hunt Industry Leads' for industry-specific leads (e.g., 'Ice Cream Companies USA').",
-                "Explore 'Hunt Import Records' for supplier data with the map (e.g., acme imports).",
-                "Toggle 'Test Mode' to simulate premium access. Sign up for the full experience!",
-                "End of tour! Visit plans.html to upgrade."
-            ];
-            alert(steps[step - 1]);
-            const interval = setInterval(() => {
-                if (step < steps.length) {
-                    step++;
-                    alert(steps[step - 1]);
-                } else {
-                    clearInterval(interval);
-                }
-            }, 3000);
+            alert('Visual tour coming soon! This will showcase examples of lead hunting results.');
         }
         window.startTour = startTour;
 
@@ -729,7 +732,6 @@
     <style>
         .map-tooltip { background: #2D3748; color: #E2E8F0; border: 1px solid #4A5568; border-radius: 4px; padding: 5px; }
         .no-data-icon { background: #FC8181; color: #E2E8F0; padding: 5px; border-radius: 50%; text-align: center; }
-        .map-placeholder { text-align: center; padding: 180px 0; color: #A0AEC0; }
     </style>
 </body>
 </html>
