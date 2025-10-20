@@ -7,7 +7,7 @@
     <meta name="description" content="NovaHunt.ai: AI-powered tool to hunt B2B leads, emails, and suppliers with precision.">
     <meta name="keywords" content="AI lead generation, B2B leads, email hunter, supplier finder">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css?v=1.1.0" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css?v=1.1.1" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
@@ -126,7 +126,7 @@
         © 2025 NovaHunt.ai | All rights reserved | <a href="terms.html" style="color: #90CDF4; text-decoration: none;">Terms of Service</a> | <a href="privacy.html" style="color: #90CDF4; text-decoration: none;">Privacy Policy</a> | <a href="faq.html" style="color: #90CDF4; text-decoration: none;">FAQ</a>
     </footer>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js?v=1.1.0"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js?v=1.1.1"></script>
     <script type="module" src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
     <script type="module" src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
     <script type="module" src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js"></script>
@@ -134,7 +134,7 @@
         // Import Firebase modules
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
         import { getAuth } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+        import { getFirestore, collection, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
         // Initialize Firebase
         const firebaseConfig = {
@@ -188,6 +188,7 @@
                 alert('Error logging out: ' + error.message);
             });
         }
+        window.logout = logout; // Expose to global scope
 
         // Toggle test mode
         function toggleTestMode() {
@@ -195,6 +196,7 @@
             alert(`Test mode ${isTestMode ? 'enabled' : 'disabled'}. Premium features ${isTestMode ? 'available' : 'restricted'}.`);
             checkAccess();
         }
+        window.toggleTestMode = toggleTestMode;
 
         // Check access for premium sections
         function checkAccess() {
@@ -212,6 +214,7 @@
                 importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div style="text-align: center; color: #A0AEC0; padding: 180px 0;">Awaiting Search Results To Display Map</div></div>';
             }
         }
+        window.checkAccess = checkAccess;
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
@@ -223,20 +226,23 @@
                     switchTab(tabName, e.target);
                 });
             });
-            initMap();
         });
 
         // Initialize map
         function initMap() {
-            if (!map && document.getElementById('map').offsetParent !== null) {
-                map = L.map('map').setView([20, 0], 2);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                }).addTo(map);
-                map.getContainer().style.background = '#1A202C';
+            const mapDiv = document.getElementById('map');
+            if (mapDiv && mapDiv.offsetParent !== null) {
+                if (!map) {
+                    map = L.map('map').setView([20, 0], 2);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    }).addTo(map);
+                    map.getContainer().style.background = '#1A202C';
+                }
             }
         }
+        window.initMap = initMap;
 
         // Tab switching with map refresh
         function switchTab(tabName, button) {
@@ -252,6 +258,7 @@
             }
             console.log(`Switched to ${tabName} tab`);
         }
+        window.switchTab = switchTab;
 
         // Company Search with Hunter.io API via AllOrigins Proxy
         function searchCompany() {
@@ -352,34 +359,36 @@
                     }
                 });
         }
+        window.searchCompany = searchCompany;
 
         // Load user credits from Firestore
         function loadUserCredits(uid) {
-            const userRef = db.collection('users').doc(uid);
+            const userRef = doc(db, 'users', uid);
             const now = new Date();
             const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
-            userRef.get().then((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
+            getDoc(userRef).then((docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
                     if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
                         userCredits = data.monthlyCredits.credits;
                     } else {
-                        userCredits = 5; // Reset to 5 credits at the start of a new month
-                        userRef.set({
+                        userCredits = 5;
+                        setDoc(userRef, {
                             monthlyCredits: { month: currentMonth, credits: userCredits }
                         }, { merge: true });
                     }
                 } else {
                     userCredits = 5;
-                    userRef.set({
+                    setDoc(userRef, {
                         monthlyCredits: { month: currentMonth, credits: userCredits }
                     });
                 }
             }).catch((error) => {
                 console.error('Error loading credits:', error);
-                userCredits = 5; // Fallback
+                userCredits = 5;
             });
         }
+        window.loadUserCredits = loadUserCredits;
 
         // Reveal email function with monthly tracking
         function revealEmail(email, button, cost) {
@@ -389,10 +398,10 @@
                 button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
                 alert(`Email revealed! ${userCredits} credits remaining this month.`);
 
-                const userRef = db.collection('users').doc(user.uid);
+                const userRef = doc(db, 'users', user.uid);
                 const now = new Date();
                 const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
-                userRef.set({
+                setDoc(userRef, {
                     monthlyCredits: { month: currentMonth, credits: userCredits }
                 }, { merge: true });
             } else if (!user) {
@@ -402,6 +411,7 @@
                 window.location.href = 'plans.html';
             }
         }
+        window.revealEmail = revealEmail;
 
         // AI Industry Search with OpenCorporates and DuckDuckGo Fallback
         function searchAI() {
@@ -479,6 +489,7 @@
                         });
                 });
         }
+        window.searchAI = searchAI;
 
         // Import Records Search
         let sortDirection = 1;
@@ -498,6 +509,7 @@
             updatePagination();
             updateMap();
         }
+        window.sortTable = sortTable;
 
         function updatePagination() {
             const table = document.querySelector('#importsResults table');
@@ -517,6 +529,7 @@
             }
             displayPage();
         }
+        window.updatePagination = updatePagination;
 
         function displayPage() {
             const table = document.querySelector('#importsResults table');
@@ -528,6 +541,7 @@
             });
             updateMap();
         }
+        window.displayPage = displayPage;
 
         function updateMap() {
             if (!map) initMap();
@@ -565,6 +579,7 @@
                 }
             }
         }
+        window.updateMap = updateMap;
 
         // Country coordinates
         function getCountryCoords(country) {
@@ -580,9 +595,10 @@
             };
             return coords[country] || coords['default'];
         }
+        window.getCountryCoords = getCountryCoords;
 
         function searchImports() {
-            const query = document.getElementById('importsInput').value.toLowerCase().trim().replace('ing', ''); // Handle typos like "acme importing"
+            const query = document.getElementById('importsInput').value.toLowerCase().trim().replace('ing', '');
             const countryFilter = document.getElementById('countryFilter').value;
             const yearFilter = document.getElementById('yearFilter').value;
             const results = document.getElementById('importsResults');
@@ -595,6 +611,7 @@
 
             useMockImports(query, countryFilter, yearFilter, results);
         }
+        window.searchImports = searchImports;
 
         function useMockImports(query, countryFilter, yearFilter, results) {
             const mockSuppliers = {
@@ -664,6 +681,7 @@
             updatePagination();
             updateMap();
         }
+        window.useMockImports = useMockImports;
 
         // View Report function with premium content
         function viewReport() {
@@ -674,6 +692,7 @@
                 alert('Full report: Detailed supplier analysis, trade history, and contact info available. Visit plans.html for more!');
             }
         }
+        window.viewReport = viewReport;
 
         // Tour function with premium demo
         function startTour() {
@@ -696,6 +715,7 @@
                 }
             }, 3000);
         }
+        window.startTour = startTour;
 
         // Smooth scroll for CTAs
         document.querySelectorAll('a.btn, button.btn').forEach(btn => {
