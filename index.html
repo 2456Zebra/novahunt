@@ -110,31 +110,10 @@
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
-                <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Companies USA' for live results.</p>
-                <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
-                <button class="btn" onclick="searchAI()">Generate Leads</button>
-                <div id="aiResults" class="results"></div>
+                <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>
             </div>
             <div id="imports-tab" class="tab-content">
-                <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
-                <p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p>
-                <div class="filter-group">
-                    <select id="countryFilter">
-                        <option value="">All Countries</option>
-                        <option value="China">China</option>
-                        <option value="Vietnam">Vietnam</option>
-                        <option value="USA">USA</option>
-                    </select>
-                    <select id="yearFilter">
-                        <option value="">All Years</option>
-                        <option value="2023">2023</option>
-                        <option value="2022">2022</option>
-                    </select>
-                </div>
-                <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
-                <button class="btn" onclick="searchImports()">Find Suppliers</button>
-                <div id="importsResults" class="results"></div>
-                <div id="map"><div style="text-align: center; color: #A0AEC0; padding: 180px 0;">Awaiting Search Results To Display Map</div></div>
+                <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>
             </div>
         </div>
     </section>
@@ -152,6 +131,12 @@
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
     <script>
+        // Initialize global variables
+        let userCredits = 5; // Default monthly credits for free users
+        let isPremium = false;
+        let isTestMode = false;
+        let map;
+
         // Initialize Firebase (v9.0.0 global namespace)
         const firebaseConfig = {
             apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
@@ -166,16 +151,11 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // Initialize variables
-        let userCredits = 5; // Default monthly credits for free users
-        let isPremium = false;
-        let isTestMode = false;
-        let map;
-
         // Redirect to login if not authenticated
         auth.onAuthStateChanged((user) => {
             if (!user) {
-                window.location.href = 'login.html';
+                updateUI(null);
+                checkAccess();
             } else {
                 updateUI(user);
                 loadUserCredits(user.uid);
@@ -230,6 +210,7 @@
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
+            updateUI(auth.currentUser); // Ensure UI updates on load
             checkAccess();
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -596,7 +577,7 @@
         }
 
         function searchImports() {
-            const query = document.getElementById('importsInput').value.toLowerCase().trim();
+            const query = document.getElementById('importsInput').value.toLowerCase().trim().replace('ing', ''); // Handle typos like "acme importing"
             const countryFilter = document.getElementById('countryFilter').value;
             const yearFilter = document.getElementById('yearFilter').value;
             const results = document.getElementById('importsResults');
