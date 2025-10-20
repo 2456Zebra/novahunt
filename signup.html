@@ -15,6 +15,7 @@
         .password-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #00FFCC; }
         button { background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; font-size: 1em; }
         button:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
         .link { color: #90CDF4; text-decoration: none; }
         .link:hover { text-decoration: underline; }
         .error { color: #FC8181; margin-top: 10px; }
@@ -34,12 +35,13 @@
                 <input type="password" id="password" placeholder="Password" required>
                 <span class="password-toggle" onclick="togglePassword()">👁️</span>
             </div>
-            <button type="submit">Sign Up</button>
+            <button type="submit" id="signupBtn">Sign Up</button>
         </form>
-        <div class="plan-section">
+        <div class="plan-section" id="planSection" style="display: none;">
             <p>Select Plan:</p>
-            <button class="plan-button" onclick="createCheckout('pro')">Pro ($9.99/month)</button>
-            <button class="plan-button" onclick="createCheckout('business')">Business ($29.99/month)</button>
+            <button class="plan-button" onclick="createCheckout('pro')">Pro ($29/month)</button>
+            <button class="plan-button" onclick="createCheckout('business')">Business ($59/month)</button>
+            <button class="plan-button" onclick="createCheckout('enterprise')">Enterprise ($99/month)</button>
         </div>
         <p>Already have an account? <a href="login.html" class="link">Login</a></p>
         <div id="signupError" class="error"></div>
@@ -47,7 +49,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
-        import { getAuth, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+        import { getAuth, createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
@@ -61,20 +63,39 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-        document.getElementById('signupForm').addEventListener('submit', (e) => {
+        const signupForm = document.getElementById('signupForm');
+        const signupBtn = document.getElementById('signupBtn');
+        const planSection = document.getElementById('planSection');
+        const signupError = document.getElementById('signupError');
+
+        signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('signupError');
 
-            createUserWithEmailAndPassword(auth, email, password)
-                .then((userCredential) => {
-                    console.log('Signup successful, redirecting to plan selection.');
-                    // After signup, show plan buttons or redirect to plan page
-                })
-                .catch((error) => {
-                    errorDiv.textContent = error.message;
-                });
+            try {
+                // Check if email is already in use
+                const methods = await fetchSignInMethodsForEmail(auth, email);
+                if (methods.length > 0) {
+                    signupError.textContent = 'Email already in use. Please log in.';
+                    signupError.style.display = 'block';
+                    return;
+                }
+
+                // Create user
+                signupBtn.disabled = true;
+                signupBtn.textContent = 'Creating account...';
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                console.log('Signup successful, showing plan selection.');
+                signupForm.style.display = 'none';
+                planSection.style.display = 'block';
+            } catch (error) {
+                console.error('Signup error:', error);
+                signupError.textContent = error.message;
+                signupError.style.display = 'block';
+                signupBtn.disabled = false;
+                signupBtn.textContent = 'Sign Up';
+            }
         });
 
         async function createCheckout(plan) {
@@ -88,13 +109,14 @@
                 const response = await fetch('/create-checkout-session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lookup_key: plan }) // e.g., 'pro' or 'business'
+                    body: JSON.stringify({ lookup_key: plan }) // 'pro', 'business', or 'enterprise'
                 });
                 const session = await response.json();
                 const stripe = Stripe('YOUR_NEW_PK_TEST_KEY_HERE'); // Replace with your new publishable key
                 await stripe.redirectToCheckout({ sessionId: session.id });
             } catch (error) {
                 console.error('Error creating checkout:', error);
+                alert('Error creating checkout session. Please try again.');
             }
         }
 
