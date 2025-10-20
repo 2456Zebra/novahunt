@@ -59,7 +59,7 @@
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
         .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; } /* Ensured fixed */
-        .nav .user-info, .nav button { display: inline-block; margin-right: 10px; }
+        .nav .user-info, .nav button, .nav a { display: inline-block; margin-right: 10px; }
         .tour-btn { position: fixed; bottom: 20px; right: 20px; background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
         .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
         @media (max-width: 768px) {
@@ -598,7 +598,11 @@
                         }
                     });
                     map.fitBounds(rows.map(row => getCountryCoords(row.cells[1].textContent.trim())).filter(coord => coord[0] !== 0 || coord[1] !== 0));
+                } else {
+                    console.log('No visible rows to plot on map');
                 }
+            } else {
+                console.log('No table found for map update');
             }
         }
         window.updateMap = updateMap;
@@ -711,7 +715,7 @@
                 alert('This feature requires a Business/Enterprise plan. Upgrade to access full reports.');
                 window.location.href = 'plans.html';
             } else {
-                alert('Full report: Detailed supplier analysis, trade history, and contact info available. Visit plans.html for more!');
+                alert('Test Mode active: Full report available. Detailed supplier analysis, trade history, and contact info accessible. Supplier profile cards are planned for a future update!');
             }
         }
         window.viewReport = viewReport;
