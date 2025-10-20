@@ -40,9 +40,11 @@
     </div>
 
     <script type="module">
+        console.log('Script loading...');
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
         import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 
+        console.log('Firebase imports attempted');
         const firebaseConfig = {
             apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
             authDomain: "novahunt-web-app-v2.firebaseapp.com",
@@ -54,9 +56,11 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        console.log('Firebase initialized');
 
         document.getElementById('loginForm').addEventListener('submit', (e) => {
-            e.preventDefault();
+            e.preventDefault(); // Prevent default form submission
+            console.log('Form submitted, default prevented');
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorDiv = document.getElementById('loginError');
@@ -66,7 +70,7 @@
 
             signInWithEmailAndPassword(auth, email, password)
                 .then((userCredential) => {
-                    console.log('Login successful for:', email);
+                    console.log('Login successful for:', email, 'Redirecting to index.html');
                     window.location.href = 'index.html';
                 })
                 .catch((error) => {
