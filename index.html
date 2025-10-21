@@ -83,9 +83,9 @@
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
             <p>Redefine B2B success with cutting-edge AI precision.</p>
             <div style="text-align: center; margin-top: 20px;">
-                <a href="https://buy.stripe.com/your_pro_link" class="btn btn-primary">Subscribe to Pro ($29/month)</a>
-                <a href="https://buy.stripe.com/your_business_link" class="btn btn-primary">Business ($59/month)</a>
-                <a href="https://buy.stripe.com/your_enterprise_link" class="btn btn-primary">Enterprise ($99/month)</a>
+                <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn btn-primary">Subscribe to Pro ($29/month)</a>
+                <a href="https://buy.stripe.com/test_aFacN59cX0tWgh4ci900001" class="btn btn-primary">Business ($59/month)</a>
+                <a href="https://buy.stripe.com/test_fZu5kD88T3G85Cqbe500000" class="btn btn-primary">Enterprise ($99/month)</a>
             </div>
             <p style="font-size: 0.9em; color: #90CDF4;">Free credits • No credit card required</p>
             <div class="test-mode-toggle">
@@ -285,7 +285,6 @@
                     return response.json();
                 })
                 .then(data => {
-                    // Check if the response has the expected structure
                     if (!data || !data.data || !data.data.emails) {
                         throw new Error('No email data found in the API response.');
                     }
@@ -294,7 +293,6 @@
                     const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
                     results.innerHTML += `<p style="color: #A0AEC0;">Found ${mockTotal} emails across departments.</p>`;
 
-                    // Safely process emails
                     const emailsByDept = {};
                     const emailsToProcess = Array.isArray(data.data.emails) ? data.data.emails.slice(0, 10) : [];
                     emailsToProcess.forEach(email => {
