@@ -159,9 +159,11 @@
         let isTestMode = false;
         let map;
 
-        // Redirect to login if not authenticated
+        // Redirect to login if not authenticated and no test mode
         onAuthStateChanged(auth, (user) => {
-            if (!user) {
+            if (!user && !isTestMode) {
+                window.location.href = 'login.html';
+            } else if (!user && isTestMode) {
                 updateUI(null);
                 checkAccess();
             } else {
@@ -186,6 +188,7 @@
         function logout() {
             auth.signOut().then(() => {
                 updateUI(null);
+                isTestMode = false;
                 alert('Logged out successfully!');
                 window.location.href = 'login.html';
             }).catch((error) => {
@@ -199,6 +202,7 @@
             isTestMode = !isTestMode;
             alert(`Test mode ${isTestMode ? 'enabled' : 'disabled'}. Premium features ${isTestMode ? 'available' : 'restricted'}.`);
             checkAccess();
+            updateUI(auth.currentUser); // Refresh UI after toggle
         }
         window.toggleTestMode = toggleTestMode;
 
