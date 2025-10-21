@@ -39,6 +39,7 @@
         </form>
         <div class="plan-section" id="planSection" style="display: none;">
             <p>Select Plan:</p>
+            <button class="plan-button" onclick="selectPlan('free')">Free (5 credits/month)</button>
             <button class="plan-button" onclick="createCheckout('pro')">Pro ($29/month)</button>
             <button class="plan-button" onclick="createCheckout('business')">Business ($59/month)</button>
             <button class="plan-button" onclick="createCheckout('enterprise')">Enterprise ($99/month)</button>
@@ -50,6 +51,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
         import { getAuth, createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+        import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
@@ -62,6 +64,7 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db = getFirestore(app);
 
         const signupForm = document.getElementById('signupForm');
         const signupBtn = document.getElementById('signupBtn');
@@ -74,7 +77,6 @@
             const password = document.getElementById('password').value;
 
             try {
-                // Check if email is already in use
                 const methods = await fetchSignInMethodsForEmail(auth, email);
                 if (methods.length > 0) {
                     signupError.textContent = 'Email already in use. Please log in or use a different email.';
@@ -82,7 +84,6 @@
                     return;
                 }
 
-                // Create user
                 signupBtn.disabled = true;
                 signupBtn.textContent = 'Creating account...';
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -91,6 +92,12 @@
                 planSection.style.display = 'block';
                 signupBtn.disabled = false;
                 signupBtn.textContent = 'Sign Up';
+
+                // Set initial credits for Free plan
+                const userRef = doc(db, 'users', userCredential.user.uid);
+                const now = new Date();
+                const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
+                await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: 5 } }, { merge: true });
             } catch (error) {
                 console.error('Signup error:', error);
                 signupError.textContent = error.message;
@@ -123,6 +130,13 @@
             }
         }
 
+        function selectPlan(plan) {
+            if (plan === 'free') {
+                window.location.href = 'dashboard.html';
+                alert('Welcome to the Free plan with 5 credits!');
+            }
+        }
+
         function togglePassword() {
             const password = document.getElementById('password');
             const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -130,6 +144,7 @@
         }
         window.togglePassword = togglePassword;
         window.createCheckout = createCheckout;
+        window.selectPlan = selectPlan;
     </script>
 </body>
 </html>
