@@ -132,14 +132,11 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js?v=1.1.2"></script>
     <script src="https://js.stripe.com/v3/"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js"></script>
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
         import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-        import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+        import { getFirestore, doc, getDoc, setDoc, getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
         // Initialize Firebase
         const firebaseConfig = {
@@ -154,12 +151,17 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const functions = getFunctions(app);
+        const createCheckoutSession = httpsCallable(functions, 'createCheckoutSession');
 
         // Initialize global variables
         let userCredits = 5;
         let isPremium = false;
         let isTestMode = false;
         let map;
+
+        // Stripe initialization
+        const stripe = Stripe('YOUR_NEW_PK_TEST_KEY_HERE'); // Replace with your new publishable key
 
         // Redirect to login if not authenticated
         onAuthStateChanged(auth, (user) => {
@@ -168,7 +170,13 @@
                 checkAccess();
             } else {
                 updateUI(user);
-                loadUserCredits(user.uid).then(() => checkAccess());
+                loadUserCredits(user.uid).then(() => {
+                    // Check premium status from custom claims
+                    user.getIdTokenResult().then((idTokenResult) => {
+                        isPremium = idTokenResult.claims.isPremium || false;
+                        checkAccess();
+                    });
+                });
             }
             // Add Subscribe Now button listener
             const subscribeBtn = document.getElementById('checkout-button');
@@ -213,8 +221,8 @@
             const importsTab = document.getElementById('imports-tab');
             const user = auth.currentUser;
             if (!isTestMode && (!user || !isPremium)) {
-                aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
-                importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
+                aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="javascript:void(0)" class="btn" onclick="upgradePlan()">Upgrade Now</a></div>';
+                importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="javascript:void(0)" class="btn" onclick="upgradePlan()">Upgrade Now</a></div>';
             } else if (isTestMode || (user && isPremium)) {
                 aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
                 importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>';
@@ -228,7 +236,7 @@
             checkAccess();
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const tabName = e.target.getAttribute('onclick').match(/switchTab\('([^']+)'.*/)[1];
+                    const tabName = e.target.getAttribute('onclick').match(/switchTab\('([^']+)'/)[1];
                     switchTab(tabName, e.target);
                 });
             });
@@ -363,7 +371,7 @@
                     if (!isPremium && !isTestMode && !auth.currentUser) {
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     } else if (!isPremium && !isTestMode) {
-                        results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                        results.innerHTML += `<div class="premium-note"><button class="btn" onclick="upgradePlan()">Upgrade to See All ${mockTotal - 10} Additional Emails</button></div>`;
                     }
                 });
         }
@@ -412,10 +420,10 @@
                     await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                 } else {
                     alert('Not enough credits this month. Upgrade to reveal more emails.');
-                    window.location.href = 'plans.html';
+                    upgradePlan();
                 }
             } else {
-                alert('Please log in or sign up to reveal emails.');
+                alert('Please log in to reveal emails.');
             }
         }
         window.revealEmail = revealEmail;
@@ -444,7 +452,7 @@
                         results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                     });
                     if (!isPremium && !isTestMode) {
-                        results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${data.results.companies.length - 2} Additional Companies</a></div>`;
+                        results.innerHTML += `<div class="premium-note"><a href="javascript:void(0)" class="btn" onclick="upgradePlan()">Upgrade to See All ${data.results.companies.length - 2} Additional Companies</a></div>`;
                     }
                 })
                 .catch(err => {
@@ -467,7 +475,7 @@
                                     results.innerHTML += `<div class="result-item"><h3>${company.name}</h3><a href="${company.url}" target="_blank" class="btn">View Profile</a></div>`;
                                 });
                                 if (!isPremium && !isTestMode) {
-                                    results.innerHTML += '<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All 142 Additional Companies</a></div>';
+                                    results.innerHTML += '<div class="premium-note"><a href="javascript:void(0)" class="btn" onclick="upgradePlan()">Upgrade to See All 142 Additional Companies</a></div>';
                                 }
                             } else {
                                 data.RelatedTopics.slice(0, 2).forEach(topic => {
@@ -476,7 +484,7 @@
                                     results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                                 });
                                 if (!isPremium && !isTestMode) {
-                                    results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${data.RelatedTopics.length - 2} Additional Companies</a></div>`;
+                                    results.innerHTML += `<div class="premium-note"><a href="javascript:void(0)" class="btn" onclick="upgradePlan()">Upgrade to See All ${data.RelatedTopics.length - 2} Additional Companies</a></div>`;
                                 }
                             }
                         })
@@ -490,7 +498,7 @@
                                 results.innerHTML += `<div class="result-item"><h3>${company.name}</h3><a href="${company.url}" target="_blank" class="btn">View Profile</a></div>`;
                             });
                             if (!isPremium && !isTestMode) {
-                                results.innerHTML += '<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All 142 Additional Companies</a></div>';
+                                results.innerHTML += '<div class="premium-note"><a href="javascript:void(0)" class="btn" onclick="upgradePlan()">Upgrade to See All 142 Additional Companies</a></div>';
                             }
                             console.error('DuckDuckGo fallback failed:', ddErr);
                         });
@@ -666,7 +674,7 @@
             });
             const totalResults = suppliers.length;
 
-            if (filteredSuppliers.length > 0 && (isTestMode || auth.currentUser && isPremium)) {
+            if (filteredSuppliers.length > 0 && (isTestMode || (auth.currentUser && isPremium))) {
                 filteredSuppliers.slice(0, 3).forEach(supplier => {
                     tableHTML += `
                         <tr>
@@ -720,10 +728,17 @@
         });
 
         // Upgrade plan function
-        function upgradePlan() {
+        async function upgradePlan() {
             const user = auth.currentUser;
             if (user) {
-                createCheckout('business', user); // Default to Business upgrade
+                try {
+                    const result = await createCheckoutSession({ lookup_key: 'business' });
+                    const sessionId = result.data.sessionId;
+                    await stripe.redirectToCheckout({ sessionId });
+                } catch (error) {
+                    console.error('Upgrade error:', error);
+                    alert('Error upgrading. Please try again or contact support.');
+                }
             } else {
                 window.location.href = 'login.html';
             }
@@ -739,15 +754,9 @@
             }
 
             try {
-                const response = await fetch('/create-checkout-session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lookup_key: plan })
-                });
-                if (!response.ok) throw new Error('Server error: ' + response.status);
-                const session = await response.json();
-                const stripe = Stripe('YOUR_NEW_PK_TEST_KEY_HERE'); // Replace with your new publishable key
-                await stripe.redirectToCheckout({ sessionId: session.id });
+                const result = await createCheckoutSession({ lookup_key: plan });
+                const sessionId = result.data.sessionId;
+                await stripe.redirectToCheckout({ sessionId });
             } catch (error) {
                 console.error('Error creating checkout:', error);
                 alert('Error subscribing. Please try again or contact support.');
