@@ -67,8 +67,8 @@
     <div class="container">
         <h1>Sign Up</h1>
         <form id="signupForm">
-            <input type="email" placeholder="Email" required><br>
-            <input type="password" placeholder="Password" required><br>
+            <input type="email" id="email" placeholder="Email" required><br>
+            <input type="password" id="password" placeholder="Password" required><br>
             <button type="submit">Sign Up</button>
         </form>
         <a href="login.html">Already have an account? Log In</a>
@@ -95,15 +95,19 @@
         // Handle signup
         document.getElementById('signupForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            const email = document.querySelector('input[type="email"]').value;
-            const password = document.querySelector('input[type="password"]').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
 
+            console.log('Attempting signup with email:', email);
             createUserWithEmailAndPassword(auth, email, password)
                 .then((userCredential) => {
+                    const user = userCredential.user;
+                    console.log('Signup successful, user UID:', user.uid);
                     alert('Sign up successful! Redirecting to dashboard...');
-                    window.location.href = 'index.html'; // Adjust to your dashboard URL
+                    window.location.href = 'index.html'; // Force redirect to dashboard
                 })
                 .catch((error) => {
+                    console.error('Signup error details:', error.code, error.message);
                     alert('Error: ' + error.message);
                 });
         });
