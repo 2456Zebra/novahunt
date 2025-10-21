@@ -3,28 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NovaHunt - Login</title>
-    <meta name="description" content="Log in to NovaHunt.ai for AI-powered B2B lead generation.">
-    <meta name="keywords" content="login, NovaHunt, AI lead generation, B2B leads">
+    <title>NovaHunt - Log In</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .container { max-width: 400px; padding: 20px; background: #2D3748; border-radius: 8px; box-shadow: 0 0 15px #00FFCC; }
-        h1 { font-size: 2em; font-weight: 800; color: #00FFCC; text-align: center; margin-bottom: 20px; text-shadow: 0 0 10px #00FFCC; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { text-align: center; background: #2D3748; padding: 40px; border-radius: 8px; box-shadow: 0 0 15px #00FFCC; }
+        h1 { font-size: 2.5em; color: #00FFCC; margin-bottom: 20px; }
         .form-group { margin-bottom: 15px; }
-        label { display: block; font-size: 1em; margin-bottom: 5px; color: #A0AEC0; }
-        input { width: 100%; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
-        .btn { background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; font-size: 1em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
-        .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
-        .error { color: #FC8181; font-size: 0.9em; margin-top: 5px; text-align: center; }
-        .back-button { text-align: center; margin-top: 20px; }
-        a { color: #90CDF4; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        @media (max-width: 768px) {
-            .container { margin: 20px; }
-            h1 { font-size: 1.5em; }
-        }
+        input { width: 100%; max-width: 300px; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
+        .password-container { position: relative; }
+        .password-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #00FFCC; }
+        button { background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; font-size: 1em; }
+        button:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .link { color: #90CDF4; text-decoration: none; }
+        .link:hover { text-decoration: underline; }
+        .error { color: #FC8181; margin-top: 10px; }
+        @media (max-width: 768px) { .container { padding: 20px; } h1 { font-size: 2em; } }
     </style>
 </head>
 <body>
@@ -32,28 +27,22 @@
         <h1>🥷 NovaHunt</h1>
         <form id="loginForm">
             <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" placeholder="Enter your email" required>
+                <input type="email" id="email" placeholder="Email" required>
             </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" placeholder="Enter your password" required>
+            <div class="form-group password-container">
+                <input type="password" id="password" placeholder="Password" required>
+                <span class="password-toggle" onclick="togglePassword()">👁️</span>
             </div>
-            <div id="error" class="error"></div>
-            <button type="submit" class="btn">Log In</button>
+            <button type="submit" id="loginBtn">Log In</button>
         </form>
-        <div class="back-button"><a href="index.html" class="btn">Back to Dashboard</a></div>
-        <p style="text-align: center; margin-top: 10px;">Don't have an account? <a href="signup.html">Sign Up</a></p>
+        <p>Don't have an account? <a href="signup.html" class="link">Sign Up</a></p>
+        <div id="loginError" class="error"></div>
     </div>
 
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
     <script type="module">
-        // Import Firebase modules
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
         import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 
-        // Initialize Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
             authDomain: "novahunt-web-app-v2.firebaseapp.com",
@@ -66,24 +55,35 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-        // Login function
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginError = document.getElementById('loginError');
+
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('error');
 
-            signInWithEmailAndPassword(auth, email, password)
-                .then((userCredential) => {
-                    const user = userCredential.user;
-                    alert('Login successful! Redirecting to dashboard...');
-                    window.location.href = 'index.html';
-                })
-                .catch((error) => {
-                    const errorMessage = error.message;
-                    errorDiv.textContent = errorMessage;
-                });
+            try {
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Logging in...';
+                await signInWithEmailAndPassword(auth, email, password);
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                console.error('Login error:', error);
+                loginError.textContent = error.message;
+                loginError.style.display = 'block';
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Log In';
+            }
         });
+
+        function togglePassword() {
+            const password = document.getElementById('password');
+            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+            password.setAttribute('type', type);
+        }
+        window.togglePassword = togglePassword;
     </script>
 </body>
 </html>
