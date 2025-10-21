@@ -26,3 +26,8 @@ post '/create-checkout-session' do
 
   { id: session.id }.to_json
 end
+
+# Optional: Add a simple health check
+get '/' do
+  'Server is running'
+end
