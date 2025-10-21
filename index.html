@@ -83,9 +83,9 @@
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
             <p>Redefine B2B success with cutting-edge AI precision.</p>
             <div style="text-align: center; margin-top: 20px;">
-                <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn btn-primary">Subscribe to Pro ($29/month)</a>
-                <a href="https://buy.stripe.com/test_aFacN59cX0tWgh4ci900001" class="btn btn-primary">Business ($59/month)</a>
-                <a href="​https://buy.stripe.com/test_fZu5kD88T3G85Cqbe500000" class="btn btn-primary">Enterprise ($99/month)</a>
+                <a href="https://buy.stripe.com/your_pro_link" class="btn btn-primary">Subscribe to Pro ($29/month)</a>
+                <a href="https://buy.stripe.com/your_business_link" class="btn btn-primary">Business ($59/month)</a>
+                <a href="https://buy.stripe.com/your_enterprise_link" class="btn btn-primary">Enterprise ($99/month)</a>
             </div>
             <p style="font-size: 0.9em; color: #90CDF4;">Free credits • No credit card required</p>
             <div class="test-mode-toggle">
@@ -534,50 +534,88 @@
                 button.textContent = i;
                 button.addEventListener('click', () => {
                     currentPage = i;
-                    updateTable();
+                    displayPage();
                 });
                 if (i === currentPage) button.classList.add('active');
                 pagination.appendChild(button);
             }
+            displayPage();
         }
         window.updatePagination = updatePagination;
 
-        function updateTable() {
+        function displayPage() {
             const table = document.querySelector('#importsResults table');
             const rows = Array.from(table.querySelectorAll('tr')).slice(1);
             const start = (currentPage - 1) * itemsPerPage;
             const end = start + itemsPerPage;
             rows.forEach((row, index) => {
-                row.style.display = index >= start && index < end ? '' : 'none';
+                row.style.display = (index >= start && index < end) ? '' : 'none';
             });
-            updatePagination();
             updateMap();
         }
-        window.updateTable = updateTable;
+        window.displayPage = displayPage;
 
         function updateMap() {
-            if (map) {
-                map.eachLayer(layer => {
-                    if (layer instanceof L.Marker) map.removeLayer(layer);
-                });
-                const table = document.querySelector('#importsResults table');
+            if (!map) initMap();
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker || layer instanceof L.CircleMarker) map.removeLayer(layer);
+            });
+            const table = document.querySelector('#importsResults table');
+            if (table) {
                 const rows = Array.from(table.querySelectorAll('tr')).slice(1).filter(row => row.style.display !== 'none');
-                rows.forEach(row => {
-                    const lat = parseFloat(row.cells[2].textContent) || 0;
-                    const lon = parseFloat(row.cells[3].textContent) || 0;
-                    if (lat && lon) {
-                        L.marker([lat, lon]).addTo(map)
-                            .bindPopup(row.cells[0].textContent + '<br>' + row.cells[1].textContent);
-                    }
-                });
+                if (rows.length > 0) {
+                    rows.forEach(row => {
+                        const country = row.cells[1].textContent.trim();
+                        const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', '')) || 1000;
+                        const supplier = row.cells[0].textContent.trim();
+                        const coords = getCountryCoords(country);
+                        console.log(`Mapping: ${supplier}, ${country}, ${coords}, Trade Value: ${tradeValue}`);
+                        if (coords[0] !== 0 || coords[1] !== 0) {
+                            const radius = Math.min(20, tradeValue / 1000) || 5;
+                            L.circleMarker(coords, {
+                                color: '#00FFCC',
+                                fillColor: '#00FFCC',
+                                fillOpacity: 0.5,
+                                radius: radius
+                            }).addTo(map).bindTooltip(`<b>${supplier}</b><br>Trade Value: $${tradeValue.toLocaleString()}<br>Country: ${country}`, {
+                                permanent: false,
+                                direction: 'top',
+                                className: 'map-tooltip'
+                            }).on('click', () => {
+                                alert(`Supplier: ${supplier}\nTrade Value: $${tradeValue.toLocaleString()}\nCountry: ${country}`);
+                            });
+                        }
+                    });
+                    map.fitBounds(rows.map(row => getCountryCoords(row.cells[1].textContent.trim())).filter(coord => coord[0] !== 0 || coord[1] !== 0));
+                } else {
+                    console.log('No visible rows to plot on map');
+                }
+            } else {
+                console.log('No table found for map update');
             }
         }
         window.updateMap = updateMap;
 
+        // Country coordinates
+        function getCountryCoords(country) {
+            const coords = {
+                'China': [35.8617, 104.1954],
+                'Vietnam': [14.0583, 108.2772],
+                'Mexico': [23.6345, -102.5528],
+                'Brazil': [-14.2350, -51.9253],
+                'Thailand': [15.8700, 100.9925],
+                'India': [20.5937, 78.9629],
+                'USA': [37.0902, -95.7129],
+                'default': [0, 0]
+            };
+            return coords[country] || coords['default'];
+        }
+        window.getCountryCoords = getCountryCoords;
+
         function searchImports() {
-            const query = document.getElementById('importsInput').value.trim();
-            const country = document.getElementById('countryFilter').value;
-            const year = document.getElementById('yearFilter').value;
+            const query = document.getElementById('importsInput').value.toLowerCase().trim().replace('ing', '');
+            const countryFilter = document.getElementById('countryFilter').value;
+            const yearFilter = document.getElementById('yearFilter').value;
             const results = document.getElementById('importsResults');
             results.innerHTML = '<div class="loading">Searching...</div>';
 
@@ -586,33 +624,111 @@
                 return;
             }
 
-            const mockData = [
-                { company: 'Acme Imports', supplier: 'Shanghai Trading Co.', country: 'China', lat: 31.2304, lon: 121.4737, year: '2023' },
-                { company: 'Acme Imports', supplier: 'Hanoi Supplies', country: 'Vietnam', lat: 21.0278, lon: 105.8342, year: '2022' },
-                { company: 'Acme Imports', supplier: 'USA Distributors', country: 'USA', lat: 37.7749, lon: -122.4194, year: '2023' },
-                { company: 'Acme Imports', supplier: 'Beijing Exports', country: 'China', lat: 39.9042, lon: 116.4074, year: '2022' }
-            ].filter(item => {
-                return (!country || item.country === country) && (!year || item.year === year) && item.company.toLowerCase().includes(query.toLowerCase());
-            });
-
-            if (mockData.length > 0) {
-                results.innerHTML = '<table class="result-table"><tr><th onclick="sortTable(0)">Company</th><th onclick="sortTable(1)">Supplier</th><th onclick="sortTable(2)" style="display:none;">Latitude</th><th onclick="sortTable(3)" style="display:none;">Longitude</th><th onclick="sortTable(4)">Year</th></tr>';
-                mockData.forEach(item => {
-                    results.innerHTML += `<tr><td>${item.company}</td><td>${item.supplier}</td><td style="display:none;">${item.lat}</td><td style="display:none;">${item.lon}</td><td>${item.year}</td></tr>`;
-                });
-                results.innerHTML += '</table><div class="pagination"></div>';
-                currentPage = 1;
-                updateTable();
-                if (isTestMode || (auth.currentUser && isPremium)) initMap();
-            } else {
-                results.innerHTML = '<div class="result-item">No import records found.</div>';
-            }
+            useMockImports(query, countryFilter, yearFilter, results);
         }
         window.searchImports = searchImports;
 
-        // Placeholder for tour
+        function useMockImports(query, countryFilter, yearFilter, results) {
+            const mockSuppliers = {
+                'acme imports': [
+                    { supplier: 'Global Supply Co.', country: 'China', tradeValue: '$5000', year: '2023', product: 'Machinery Parts' },
+                    { supplier: 'East Trade Ltd.', country: 'Vietnam', tradeValue: '$3000', year: '2022', product: 'Machinery Parts' }
+                ],
+                'coca-cola': [
+                    { supplier: 'Beverage Logistics Inc.', country: 'Mexico', tradeValue: '$10000', year: '2023', product: 'Soft Drinks' },
+                    { supplier: 'Sweet Water Suppliers', country: 'Brazil', tradeValue: '$7500', year: '2022', product: 'Soft Drinks' },
+                    { supplier: 'Pacific Beverage Corp.', country: 'China', tradeValue: '$6000', year: '2023', product: 'Soft Drinks' }
+                ],
+                'monsterenergy': [
+                    { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023', product: 'Energy Drinks' },
+                    { supplier: 'Asia Energy Import', country: 'India', tradeValue: '$2500', year: '2022', product: 'Energy Drinks' }
+                ],
+                'pepsi cola': [
+                    { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
+                ],
+                'default': [
+                    { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
+                ]
+            };
+
+            const suppliers = mockSuppliers[query] || mockSuppliers['default'];
+            let tableHTML = `
+                <div class="summary-box">Trade Insights for ${query.toUpperCase()} | Last Updated: ${new Date().toLocaleDateString()} | <a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade for Full Report</a></div>
+                <table class="result-table">
+                    <tr>
+                        <th onclick="sortTable(0)">Supplier</th>
+                        <th onclick="sortTable(1)">Country</th>
+                        <th onclick="sortTable(2)">Trade Value</th>
+                        <th onclick="sortTable(3)">Year</th>
+                        <th onclick="sortTable(4)">Product</th>
+                        <th>Action</th>
+                    </tr>
+            `;
+            const filteredSuppliers = suppliers.filter(supplier => {
+                const matchesCountry = !countryFilter || supplier.country === countryFilter;
+                const matchesYear = !yearFilter || supplier.year === yearFilter;
+                return matchesCountry && matchesYear;
+            });
+            const totalResults = suppliers.length;
+
+            if (filteredSuppliers.length > 0 && (isTestMode || (auth.currentUser && isPremium))) {
+                filteredSuppliers.slice(0, 3).forEach(supplier => {
+                    tableHTML += `
+                        <tr>
+                            <td>${supplier.supplier}</td>
+                            <td>${supplier.country}</td>
+                            <td>${supplier.tradeValue}</td>
+                            <td>${supplier.year}</td>
+                            <td>${supplier.product}</td>
+                            <td><button class="btn premium" onclick="viewReport()">View Report (Premium)</button></td>
+                        </tr>
+                    `;
+                });
+                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${Math.min(3, filteredSuppliers.length)} of ${totalResults} results</p>`;
+                if (totalResults > 3) {
+                    tableHTML += `<div class="premium-note">Upgrade to see all ${totalResults} results</div><div class="pagination"></div>`;
+                }
+            } else {
+                tableHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
+            }
+            tableHTML += '</table>';
+            results.innerHTML = tableHTML;
+            updatePagination();
+            updateMap();
+        }
+        window.useMockImports = useMockImports;
+
+        // View Report function
+        function viewReport() {
+            if (!isPremium && !isTestMode) {
+                alert('This feature requires a Business/Enterprise plan. Upgrade to access full reports.');
+                window.location.href = 'https://buy.stripe.com/your_business_link';
+            } else {
+                alert('Full report: Detailed supplier analysis, trade history, and contact info available. Visit plans.html for more!');
+            }
+        }
+        window.viewReport = viewReport;
+
+        // Tour function
         function startTour() {
-            alert('Tour feature coming soon!');
+            let step = 1;
+            const steps = [
+                "Welcome to NovaHunt! This tour will showcase premium features.",
+                "Use 'Hunt Corporate Emails' to find emails (e.g., coca-cola.com).",
+                "Try 'Hunt Industry Leads' for industry-specific leads (e.g., 'Ice Cream Companies USA').",
+                "Explore 'Hunt Import Records' for supplier data with the map (e.g., acme imports).",
+                "Toggle 'Test Mode' to simulate premium access. Sign up for the full experience!",
+                "End of tour! Visit plans.html to upgrade."
+            ];
+            alert(steps[step - 1]);
+            const interval = setInterval(() => {
+                if (step < steps.length) {
+                    step++;
+                    alert(steps[step - 1]);
+                } else {
+                    clearInterval(interval);
+                }
+            }, 3000);
         }
         window.startTour = startTour;
     </script>
