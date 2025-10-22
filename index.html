@@ -83,9 +83,9 @@
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
             <p>Redefine B2B success with cutting-edge AI precision.</p>
             <div style="text-align: center; margin-top: 20px;">
-                <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn btn-primary">Subscribe to Pro ($29/month)</a>
-                <a href="https://buy.stripe.com/test_aFacN59cX0tWgh4ci900001" class="btn btn-primary">Business ($59/month)</a>
-                <a href="https://buy.stripe.com/test_fZu5kD88T3G85Cqbe500000" class="btn btn-primary">Enterprise ($99/month)</a>
+                <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn btn-primary">Subscribe to Pro ($29/month)</a> <!-- Replace with your Pro URL -->
+                <a href="https://buy.stripe.com/test_aFacN59cX0tWgh4ci900001" class="btn btn-primary">Business ($59/month)</a> <!-- Replace with your Business URL -->
+                <a href="https://buy.stripe.com/test_fZu5kD88T3G85Cqbe500000" class="btn btn-primary">Enterprise ($99/month)</a> <!-- Replace with your Enterprise URL -->
             </div>
             <p style="font-size: 0.9em; color: #90CDF4;">Free credits • No credit card required</p>
             <div class="test-mode-toggle">
@@ -116,10 +116,10 @@
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
-                <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade Now</a></div>
+                <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>
             </div>
             <div id="imports-tab" class="tab-content">
-                <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade Now</a></div>
+                <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>
             </div>
         </div>
     </section>
@@ -164,8 +164,10 @@
             console.log('Auth state changed, user:', user ? 'logged in' : 'not logged in');
             if (user) {
                 updateUI(user);
-                loadUserCredits(user.uid).then(() => {
-                    checkAccess();
+                checkSubscriptionStatus(user.uid).then(() => {
+                    loadUserCredits(user.uid).then(() => {
+                        checkAccess();
+                    });
                 });
             } else {
                 updateUI(null);
@@ -188,8 +190,8 @@
             auth.signOut().then(() => {
                 updateUI(null);
                 isTestMode = false;
+                isPremium = false;
                 alert('Logged out successfully!');
-                // No redirect, just update UI
             }).catch((error) => {
                 alert('Error logging out: ' + error.message);
             });
@@ -201,19 +203,37 @@
             isTestMode = !isTestMode;
             alert(`Test mode ${isTestMode ? 'enabled' : 'disabled'}. Premium features ${isTestMode ? 'available' : 'restricted'}.`);
             checkAccess();
-            updateUI(auth.currentUser); // Refresh UI after toggle
+            updateUI(auth.currentUser);
         }
         window.toggleTestMode = toggleTestMode;
+
+        // Check subscription status from Stripe via Firebase
+        async function checkSubscriptionStatus(uid) {
+            const userRef = doc(db, 'users', uid);
+            try {
+                const docSnap = await getDoc(userRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    isPremium = data.isPremium || false;
+                    console.log('Subscription status:', isPremium);
+                } else {
+                    isPremium = false;
+                }
+            } catch (error) {
+                console.error('Error checking subscription:', error);
+                isPremium = false;
+            }
+        }
+        window.checkSubscriptionStatus = checkSubscriptionStatus;
 
         // Check access for premium sections
         function checkAccess() {
             const aiTab = document.getElementById('ai-tab');
             const importsTab = document.getElementById('imports-tab');
-            const user = auth.currentUser;
-            if (!isTestMode && (!user || !isPremium)) {
-                aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade Now</a></div>';
-                importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade Now</a></div>';
-            } else if (isTestMode || (user && isPremium)) {
+            if (!isTestMode && !isPremium) {
+                aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>';
+                importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>';
+            } else {
                 aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
                 importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>';
             }
@@ -257,7 +277,7 @@
             contents.forEach(content => content.classList.remove('active'));
             button.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
-            if (tabName === 'imports' && (isTestMode || (auth.currentUser && isPremium))) {
+            if (tabName === 'imports' && (isTestMode || isPremium)) {
                 initMap();
                 if (document.getElementById('importsResults').innerHTML.includes('table')) updateMap();
             }
@@ -325,11 +345,11 @@
                     }
 
                     if (!isPremium && !isTestMode && auth.currentUser) {
-                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                     } else if (!isPremium && !isTestMode && !auth.currentUser) {
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     } else if (!isPremium && !isTestMode) {
-                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                     }
                 })
                 .catch(err => {
@@ -370,7 +390,7 @@
                     if (!isPremium && !isTestMode && !auth.currentUser) {
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     } else if (!isPremium && !isTestMode) {
-                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                     }
                 });
         }
@@ -419,7 +439,7 @@
                     await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                 } else {
                     alert('Not enough credits this month. Upgrade to reveal more emails.');
-                    window.location.href = 'https://buy.stripe.com/your_business_link';
+                    window.location.href = 'https://buy.stripe.com/6oE8xJ4cK8d4dEdg7';
                 }
             } else {
                 alert('Please log in to reveal emails.');
@@ -451,7 +471,7 @@
                         results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                     });
                     if (!isPremium && !isTestMode) {
-                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade to See All ${data.results.companies.length - 2} Additional Companies</a></div>`;
+                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${data.results.companies.length - 2} Additional Companies</a></div>`;
                     }
                 })
                 .catch(err => {
@@ -474,7 +494,7 @@
                                     results.innerHTML += `<div class="result-item"><h3>${company.name}</h3><a href="${company.url}" target="_blank" class="btn">View Profile</a></div>`;
                                 });
                                 if (!isPremium && !isTestMode) {
-                                    results.innerHTML += '<div class="premium-note"><a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade to See All 142 Additional Companies</a></div>';
+                                    results.innerHTML += '<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All 142 Additional Companies</a></div>';
                                 }
                             } else {
                                 data.RelatedTopics.slice(0, 2).forEach(topic => {
@@ -483,7 +503,7 @@
                                     results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                                 });
                                 if (!isPremium && !isTestMode) {
-                                    results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade to See All ${data.RelatedTopics.length - 2} Additional Companies</a></div>`;
+                                    results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${data.RelatedTopics.length - 2} Additional Companies</a></div>`;
                                 }
                             }
                         })
@@ -497,7 +517,7 @@
                                 results.innerHTML += `<div class="result-item"><h3>${company.name}</h3><a href="${company.url}" target="_blank" class="btn">View Profile</a></div>`;
                             });
                             if (!isPremium && !isTestMode) {
-                                results.innerHTML += '<div class="premium-note"><a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade to See All 142 Additional Companies</a></div>';
+                                results.innerHTML += '<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All 142 Additional Companies</a></div>';
                             }
                             console.error('DuckDuckGo fallback failed:', ddErr);
                         });
@@ -571,7 +591,6 @@
                         const tradeValue = parseFloat(row.cells[2].textContent.replace('$', '').replace(',', '')) || 1000;
                         const supplier = row.cells[0].textContent.trim();
                         const coords = getCountryCoords(country);
-                        console.log(`Mapping: ${supplier}, ${country}, ${coords}, Trade Value: ${tradeValue}`);
                         if (coords[0] !== 0 || coords[1] !== 0) {
                             const radius = Math.min(20, tradeValue / 1000) || 5;
                             L.circleMarker(coords, {
@@ -655,7 +674,7 @@
 
             const suppliers = mockSuppliers[query] || mockSuppliers['default'];
             let tableHTML = `
-                <div class="summary-box">Trade Insights for ${query.toUpperCase()} | Last Updated: ${new Date().toLocaleDateString()} | <a href="https://buy.stripe.com/your_business_link" class="btn">Upgrade for Full Report</a></div>
+                <div class="summary-box">Trade Insights for ${query.toUpperCase()} | Last Updated: ${new Date().toLocaleDateString()} | <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade for Full Report</a></div>
                 <table class="result-table">
                     <tr>
                         <th onclick="sortTable(0)">Supplier</th>
@@ -673,7 +692,7 @@
             });
             const totalResults = suppliers.length;
 
-            if (filteredSuppliers.length > 0 && (isTestMode || (auth.currentUser && isPremium))) {
+            if (filteredSuppliers.length > 0 && (isTestMode || isPremium)) {
                 filteredSuppliers.slice(0, 3).forEach(supplier => {
                     tableHTML += `
                         <tr>
@@ -704,7 +723,7 @@
         function viewReport() {
             if (!isPremium && !isTestMode) {
                 alert('This feature requires a Business/Enterprise plan. Upgrade to access full reports.');
-                window.location.href = 'https://buy.stripe.com/your_business_link';
+                window.location.href = 'https://buy.stripe.com/6oE8xJ4cK8d4dEdg7';
             } else {
                 alert('Full report: Detailed supplier analysis, trade history, and contact info available. Visit plans.html for more!');
             }
