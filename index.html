@@ -76,16 +76,15 @@
     </style>
 </head>
 <body>
-    <!-- Hero Section -->
     <section class="section" style="padding-top: 80px; background: #1A202C; box-shadow: 0 4px 20px rgba(0, 255, 204, 0.3);">
         <div class="container">
             <h1>🥷 NovaHunt</h1>
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
             <p>Redefine B2B success with cutting-edge AI precision.</p>
             <div style="text-align: center; margin-top: 20px;">
-                <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn btn-primary">Subscribe to Pro ($29/month)</a> <!-- Replace with your Pro URL -->
-                <a href="https://buy.stripe.com/test_aFacN59cX0tWgh4ci900001" class="btn btn-primary">Business ($59/month)</a> <!-- Replace with your Business URL -->
-                <a href="https://buy.stripe.com/test_fZu5kD88T3G85Cqbe500000" class="btn btn-primary">Enterprise ($99/month)</a> <!-- Replace with your Enterprise URL -->
+                <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn btn-primary">Subscribe to Pro ($29/month)</a>
+                <a href="https://buy.stripe.com/test_aFacN59cX0tWgh4ci900001" class="btn btn-primary">Business ($59/month)</a>
+                <a href="https://buy.stripe.com/test_fZu5kD88T3G85Cqbe500000" class="btn btn-primary">Enterprise ($99/month)</a>
             </div>
             <p style="font-size: 0.9em; color: #90CDF4;">Free credits • No credit card required</p>
             <div class="test-mode-toggle">
@@ -95,10 +94,8 @@
         </div>
     </section>
 
-    <!-- Navigation (Auth) -->
     <div class="nav" id="navLinks"></div>
 
-    <!-- Multi-Mode Search Section -->
     <section class="section">
         <div class="container">
             <h2>Search for Leads</h2>
@@ -116,30 +113,23 @@
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
-                <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>
+                <!-- Populated by checkAccess -->
             </div>
             <div id="imports-tab" class="tab-content">
-                <div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>
+                <!-- Populated by checkAccess -->
             </div>
         </div>
     </section>
 
-    <!-- Tour Button -->
     <button class="tour-btn" onclick="startTour()">Take a Tour</button>
 
-    <!-- Footer -->
     <footer style="text-align: center; padding: 20px 0; color: #A0AEC0; font-size: 0.9em;">
         © 2025 NovaHunt.ai | All rights reserved | <a href="terms.html" style="color: #90CDF4; text-decoration: none;">Terms of Service</a> | <a href="privacy.html" style="color: #90CDF4; text-decoration: none;">Privacy Policy</a> | <a href="faq.html" style="color: #90CDF4; text-decoration: none;">FAQ</a>
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js?v=1.1.2"></script>
-    <script type="module">
-        // Import Firebase modules
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
-        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
-        import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
-
-        // Initialize Firebase
+    <script>
+        // Global Firebase setup
         const firebaseConfig = {
             apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
             authDomain: "novahunt-web-app-v2.firebaseapp.com",
@@ -148,18 +138,15 @@
             messagingSenderId: "915754711081",
             appId: "1:915754711081:web:f563cc734c901812954438"
         };
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // Initialize global variables
         let userCredits = 5;
         let isPremium = false;
         let isTestMode = false;
         let map;
 
-        // Update UI based on auth state with debug log
         onAuthStateChanged(auth, (user) => {
             console.log('Auth state changed, user:', user ? 'logged in' : 'not logged in');
             if (user) {
@@ -175,7 +162,6 @@
             }
         });
 
-        // Update UI based on auth state
         function updateUI(user) {
             const navLinks = document.getElementById('navLinks');
             if (user) {
@@ -185,20 +171,16 @@
             }
         }
 
-        // Logout function
         function logout() {
             auth.signOut().then(() => {
                 updateUI(null);
                 isTestMode = false;
                 isPremium = false;
                 alert('Logged out successfully!');
-            }).catch((error) => {
-                alert('Error logging out: ' + error.message);
-            });
+            }).catch((error) => alert('Error logging out: ' + error.message));
         }
         window.logout = logout;
 
-        // Toggle test mode
         function toggleTestMode() {
             isTestMode = !isTestMode;
             alert(`Test mode ${isTestMode ? 'enabled' : 'disabled'}. Premium features ${isTestMode ? 'available' : 'restricted'}.`);
@@ -207,14 +189,13 @@
         }
         window.toggleTestMode = toggleTestMode;
 
-        // Check subscription status from Stripe via Firebase
         async function checkSubscriptionStatus(uid) {
             const userRef = doc(db, 'users', uid);
             try {
                 const docSnap = await getDoc(userRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    isPremium = data.isPremium || false;
+                    isPremium = data.isPremium === true;
                     console.log('Subscription status:', isPremium);
                 } else {
                     isPremium = false;
@@ -226,7 +207,6 @@
         }
         window.checkSubscriptionStatus = checkSubscriptionStatus;
 
-        // Check access for premium sections
         function checkAccess() {
             const aiTab = document.getElementById('ai-tab');
             const importsTab = document.getElementById('imports-tab');
@@ -240,7 +220,6 @@
         }
         window.checkAccess = checkAccess;
 
-        // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
             console.log('Page loaded, initializing UI');
             updateUI(auth.currentUser);
@@ -253,7 +232,6 @@
             });
         });
 
-        // Initialize map
         function initMap() {
             const mapDiv = document.getElementById('map');
             if (mapDiv && mapDiv.offsetParent !== null) {
@@ -269,7 +247,6 @@
         }
         window.initMap = initMap;
 
-        // Tab switching with map refresh
         function switchTab(tabName, button) {
             const tabs = document.querySelectorAll('.tab-btn');
             const contents = document.querySelectorAll('.tab-content');
@@ -285,7 +262,6 @@
         }
         window.switchTab = switchTab;
 
-        // Company Search with Hunter.io API via AllOrigins Proxy
         function searchCompany() {
             const query = document.getElementById('companyInput').value.trim();
             const results = document.getElementById('companyResults');
@@ -304,33 +280,21 @@
             const proxyUrl = 'https://api.allorigins.win/raw?url=';
             const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
             fetch(proxyUrl + encodeURIComponent(apiUrl))
-                .then(response => {
-                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
-                    if (!data || !data.data || !data.data.emails) {
-                        throw new Error('No email data found in the API response.');
-                    }
-
                     results.innerHTML = '';
                     const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
                     results.innerHTML += `<p style="color: #A0AEC0;">Found ${mockTotal} emails across departments.</p>`;
-
                     const emailsByDept = {};
-                    const emailsToProcess = Array.isArray(data.data.emails) ? data.data.emails.slice(0, 10) : [];
-                    emailsToProcess.forEach(email => {
-                        if (email && typeof email === 'object') {
-                            const dept = email.department || 'Unknown';
-                            if (!emailsByDept[dept]) emailsByDept[dept] = [];
-                            emailsByDept[dept].push(email);
-                        }
+                    (data.data.emails || []).slice(0, 10).forEach(email => {
+                        const dept = email.department || 'Unknown';
+                        if (!emailsByDept[dept]) emailsByDept[dept] = [];
+                        emailsByDept[dept].push(email);
                     });
-
                     for (const [dept, emails] of Object.entries(emailsByDept)) {
                         results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
                         emails.slice(0, 10).forEach(email => {
-                            const name = email.first_name || email.last_name ? `${email.first_name || ''} ${email.last_name || ''}`.trim() : 'N/A';
+                            const name = `${email.first_name || ''} ${email.last_name || ''}`.trim() || 'N/A';
                             const role = email.position || 'N/A';
                             const confidence = email.confidence || 'N/A';
                             const maskedEmail = `********@${query.split('.')[0]}.com`;
@@ -343,13 +307,10 @@
                             `;
                         });
                     }
-
                     if (!isPremium && !isTestMode && auth.currentUser) {
                         results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                     } else if (!isPremium && !isTestMode && !auth.currentUser) {
-                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
-                    } else if (!isPremium && !isTestMode) {
-                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     }
                 })
                 .catch(err => {
@@ -359,15 +320,7 @@
                     results.innerHTML += `<p style="color: #A0AEC0;">Mock data: Found ${mockTotal} emails across departments.</p>`;
                     const mockEmails = [
                         { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 80 },
-                        { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 },
-                        { name: 'Sarah Lee', role: 'HR Specialist', email: 'sarah.lee@' + query.split('.')[0] + '.com', dept: 'Human Resources', confidence: 70 },
-                        { name: 'Tom Brown', role: 'IT Lead', email: 'tom.brown@' + query.split('.')[0] + '.com', dept: 'IT', confidence: 75 },
-                        { name: 'Emily Davis', role: 'Finance Analyst', email: 'emily.davis@' + query.split('.')[0] + '.com', dept: 'Finance', confidence: 78 },
-                        { name: 'David Wilson', role: 'Product Manager', email: 'david.wilson@' + query.split('.')[0] + '.com', dept: 'Product', confidence: 82 },
-                        { name: 'Lisa Anderson', role: 'Operations Lead', email: 'lisa.anderson@' + query.split('.')[0] + '.com', dept: 'Operations', confidence: 77 },
-                        { name: 'Robert Taylor', role: 'Marketing Assistant', email: 'robert.taylor@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 73 },
-                        { name: 'Karen White', role: 'Sales Rep', email: 'karen.white@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 76 },
-                        { name: 'John Doe', role: 'CEO', email: 'john.doe@' + query.split('.')[0] + '.com', dept: 'Executive', confidence: 75 }
+                        { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 }
                     ];
                     const mockEmailsByDept = {};
                     mockEmails.forEach(email => {
@@ -376,7 +329,7 @@
                     });
                     for (const [dept, emails] of Object.entries(mockEmailsByDept)) {
                         results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
-                        emails.slice(0, 10).forEach(email => {
+                        emails.forEach(email => {
                             const maskedEmail = `********@${query.split('.')[0]}.com`;
                             results.innerHTML += `
                                 <div class="result-item">
@@ -388,9 +341,9 @@
                         });
                     }
                     if (!isPremium && !isTestMode && !auth.currentUser) {
-                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails and unlock more features. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
+                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     } else if (!isPremium && !isTestMode) {
-                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 2} Additional Emails</a></div>`;
                     }
                 });
         }
@@ -400,20 +353,58 @@
         async function loadUserCredits(uid) {
             const userRef = doc(db, 'users', uid);
             const now = new Date();
-            const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
+            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            
             try {
                 const docSnap = await getDoc(userRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
-                        userCredits = data.monthlyCredits.credits;
-                    } else {
-                        userCredits = 5;
-                        await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
+                    console.log('User data from Firestore:', data);
+                    
+                    // Check for enterprise plan (250 credits)
+                    if (data.isPremium && data.plan === 'enterprise') {
+                        if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
+                            userCredits = data.monthlyCredits.credits;
+                        } else {
+                            userCredits = 250; // Enterprise gets 250 credits
+                            await setDoc(userRef, { 
+                                monthlyCredits: { month: currentMonth, credits: userCredits } 
+                            }, { merge: true });
+                        }
+                        console.log('Enterprise user detected, credits:', userCredits);
+                    } 
+                    // Check for other premium plans (100 credits)
+                    else if (data.isPremium) {
+                        if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
+                            userCredits = data.monthlyCredits.credits;
+                        } else {
+                            userCredits = 100; // Premium gets 100 credits
+                            await setDoc(userRef, { 
+                                monthlyCredits: { month: currentMonth, credits: userCredits } 
+                            }, { merge: true });
+                        }
+                        console.log('Premium user detected, credits:', userCredits);
+                    } 
+                    // Free tier (5 credits)
+                    else {
+                        if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
+                            userCredits = data.monthlyCredits.credits;
+                        } else {
+                            userCredits = 5; // Free gets 5 credits
+                            await setDoc(userRef, { 
+                                monthlyCredits: { month: currentMonth, credits: userCredits } 
+                            }, { merge: true });
+                        }
+                        console.log('Free user detected, credits:', userCredits);
                     }
                 } else {
+                    console.log('No user document found, creating new free user');
                     userCredits = 5;
-                    await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } });
+                    await setDoc(userRef, { 
+                        isPremium: false,
+                        plan: 'free',
+                        monthlyCredits: { month: currentMonth, credits: userCredits } 
+                    });
                 }
             } catch (error) {
                 console.error('Error loading credits:', error);
@@ -430,13 +421,18 @@
                 await loadUserCredits(user.uid);
                 if (userCredits >= cost) {
                     userCredits -= cost;
-                    button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
-                    alert(`Email revealed! ${userCredits} credits remaining this month.`);
-
+                    
+                    // Update Firestore with new credit count
                     const userRef = doc(db, 'users', user.uid);
                     const now = new Date();
-                    const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
-                    await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
+                    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                    
+                    await setDoc(userRef, { 
+                        monthlyCredits: { month: currentMonth, credits: userCredits } 
+                    }, { merge: true });
+                    
+                    button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
+                    alert(`Email revealed! ${userCredits} credits remaining this month.`);
                 } else {
                     alert('Not enough credits this month. Upgrade to reveal more emails.');
                     window.location.href = 'https://buy.stripe.com/6oE8xJ4cK8d4dEdg7';
@@ -447,7 +443,6 @@
         }
         window.revealEmail = revealEmail;
 
-        // AI Industry Search
         function searchAI() {
             const query = document.getElementById('aiInput').value.trim().toLowerCase().replace('stores', 'companies');
             const results = document.getElementById('aiResults');
@@ -458,10 +453,7 @@
             }
             const ocApiUrl = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}&per_page=5`;
             fetch(ocApiUrl)
-                .then(response => {
-                    if (!response.ok) throw new Error(`OpenCorporates error! Status: ${response.status}`);
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
                     results.innerHTML = '';
                     if (!data.results || data.results.companies.length === 0) throw new Error('No companies from OpenCorporates');
@@ -478,10 +470,7 @@
                     console.error('OpenCorporates failed, falling back to DuckDuckGo:', err);
                     const ddApiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent('list of ' + query + ' site:*.com -inurl:(signup | login)')}&format=json`;
                     fetch(ddApiUrl)
-                        .then(response => {
-                            if (!response.ok) throw new Error(`DuckDuckGo error! Status: ${response.status}`);
-                            return response.json();
-                        })
+                        .then(response => response.json())
                         .then(data => {
                             results.innerHTML = '';
                             if (!data.RelatedTopics || data.RelatedTopics.length === 0) {
@@ -525,7 +514,6 @@
         }
         window.searchAI = searchAI;
 
-        // Import Records Search
         let sortDirection = 1;
         let currentPage = 1;
         const itemsPerPage = 3;
@@ -617,7 +605,6 @@
         }
         window.updateMap = updateMap;
 
-        // Country coordinates
         function getCountryCoords(country) {
             const coords = {
                 'China': [35.8617, 104.1954],
@@ -645,11 +632,6 @@
                 return;
             }
 
-            useMockImports(query, countryFilter, yearFilter, results);
-        }
-        window.searchImports = searchImports;
-
-        function useMockImports(query, countryFilter, yearFilter, results) {
             const mockSuppliers = {
                 'acme imports': [
                     { supplier: 'Global Supply Co.', country: 'China', tradeValue: '$5000', year: '2023', product: 'Machinery Parts' },
@@ -717,9 +699,8 @@
             updatePagination();
             updateMap();
         }
-        window.useMockImports = useMockImports;
+        window.searchImports = searchImports;
 
-        // View Report function
         function viewReport() {
             if (!isPremium && !isTestMode) {
                 alert('This feature requires a Business/Enterprise plan. Upgrade to access full reports.');
@@ -730,7 +711,6 @@
         }
         window.viewReport = viewReport;
 
-        // Tour function
         function startTour() {
             let step = 1;
             const steps = [
