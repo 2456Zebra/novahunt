@@ -69,13 +69,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js"></script>
     <script>
-        // Initialize global variables FIRST
-        let userCredits = 5;
-        let isPremium = false;
-        let isTestMode = false;
-        let map;
-        let currentUser = null;
-
         // Global Firebase setup
         const firebaseConfig = {
             apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
@@ -89,10 +82,15 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // Initialize global variables FIRST
+        let userCredits = 5;
+        let isPremium = false;
+        let isTestMode = false;
+        let map;
+
         // Update UI based on auth state with debug log
         onAuthStateChanged(auth, async (user) => {
             console.log('Auth state changed, user:', user ? 'logged in' : 'not logged in');
-            currentUser = user;
             
             if (user) {
                 try {
@@ -115,7 +113,6 @@
         // Update UI based on auth state
         function updateUI(user) {
             const navLinks = document.getElementById('navLinks');
-            currentUser = user;
             
             if (user) {
                 navLinks.innerHTML = `
@@ -172,7 +169,7 @@
 
         // Check access for premium sections
         function checkAccess() {
-            console.log('checkAccess called - isTestMode:', isTestMode, 'isPremium:', isPremium, 'currentUser:', currentUser);
+            console.log('checkAccess called - isTestMode:', isTestMode, 'isPremium:', isPremium);
             
             const aiTab = document.getElementById('ai-tab');
             const importsTab = document.getElementById('imports-tab');
@@ -184,7 +181,7 @@
             
             // Show upgrade message if not premium and not test mode
             if (!isTestMode && !isPremium) {
-                if (currentUser) {
+                if (auth.currentUser) {
                     // Logged in but not premium
                     aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>';
                     importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>';
@@ -314,9 +311,9 @@
                             `;
                         });
                     }
-                    if (!isPremium && !isTestMode && currentUser) {
+                    if (!isPremium && !isTestMode && auth.currentUser) {
                         results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
-                    } else if (!isPremium && !isTestMode && !currentUser) {
+                    } else if (!isPremium && !isTestMode && !auth.currentUser) {
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     }
                 })
@@ -347,7 +344,7 @@
                             `;
                         });
                     }
-                    if (!isPremium && !isTestMode && !currentUser) {
+                    if (!isPremium && !isTestMode && !auth.currentUser) {
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     } else if (!isPremium && !isTestMode) {
                         results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 2} Additional Emails</a></div>`;
@@ -368,7 +365,7 @@
                     const data = docSnap.data();
                     console.log('User data from Firestore:', data);
                     
-                    // Check for enterprise plan (250 credits)
+                    // Add this section to handle enterprise plan
                     if (data.isPremium && data.plan === 'enterprise') {
                         if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
                             userCredits = data.monthlyCredits.credits;
@@ -379,9 +376,7 @@
                             }, { merge: true });
                         }
                         console.log('Enterprise user detected, credits:', userCredits);
-                    } 
-                    // Check for other premium plans (100 credits)
-                    else if (data.isPremium) {
+                    } else if (data.isPremium) {
                         if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
                             userCredits = data.monthlyCredits.credits;
                         } else {
@@ -391,9 +386,7 @@
                             }, { merge: true });
                         }
                         console.log('Premium user detected, credits:', userCredits);
-                    } 
-                    // Free tier (5 credits)
-                    else {
+                    } else {
                         if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
                             userCredits = data.monthlyCredits.credits;
                         } else {
