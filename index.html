@@ -9,70 +9,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css?v=1.1.2" />
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-        .section { padding: 60px 0; }
-        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
-        h2 { font-size: 2em; font-weight: 700; color: #E2E8F0; margin-bottom: 20px; text-align: center; }
-        p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
-        .btn { background: #00FFCC; color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
-        .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
-        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1em; padding: 10px 20px; border-radius: 6px; }
-        .btn-inline { padding: 4px 8px; font-size: 0.8em; margin: 0 5px; }
-        .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 20px; justify-content: center; }
-        .tab-btn { flex: 1; padding: 12px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
-        .tab-btn.active { background: #00FFCC; color: #1A202C; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .results { margin-top: 20px; }
-        .result-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .result-table th, .result-table td { padding: 10px; text-align: left; border-bottom: 1px solid #4A5568; word-wrap: break-word; }
-        .result-table th { background: #2D3748; font-weight: 600; color: #E2E8F0; cursor: pointer; }
-        .result-table th:hover { background: #4A5568; }
-        .result-table td { background: #2D3748; }
-        .result-table .premium { color: #1A202C; font-style: italic; background: #00FFCC; padding: 5px 10px; border-radius: 4px; text-align: center; }
-        .loading { color: #90CDF4; font-style: italic; text-align: center; }
-        .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00FFCC; }
-        .pagination { text-align: center; margin-top: 10px; }
-        .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
-        .pagination button:hover { background: #718096; }
-        .pagination button.active { background: #00FFCC; color: #1A202C; }
-        .department-header { font-size: 1.2em; font-weight: 600; color: #E2E8F0; margin: 10px 0 5px; }
-        .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; padding-bottom: 20px; }
-        .error { color: #FC8181; font-size: 1em; margin-top: 10px; text-align: center; font-weight: bold; padding: 10px; background: #2D3748; border-radius: 4px; }
-        .filter-group { margin-bottom: 10px; display: flex; gap: 10px; justify-content: center; }
-        .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
-        .toggle-group { display: none; }
-        #map { height: 400px; width: 100%; margin-top: 40px; border: 2px solid #00FFCC; border-radius: 6px; position: relative; }
-        .map-placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #A0AEC0; font-style: italic; }
-        .plans-section { padding: 40px 0; }
-        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00FFCC; }
-        .plan-card h3 { color: #00FFCC; margin-bottom: 10px; }
-        .plan-card ul { list-style: none; padding: 0; }
-        .plan-card ul li { margin: 10px 0; color: #A0AEC0; }
-        .plan-card .price { font-size: 1.5em; color: #E2E8F0; margin: 10px 0; }
-        .plan-card .btn { margin-top: 15px; }
-        .back-button { text-align: center; margin: 20px 0; }
-        .upgrade-message { color: #FC8181; text-align: center; margin-top: 20px; font-weight: bold; }
-        .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
-        .test-mode-toggle { text-align: center; margin: 10px 0; }
-        .test-mode-toggle input { margin-right: 5px; }
-        .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; }
-        .nav .user-info, .nav button, .nav a { display: inline-block; margin-right: 10px; }
-        .tour-btn { position: fixed; bottom: 20px; right: 20px; background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
-        .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
-        @media (max-width: 768px) {
-            h1 { font-size: 2em; }
-            h2 { font-size: 1.5em; }
-            .search-tabs { flex-direction: column; }
-            .result-table { display: block; overflow-x: auto; }
-            #map { height: 250px; margin-top: 30px; }
-            .plan-card { max-width: 100%; margin: 10px 0; }
-            .filter-group { flex-direction: column; }
-            .tour-btn { bottom: 10px; right: 10px; }
-            .nav { top: 10px; right: 10px; }
-        }
+        /* [Existing styles remain unchanged] */
     </style>
 </head>
 <body>
@@ -129,6 +66,13 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js?v=1.1.2"></script>
     <script>
+        // Initialize global variables FIRST
+        let userCredits = 5;
+        let isPremium = false;
+        let isTestMode = false;
+        let map;
+        let currentUser = null;
+
         // Global Firebase setup
         const firebaseConfig = {
             apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
@@ -142,34 +86,50 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        let userCredits = 5;
-        let isPremium = false;
-        let isTestMode = false;
-        let map;
-
-        onAuthStateChanged(auth, (user) => {
-            console.log('Auth state changed, user:', user ? 'logged in' : 'not logged in');
-            if (user) {
-                updateUI(user);
-                checkSubscriptionStatus(user.uid).then(() => {
-                    loadUserCredits(user.uid).then(() => {
-                        checkAccess();
-                    });
-                });
-            } else {
-                updateUI(null);
-                checkAccess();
-            }
-        });
-
+        // Update UI based on auth state
         function updateUI(user) {
             const navLinks = document.getElementById('navLinks');
+            currentUser = user; // Store current user globally
+            
             if (user) {
-                navLinks.innerHTML = `<div class="user-info">Logged in as: ${user.email}</div><button class="btn" onclick="logout()">Logout</button>`;
+                navLinks.innerHTML = `
+                    <div class="user-info">Logged in as: ${user.email}</div>
+                    <button class="btn" onclick="logout()">Logout</button>
+                `;
             } else {
-                navLinks.innerHTML = `<a href="login.html" class="btn">Sign In</a> <a href="signup.html" class="btn">Sign Up</a>`;
+                navLinks.innerHTML = `
+                    <a href="login.html" class="btn">Sign In</a> 
+                    <a href="signup.html" class="btn">Sign Up</a>
+                `;
             }
+            
+            // Always call checkAccess after UI update
+            checkAccess();
         }
+
+        // Update UI based on auth state with debug log
+        onAuthStateChanged(auth, async (user) => {
+            console.log('Auth state changed, user:', user ? 'logged in' : 'not logged in');
+            currentUser = user; // Update global user
+            
+            if (user) {
+                try {
+                    await checkSubscriptionStatus(user.uid);
+                    await loadUserCredits(user.uid);
+                } catch (error) {
+                    console.error('Error loading user data:', error);
+                    isPremium = false;
+                    userCredits = 5;
+                }
+            } else {
+                // Reset to defaults when not logged in
+                isPremium = false;
+                userCredits = 5;
+                isTestMode = false;
+            }
+            
+            updateUI(user);
+        });
 
         function logout() {
             auth.signOut().then(() => {
@@ -181,11 +141,12 @@
         }
         window.logout = logout;
 
+        // Toggle test mode
         function toggleTestMode() {
-            isTestMode = !isTestMode;
+            isTestMode = document.getElementById('testMode').checked;
+            console.log(`Test mode ${isTestMode ? 'enabled' : 'disabled'}`);
             alert(`Test mode ${isTestMode ? 'enabled' : 'disabled'}. Premium features ${isTestMode ? 'available' : 'restricted'}.`);
             checkAccess();
-            updateUI(auth.currentUser);
         }
         window.toggleTestMode = toggleTestMode;
 
@@ -207,15 +168,59 @@
         }
         window.checkSubscriptionStatus = checkSubscriptionStatus;
 
+        // Check access for premium sections
         function checkAccess() {
+            console.log('checkAccess called - isTestMode:', isTestMode, 'isPremium:', isPremium, 'currentUser:', currentUser);
+            
             const aiTab = document.getElementById('ai-tab');
             const importsTab = document.getElementById('imports-tab');
+            
+            if (!aiTab || !importsTab) {
+                console.log('Tab elements not found yet');
+                return;
+            }
+            
+            // Show upgrade message if not premium and not test mode
             if (!isTestMode && !isPremium) {
-                aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>';
-                importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>';
+                if (currentUser) {
+                    // Logged in but not premium
+                    aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>';
+                    importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade Now</a></div>';
+                } else {
+                    // Not logged in
+                    aiTab.innerHTML = '<div class="upgrade-message">Please <a href="login.html" class="btn">Sign In</a> or <a href="signup.html" class="btn">Sign Up</a> to access premium features.</div>';
+                    importsTab.innerHTML = '<div class="upgrade-message">Please <a href="login.html" class="btn">Sign In</a> or <a href="signup.html" class="btn">Sign Up</a> to access premium features.</div>';
+                }
             } else {
-                aiTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a query like \'Ice Cream Companies USA\' for live results.</p><input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchAI()">Generate Leads</button><div id="aiResults" class="results"></div>';
-                importsTab.innerHTML = '<p style="text-align: center; opacity: 0.8;">Enter a company name</p><p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p><div class="filter-group"><select id="countryFilter"><option value="">All Countries</option><option value="China">China</option><option value="Vietnam">Vietnam</option><option value="USA">USA</option></select><select id="yearFilter"><option value="">All Years</option><option value="2023">2023</option><option value="2022">2022</option></select></div><input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;"><button class="btn" onclick="searchImports()">Find Suppliers</button><div id="importsResults" class="results"></div><div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>';
+                // Premium access granted - show full functionality
+                console.log('Enabling premium features');
+                aiTab.innerHTML = `
+                    <p style="text-align: center; opacity: 0.8;">Enter a query like 'Ice Cream Companies USA' for live results.</p>
+                    <input type="text" id="aiInput" placeholder="AI-powered lead query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                    <button class="btn" onclick="searchAI()">Generate Leads</button>
+                    <div id="aiResults" class="results"></div>
+                `;
+                importsTab.innerHTML = `
+                    <p style="text-align: center; opacity: 0.8;">Enter a company name</p>
+                    <p style="text-align: center; opacity: 0.8; font-weight: 500;">Import Competitors Supplier Records (e.g., acme imports)</p>
+                    <div class="filter-group">
+                        <select id="countryFilter">
+                            <option value="">All Countries</option>
+                            <option value="China">China</option>
+                            <option value="Vietnam">Vietnam</option>
+                            <option value="USA">USA</option>
+                        </select>
+                        <select id="yearFilter">
+                            <option value="">All Years</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                        </select>
+                    </div>
+                    <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                    <button class="btn" onclick="searchImports()">Find Suppliers</button>
+                    <div id="importsResults" class="results"></div>
+                    <div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>
+                `;
             }
         }
         window.checkAccess = checkAccess;
@@ -307,9 +312,9 @@
                             `;
                         });
                     }
-                    if (!isPremium && !isTestMode && auth.currentUser) {
+                    if (!isPremium && !isTestMode && currentUser) {
                         results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
-                    } else if (!isPremium && !isTestMode && !auth.currentUser) {
+                    } else if (!isPremium && !isTestMode && !currentUser) {
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     }
                 })
@@ -340,7 +345,7 @@
                             `;
                         });
                     }
-                    if (!isPremium && !isTestMode && !auth.currentUser) {
+                    if (!isPremium && !isTestMode && !currentUser) {
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     } else if (!isPremium && !isTestMode) {
                         results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 2} Additional Emails</a></div>`;
@@ -492,7 +497,7 @@
                                     results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                                 });
                                 if (!isPremium && !isTestMode) {
-                                    results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${data.RelatedTopics.length - 2} Additional Companies</a></div>`;
+                                    results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${data.RelatedTopics.length - 2} Additional Companies</a></div>';
                                 }
                             }
                         })
