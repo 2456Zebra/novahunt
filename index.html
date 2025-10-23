@@ -65,6 +65,9 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js?v=1.1.2"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js"></script>
     <script>
         // Initialize global variables FIRST
         let userCredits = 5;
@@ -86,10 +89,33 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // Update UI based on auth state with debug log
+        onAuthStateChanged(auth, async (user) => {
+            console.log('Auth state changed, user:', user ? 'logged in' : 'not logged in');
+            currentUser = user;
+            
+            if (user) {
+                try {
+                    await checkSubscriptionStatus(user.uid);
+                    await loadUserCredits(user.uid);
+                } catch (error) {
+                    console.error('Error loading user data:', error);
+                    isPremium = false;
+                    userCredits = 5;
+                }
+            } else {
+                isPremium = false;
+                userCredits = 5;
+                isTestMode = false;
+            }
+            
+            updateUI(user);
+        });
+
         // Update UI based on auth state
         function updateUI(user) {
             const navLinks = document.getElementById('navLinks');
-            currentUser = user; // Store current user globally
+            currentUser = user;
             
             if (user) {
                 navLinks.innerHTML = `
@@ -106,30 +132,6 @@
             // Always call checkAccess after UI update
             checkAccess();
         }
-
-        // Update UI based on auth state with debug log
-        onAuthStateChanged(auth, async (user) => {
-            console.log('Auth state changed, user:', user ? 'logged in' : 'not logged in');
-            currentUser = user; // Update global user
-            
-            if (user) {
-                try {
-                    await checkSubscriptionStatus(user.uid);
-                    await loadUserCredits(user.uid);
-                } catch (error) {
-                    console.error('Error loading user data:', error);
-                    isPremium = false;
-                    userCredits = 5;
-                }
-            } else {
-                // Reset to defaults when not logged in
-                isPremium = false;
-                userCredits = 5;
-                isTestMode = false;
-            }
-            
-            updateUI(user);
-        });
 
         function logout() {
             auth.signOut().then(() => {
@@ -497,7 +499,7 @@
                                     results.innerHTML += `<div class="result-item"><h3>${name}</h3><a href="${url}" target="_blank" class="btn">View Profile</a></div>`;
                                 });
                                 if (!isPremium && !isTestMode) {
-                                    results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${data.RelatedTopics.length - 2} Additional Companies</a></div>';
+                                    results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${data.RelatedTopics.length - 2} Additional Companies</a></div>`;
                                 }
                             }
                         })
