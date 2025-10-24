@@ -131,8 +131,12 @@
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js"></script>
-    <script>
+    <script type="module">
         // Global Firebase setup
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
         const firebaseConfig = {
             apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
             authDomain: "novahunt-web-app-v2.firebaseapp.com",
@@ -141,9 +145,9 @@
             messagingSenderId: "915754711081",
             appId: "1:915754711081:web:f563cc734c901812954438"
         };
-        const app = firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
         // Initialize global variables FIRST
         let userCredits = 5;
@@ -374,7 +378,7 @@
                             `;
                         });
                     }
-                    if (!isPremium && !isTestMode && auth.currentUser) {
+                    if (mockTotal > 10 && !isPremium && !isTestMode && auth.currentUser) {
                         results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                     } else if (!isPremium && !isTestMode && !auth.currentUser) {
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
@@ -387,7 +391,15 @@
                     results.innerHTML += `<p style="color: #A0AEC0;">Mock data: Found ${mockTotal} emails across departments.</p>`;
                     const mockEmails = [
                         { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 80 },
-                        { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 }
+                        { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 },
+                        { name: 'Sarah Davis', role: 'HR Specialist', email: 'sarah.davis@' + query.split('.')[0] + '.com', dept: 'Human Resources', confidence: 75 },
+                        { name: 'Tom Wilson', role: 'IT Manager', email: 'tom.wilson@' + query.split('.')[0] + '.com', dept: 'IT', confidence: 90 },
+                        { name: 'Emily Brown', role: 'Finance Officer', email: 'emily.brown@' + query.split('.')[0] + '.com', dept: 'Finance', confidence: 85 },
+                        { name: 'David Lee', role: 'Operations Lead', email: 'david.lee@' + query.split('.')[0] + '.com', dept: 'Operations', confidence: 80 },
+                        { name: 'Lisa Chen', role: 'Marketing Assistant', email: 'lisa.chen@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 70 },
+                        { name: 'John Doe', role: 'Sales Rep', email: 'john.doe@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 88 },
+                        { name: 'Anna Kim', role: 'HR Coordinator', email: 'anna.kim@' + query.split('.')[0] + '.com', dept: 'Human Resources', confidence: 75 },
+                        { name: 'Peter Smith', role: 'IT Support', email: 'peter.smith@' + query.split('.')[0] + '.com', dept: 'IT', confidence: 82 }
                     ];
                     const mockEmailsByDept = {};
                     mockEmails.forEach(email => {
@@ -407,10 +419,10 @@
                             `;
                         });
                     }
-                    if (!isPremium && !isTestMode && !auth.currentUser) {
+                    if (mockTotal > 10 && !isPremium && !isTestMode && auth.currentUser) {
+                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                    } else if (!isPremium && !isTestMode && !auth.currentUser) {
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
-                    } else if (!isPremium && !isTestMode) {
-                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/6oE8xJ4cK8d4dEdg7" class="btn">Upgrade to See All ${mockTotal - 2} Additional Emails</a></div>`;
                     }
                 });
         }
@@ -428,46 +440,35 @@
                     const data = docSnap.data();
                     console.log('User data from Firestore:', data);
                     
-                    // Add this section to handle enterprise plan
                     if (data.isPremium && data.plan === 'enterprise') {
                         if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
                             userCredits = data.monthlyCredits.credits;
                         } else {
-                            userCredits = 250; // Enterprise gets 250 credits
-                            await setDoc(userRef, { 
-                                monthlyCredits: { month: currentMonth, credits: userCredits } 
-                            }, { merge: true });
+                            userCredits = 250;
+                            await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                         }
                         console.log('Enterprise user detected, credits:', userCredits);
                     } else if (data.isPremium) {
                         if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
                             userCredits = data.monthlyCredits.credits;
                         } else {
-                            userCredits = 100; // Premium gets 100 credits
-                            await setDoc(userRef, { 
-                                monthlyCredits: { month: currentMonth, credits: userCredits } 
-                            }, { merge: true });
+                            userCredits = 100;
+                            await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                         }
                         console.log('Premium user detected, credits:', userCredits);
                     } else {
                         if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
                             userCredits = data.monthlyCredits.credits;
                         } else {
-                            userCredits = 5; // Free gets 5 credits
-                            await setDoc(userRef, { 
-                                monthlyCredits: { month: currentMonth, credits: userCredits } 
-                            }, { merge: true });
+                            userCredits = 5;
+                            await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                         }
                         console.log('Free user detected, credits:', userCredits);
                     }
                 } else {
                     console.log('No user document found, creating new free user');
                     userCredits = 5;
-                    await setDoc(userRef, { 
-                        isPremium: false,
-                        plan: 'free',
-                        monthlyCredits: { month: currentMonth, credits: userCredits } 
-                    });
+                    await setDoc(userRef, { isPremium: false, plan: 'free', monthlyCredits: { month: currentMonth, credits: userCredits } });
                 }
             } catch (error) {
                 console.error('Error loading credits:', error);
@@ -484,16 +485,10 @@
                 await loadUserCredits(user.uid);
                 if (userCredits >= cost) {
                     userCredits -= cost;
-                    
-                    // Update Firestore with new credit count
                     const userRef = doc(db, 'users', user.uid);
                     const now = new Date();
                     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                    
-                    await setDoc(userRef, { 
-                        monthlyCredits: { month: currentMonth, credits: userCredits } 
-                    }, { merge: true });
-                    
+                    await setDoc(userRef, { monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                     button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
                     alert(`Email revealed! ${userCredits} credits remaining this month.`);
                 } else {
