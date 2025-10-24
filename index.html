@@ -9,7 +9,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css?v=1.1.2" />
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-sizing; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
         .section { padding: 60px 0; }
@@ -151,16 +151,15 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // Initialize global variables FIRST
+        // Initialize global variables
         let userCredits = 5;
         let isPremium = false;
         let isTestMode = false;
         let map;
 
-        // Update UI based on auth state with debug log
+        // Update UI based on auth state
         auth.onAuthStateChanged(async (user) => {
             console.log('Auth state changed, user:', user ? 'logged in' : 'not logged in');
-            
             if (user) {
                 try {
                     await checkSubscriptionStatus(user.uid);
@@ -175,7 +174,6 @@
                 userCredits = 5;
                 isTestMode = false;
             }
-            
             updateUI(user);
         });
 
@@ -186,7 +184,6 @@
                 console.error('navLinks element not found');
                 return;
             }
-            
             if (user) {
                 navLinks.innerHTML = `
                     <div class="user-info">Logged in as: ${user.email}</div>
@@ -195,20 +192,18 @@
                 `;
             } else {
                 navLinks.innerHTML = `
-                    <a href="login.html" class="btn">Sign In</a> 
+                    <a href="login.html" class="btn">Sign In</a>
                     <a href="signup.html" class="btn">Sign Up</a>
                     <a href="plans.html" class="btn">Plans</a>
                 `;
             }
-            
-            // Always call checkAccess after UI update
             checkAccess();
         }
 
         // Force UI update on page load
         document.addEventListener('DOMContentLoaded', () => {
             console.log('Page loaded, initializing UI');
-            updateUI(auth.currentUser || null); // Ensure buttons show even if auth state is pending
+            updateUI(auth.currentUser || null);
             checkAccess();
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -228,7 +223,6 @@
         }
         window.logout = logout;
 
-        // Toggle test mode
         function toggleTestMode() {
             isTestMode = document.getElementById('testMode').checked;
             console.log(`Test mode ${isTestMode ? 'enabled' : 'disabled'}`);
@@ -244,7 +238,6 @@
                 if (docSnap.exists) {
                     const data = docSnap.data();
                     isPremium = data.isPremium === true;
-                    console.log('Subscription status:', isPremium);
                 } else {
                     isPremium = false;
                 }
@@ -252,24 +245,16 @@
                 console.error('Error checking subscription:', error);
                 isPremium = false;
             }
-            // Re-check access after subscription update
             checkAccess();
         }
         window.checkSubscriptionStatus = checkSubscriptionStatus;
 
-        // Check access for premium sections
         function checkAccess() {
             console.log('checkAccess called - isTestMode:', isTestMode, 'isPremium:', isPremium);
-            
             const aiTab = document.getElementById('ai-tab');
             const importsTab = document.getElementById('imports-tab');
-            
-            if (!aiTab || !importsTab) {
-                console.log('Tab elements not found yet');
-                return;
-            }
-            
-            // Show upgrade message if not premium and not test mode
+            if (!aiTab || !importsTab) return;
+
             if (!isTestMode && !isPremium) {
                 if (auth.currentUser) {
                     aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade Now</a></div>';
@@ -399,14 +384,7 @@
                     const mockEmails = [
                         { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 80 },
                         { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 },
-                        { name: 'Sarah Davis', role: 'HR Specialist', email: 'sarah.davis@' + query.split('.')[0] + '.com', dept: 'Human Resources', confidence: 75 },
-                        { name: 'Tom Wilson', role: 'IT Manager', email: 'tom.wilson@' + query.split('.')[0] + '.com', dept: 'IT', confidence: 90 },
-                        { name: 'Emily Brown', role: 'Finance Officer', email: 'emily.brown@' + query.split('.')[0] + '.com', dept: 'Finance', confidence: 85 },
-                        { name: 'David Lee', role: 'Operations Lead', email: 'david.lee@' + query.split('.')[0] + '.com', dept: 'Operations', confidence: 80 },
-                        { name: 'Lisa Chen', role: 'Marketing Assistant', email: 'lisa.chen@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 70 },
-                        { name: 'John Doe', role: 'Sales Rep', email: 'john.doe@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 88 },
-                        { name: 'Anna Kim', role: 'HR Coordinator', email: 'anna.kim@' + query.split('.')[0] + '.com', dept: 'Human Resources', confidence: 75 },
-                        { name: 'Peter Smith', role: 'IT Support', email: 'peter.smith@' + query.split('.')[0] + '.com', dept: 'IT', confidence: 82 }
+                        { name: 'Sarah Davis', role: 'HR Specialist', email: 'sarah.davis@' + query.split('.')[0] + '.com', dept: 'Human Resources', confidence: 75 }
                     ];
                     const mockEmailsByDept = {};
                     mockEmails.forEach(email => {
@@ -435,45 +413,26 @@
         }
         window.searchCompany = searchCompany;
 
-        // Load user credits from Firestore
         async function loadUserCredits(uid) {
             const userRef = db.doc('users/' + uid);
             const now = new Date();
             const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            
             try {
                 const docSnap = await userRef.get();
                 if (docSnap.exists) {
                     const data = docSnap.data();
-                    console.log('User data from Firestore:', data);
-                    
                     if (data.isPremium && data.plan === 'enterprise') {
-                        if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
-                            userCredits = data.monthlyCredits.credits;
-                        } else {
-                            userCredits = 250;
-                            await userRef.set({ monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
-                        }
-                        console.log('Enterprise user detected, credits:', userCredits);
+                        userCredits = data.monthlyCredits?.credits || 250;
                     } else if (data.isPremium) {
-                        if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
-                            userCredits = data.monthlyCredits.credits;
-                        } else {
-                            userCredits = 100;
-                            await userRef.set({ monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
-                        }
-                        console.log('Premium user detected, credits:', userCredits);
+                        userCredits = data.monthlyCredits?.credits || 100;
                     } else {
-                        if (data.monthlyCredits && data.monthlyCredits.month === currentMonth) {
-                            userCredits = data.monthlyCredits.credits;
-                        } else {
-                            userCredits = 5;
-                            await userRef.set({ monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
-                        }
-                        console.log('Free user detected, credits:', userCredits);
+                        userCredits = data.monthlyCredits?.credits || 5;
+                    }
+                    if (!data.monthlyCredits || data.monthlyCredits.month !== currentMonth) {
+                        userCredits = data.isPremium && data.plan === 'enterprise' ? 250 : data.isPremium ? 100 : 5;
+                        await userRef.set({ monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                     }
                 } else {
-                    console.log('No user document found, creating new free user');
                     userCredits = 5;
                     await userRef.set({ isPremium: false, plan: 'free', monthlyCredits: { month: currentMonth, credits: userCredits } });
                 }
@@ -485,7 +444,6 @@
         }
         window.loadUserCredits = loadUserCredits;
 
-        // Reveal email function
         async function revealEmail(email, button, cost) {
             const user = auth.currentUser;
             if (user) {
@@ -508,7 +466,6 @@
         }
         window.revealEmail = revealEmail;
 
-        // New AI Conversational Search
         async function searchAIConversational() {
             const query = document.getElementById('aiInput').value.trim().toLowerCase();
             const results = document.getElementById('aiResults');
@@ -547,38 +504,22 @@
                 }
             } catch (error) {
                 console.error('AI search failed:', error);
-                results.innerHTML = '<div class="result-item">Error processing your request. Try again or upgrade for better results.</div>';
+                results.innerHTML = '<div class="result-item">Error processing your request. Try again later.</div>';
             }
         }
         window.searchAIConversational = searchAIConversational;
 
-        // Mock X search function
         async function searchX(query, limit) {
             try {
-                const posts = await fetchXPosts(query, limit);
-                return posts.map(post => ({
-                    text: post.text,
-                    username: post.username
-                })).slice(0, limit);
-            } catch {
-                return [
+                const posts = [
                     { text: "Looking for tech leads? Check @TechLeadPro!", username: "TechLeadPro" },
                     { text: "Marketing managers in USA hiring now @MarketGuru", username: "MarketGuru" },
                     { text: "Tech USA jobs @CodeMaster", username: "CodeMaster" }
                 ].slice(0, limit);
-            }
-        }
-
-        async function fetchXPosts(query, limit) {
-            try {
-                const results = await internalXSearch(query, limit); // Simulated API call
-                return results.map(p => ({ text: p.content, username: p.author }));
-            } catch {
-                return [
-                    { text: "Looking for tech leads? Check @TechLeadPro!", username: "TechLeadPro" },
-                    { text: "Marketing managers in USA hiring now @MarketGuru", username: "MarketGuru" },
-                    { text: "Tech USA jobs @CodeMaster", username: "CodeMaster" }
-                ].slice(0, limit);
+                return posts;
+            } catch (error) {
+                console.error('X search mock failed:', error);
+                return [];
             }
         }
 
@@ -594,48 +535,56 @@
 
         function sortTable(columnIndex) {
             const table = document.querySelector('#importsResults table');
-            const rows = Array.from(table.querySelectorAll('tr')).slice(1);
-            rows.sort((a, b) => {
-                const aValue = a.cells[columnIndex].textContent;
-                const bValue = b.cells[columnIndex].textContent;
-                return aValue.localeCompare(bValue, undefined, { numeric: true }) * sortDirection;
-            });
-            rows.forEach(row => table.appendChild(row));
-            sortDirection *= -1;
-            updatePagination();
-            updateMap();
+            if (table) {
+                const rows = Array.from(table.querySelectorAll('tr')).slice(1);
+                rows.sort((a, b) => {
+                    const aValue = a.cells[columnIndex].textContent;
+                    const bValue = b.cells[columnIndex].textContent;
+                    return aValue.localeCompare(bValue, undefined, { numeric: true }) * sortDirection;
+                });
+                rows.forEach(row => table.appendChild(row));
+                sortDirection *= -1;
+                updatePagination();
+                updateMap();
+            }
         }
         window.sortTable = sortTable;
 
         function updatePagination() {
             const table = document.querySelector('#importsResults table');
-            const rows = Array.from(table.querySelectorAll('tr')).slice(1);
-            const totalPages = Math.ceil(rows.length / itemsPerPage);
-            const pagination = document.querySelector('.pagination');
-            pagination.innerHTML = '';
-            for (let i = 1; i <= totalPages; i++) {
-                const button = document.createElement('button');
-                button.textContent = i;
-                button.addEventListener('click', () => {
-                    currentPage = i;
+            if (table) {
+                const rows = Array.from(table.querySelectorAll('tr')).slice(1);
+                const totalPages = Math.ceil(rows.length / itemsPerPage);
+                const pagination = document.querySelector('.pagination');
+                if (pagination) {
+                    pagination.innerHTML = '';
+                    for (let i = 1; i <= totalPages; i++) {
+                        const button = document.createElement('button');
+                        button.textContent = i;
+                        button.addEventListener('click', () => {
+                            currentPage = i;
+                            displayPage();
+                        });
+                        if (i === currentPage) button.classList.add('active');
+                        pagination.appendChild(button);
+                    }
                     displayPage();
-                });
-                if (i === currentPage) button.classList.add('active');
-                pagination.appendChild(button);
+                }
             }
-            displayPage();
         }
         window.updatePagination = updatePagination;
 
         function displayPage() {
             const table = document.querySelector('#importsResults table');
-            const rows = Array.from(table.querySelectorAll('tr')).slice(1);
-            const start = (currentPage - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            rows.forEach((row, index) => {
-                row.style.display = (index >= start && index < end) ? '' : 'none';
-            });
-            updateMap();
+            if (table) {
+                const rows = Array.from(table.querySelectorAll('tr')).slice(1);
+                const start = (currentPage - 1) * itemsPerPage;
+                const end = start + itemsPerPage;
+                rows.forEach((row, index) => {
+                    row.style.display = (index >= start && index < end) ? '' : 'none';
+                });
+                updateMap();
+            }
         }
         window.displayPage = displayPage;
 
@@ -670,11 +619,7 @@
                         }
                     });
                     map.fitBounds(rows.map(row => getCountryCoords(row.cells[1].textContent.trim())).filter(coord => coord[0] !== 0 || coord[1] !== 0));
-                } else {
-                    console.log('No visible rows to plot on map');
                 }
-            } else {
-                console.log('No table found for map update');
             }
         }
         window.updateMap = updateMap;
@@ -713,15 +658,10 @@
                 ],
                 'coca-cola': [
                     { supplier: 'Beverage Logistics Inc.', country: 'Mexico', tradeValue: '$10000', year: '2023', product: 'Soft Drinks' },
-                    { supplier: 'Sweet Water Suppliers', country: 'Brazil', tradeValue: '$7500', year: '2022', product: 'Soft Drinks' },
-                    { supplier: 'Pacific Beverage Corp.', country: 'China', tradeValue: '$6000', year: '2023', product: 'Soft Drinks' }
+                    { supplier: 'Sweet Water Suppliers', country: 'Brazil', tradeValue: '$7500', year: '2022', product: 'Soft Drinks' }
                 ],
                 'monsterenergy': [
-                    { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023', product: 'Energy Drinks' },
-                    { supplier: 'Asia Energy Import', country: 'India', tradeValue: '$2500', year: '2022', product: 'Energy Drinks' }
-                ],
-                'pepsi cola': [
-                    { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
+                    { supplier: 'Energy Pack Ltd.', country: 'Thailand', tradeValue: '$4000', year: '2023', product: 'Energy Drinks' }
                 ],
                 'default': [
                     { supplier: 'Sample Supplier', country: 'USA', tradeValue: '$1000', year: '2023', product: 'Miscellaneous' }
@@ -746,7 +686,6 @@
                 const matchesYear = !yearFilter || supplier.year === yearFilter;
                 return matchesCountry && matchesYear;
             });
-            const totalResults = suppliers.length;
 
             if (filteredSuppliers.length > 0 && (isTestMode || isPremium)) {
                 filteredSuppliers.slice(0, 3).forEach(supplier => {
@@ -761,9 +700,9 @@
                         </tr>
                     `;
                 });
-                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${Math.min(3, filteredSuppliers.length)} of ${totalResults} results</p>`;
-                if (totalResults > 3) {
-                    tableHTML += `<div class="premium-note">Upgrade to see all ${totalResults} results</div><div class="pagination"></div>`;
+                tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${Math.min(3, filteredSuppliers.length)} of ${suppliers.length} results</p>`;
+                if (suppliers.length > 3) {
+                    tableHTML += `<div class="premium-note">Upgrade to see all ${suppliers.length} results</div><div class="pagination"></div>`;
                 }
             } else {
                 tableHTML += '<tr><td colspan="6">No supplier records found with current filters.</td></tr>';
