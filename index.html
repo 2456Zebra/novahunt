@@ -62,6 +62,7 @@
         .nav .user-info, .nav button, .nav a { display: inline-block; margin-right: 10px; }
         .tour-btn { position: fixed; bottom: 20px; right: 20px; background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
         .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
+        .password-toggle { cursor: pointer; margin-left: 5px; color: #00FFCC; }
         @media (max-width: 768px) {
             h1 { font-size: 2em; }
             h2 { font-size: 1.5em; }
@@ -142,8 +143,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             // Global Firebase setup with error handling
             let firebase = null;
-            let auth = null; // Global auth object
-            let db = null;   // Global db object
+            let auth = null;
+            let db = null;
             try {
                 const firebaseConfig = {
                     apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
@@ -160,46 +161,35 @@
                 console.log('Firebase initialized successfully');
             } catch (e) {
                 console.error('Firebase initialization failed:', e);
-                // Fallback UI
                 const navLinks = document.getElementById('navLinks');
                 if (navLinks) navLinks.innerHTML = '<a href="login.html" class="btn">Sign In</a><a href="signup.html" class="btn">Sign Up</a><a href="plans.html" class="btn">Plans</a>';
                 return;
             }
 
-            // Initialize global variables
             let userCredits = 5;
             let isPremium = false;
             let isTestMode = false;
             let map;
 
-            // Update UI based on auth state
-            if (firebase && auth) {
-                auth.onAuthStateChanged(async (user) => {
-                    console.log('Auth state changed at:', new Date().toLocaleTimeString(), 'user:', user ? user.email : 'null');
-                    if (user) {
-                        try {
-                            await checkSubscriptionStatus(user.uid);
-                            await loadUserCredits(user.uid);
-                            console.log('User data loaded, isPremium:', isPremium, 'credits:', userCredits);
-                        } catch (error) {
-                            console.error('Error loading user data:', error);
-                            isPremium = false;
-                            userCredits = 5;
-                        }
-                    } else {
+            auth.onAuthStateChanged(async (user) => {
+                console.log('Auth state changed at:', new Date().toLocaleTimeString(), 'user:', user ? user.email : 'null');
+                if (user) {
+                    try {
+                        await checkSubscriptionStatus(user.uid);
+                        await loadUserCredits(user.uid);
+                    } catch (error) {
+                        console.error('Error loading user data:', error);
                         isPremium = false;
                         userCredits = 5;
-                        isTestMode = false;
-                        console.log('No user, resetting to default state');
                     }
-                    updateUI(user);
-                });
-            } else {
-                console.warn('Firebase not loaded, using fallback UI');
-                updateUI(null);
-            }
+                } else {
+                    isPremium = false;
+                    userCredits = 5;
+                    isTestMode = false;
+                }
+                updateUI(user);
+            });
 
-            // Update UI function
             function updateUI(user) {
                 console.log('Updating UI, user:', user ? user.email : 'null');
                 const navLinks = document.getElementById('navLinks');
@@ -213,14 +203,12 @@
                         <button class="btn" onclick="logout()">Logout</button>
                         <a href="plans.html" class="btn">Plans</a>
                     `;
-                    console.log('UI updated for logged-in user:', user.email);
                 } else {
                     navLinks.innerHTML = `
                         <a href="login.html" class="btn">Sign In</a>
                         <a href="signup.html" class="btn">Sign Up</a>
                         <a href="plans.html" class="btn">Plans</a>
                     `;
-                    console.log('UI updated for logged-out state');
                 }
                 checkAccess();
             }
@@ -251,10 +239,8 @@
                     if (docSnap.exists) {
                         const data = docSnap.data();
                         isPremium = data.isPremium === true;
-                        console.log('Subscription check result, isPremium:', isPremium);
                     } else {
                         isPremium = false;
-                        console.log('No user doc found, setting isPremium to false');
                     }
                 } catch (error) {
                     console.error('Error checking subscription:', error);
@@ -277,8 +263,8 @@
                     aiTab.innerHTML = '<div class="upgrade-message">Please <a href="login.html" class="btn">Sign In</a> or <a href="signup.html" class="btn">Sign Up</a> to access this feature.</div>';
                     importsTab.innerHTML = '<div class="upgrade-message">Please <a href="login.html" class="btn">Sign In</a> or <a href="signup.html" class="btn">Sign Up</a> to access this feature.</div>';
                 } else if (!isTestMode && !isPremium && auth.currentUser) {
-                    aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade Now</a></div>';
-                    importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade Now</a></div>';
+                    aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
+                    importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="plans.html" class="btn">Upgrade Now</a></div>';
                 } else {
                     aiTab.innerHTML = `
                         <p style="text-align: center; opacity: 0.8;">Ask me anything (e.g., 'Find marketing managers in tech USA')</p>
@@ -307,7 +293,6 @@
                         <div id="importsResults" class="results"></div>
                         <div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>
                     `;
-                    console.log('Premium content loaded for ai and imports tabs');
                 }
             }
             window.checkAccess = checkAccess;
@@ -322,7 +307,6 @@
                             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                         }).addTo(map);
                         map.getContainer().style.background = '#1A202C';
-                        console.log('Map initialized');
                     }
                 }
             }
@@ -339,7 +323,6 @@
                     initMap();
                     if (document.getElementById('importsResults').innerHTML.includes('table')) updateMap();
                 }
-                console.log(`Switched to ${tabName} tab at:`, new Date().toLocaleTimeString());
             }
             window.switchTab = switchTab;
 
@@ -357,7 +340,6 @@
                 }
 
                 results.innerHTML = '<div class="loading">Searching...</div>';
-                console.log('Searching company:', query);
                 const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a';
                 const proxyUrl = 'https://api.allorigins.win/raw?url=';
                 const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
@@ -390,11 +372,10 @@
                             });
                         }
                         if (mockTotal > 10 && !isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
-                            results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                            results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                         } else if (!isPremium && !isTestMode && !auth.currentUser) {
                             results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                         }
-                        console.log('Company search completed for:', query);
                     })
                     .catch(err => {
                         console.error('API fetch failed for:', query, 'error:', err);
@@ -424,7 +405,7 @@
                             });
                         }
                         if (mockTotal > 10 && !isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
-                            results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                            results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                         } else if (!isPremium && !isTestMode && !auth.currentUser) {
                             results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                         }
@@ -460,7 +441,6 @@
                     console.error('Error loading credits:', error);
                     userCredits = 5;
                 }
-                console.log('Credits loaded:', userCredits);
                 return userCredits;
             }
             window.loadUserCredits = loadUserCredits;
@@ -479,7 +459,7 @@
                         alert(`Email revealed! ${userCredits} credits remaining this month.`);
                     } else {
                         alert('Not enough credits this month. Upgrade to reveal more emails.');
-                        window.location.href = 'https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002';
+                        window.location.href = 'plans.html';
                     }
                 } else {
                     alert('Please log in to reveal emails.');
@@ -491,7 +471,6 @@
                 const query = document.getElementById('aiInput').value.trim().toLowerCase();
                 const results = document.getElementById('aiResults');
                 results.innerHTML = '<div class="loading">Thinking...</div>';
-                console.log('AI search started for:', query);
 
                 if (!query) {
                     results.innerHTML = '<div class="result-item">Please enter a query.</div>';
@@ -522,11 +501,10 @@
                     }
 
                     if (!isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
-                        results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade for Deeper Insights</a></div>`;
+                        results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade for Deeper Insights</a></div>`;
                     } else if (!isPremium && !isTestMode && !auth.currentUser) {
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to access more leads. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     }
-                    console.log('AI search completed, results:', xPosts.length);
                 } catch (error) {
                     console.error('AI search failed:', error);
                     results.innerHTML = '<div class="result-item">Error processing your request. Try again later.</div>';
@@ -535,14 +513,12 @@
             window.searchAIConversational = searchAIConversational;
 
             async function searchX(query, limit) {
-                console.log('Searching X with query:', query);
                 try {
                     const posts = [
                         { text: "Looking for tech leads? Check @TechLeadPro!", username: "TechLeadPro" },
                         { text: "Marketing managers in USA hiring now @MarketGuru", username: "MarketGuru" },
                         { text: "Tech USA jobs @CodeMaster", username: "CodeMaster" }
                     ].slice(0, limit);
-                    console.log('X search returned:', posts.length, 'posts');
                     return posts;
                 } catch (error) {
                     console.error('X search mock failed:', error);
@@ -551,7 +527,6 @@
             }
 
             function searchAI() {
-                console.log('Using new conversational search instead');
                 searchAIConversational();
             }
             window.searchAI = searchAI;
@@ -573,7 +548,6 @@
                     sortDirection *= -1;
                     updatePagination();
                     updateMap();
-                    console.log('Table sorted by column:', columnIndex);
                 }
             }
             window.sortTable = sortTable;
@@ -597,7 +571,6 @@
                             pagination.appendChild(button);
                         }
                         displayPage();
-                        console.log('Pagination updated, total pages:', totalPages);
                     }
                 }
             }
@@ -613,7 +586,6 @@
                         row.style.display = (index >= start && index < end) ? '' : 'none';
                     });
                     updateMap();
-                    console.log('Displayed page:', currentPage);
                 }
             }
             window.displayPage = displayPage;
@@ -650,7 +622,6 @@
                         });
                         map.fitBounds(rows.map(row => getCountryCoords(row.cells[1].textContent.trim())).filter(coord => coord[0] !== 0 || coord[1] !== 0));
                     }
-                    console.log('Map updated with', rows.length, 'markers');
                 }
             }
             window.updateMap = updateMap;
@@ -676,7 +647,6 @@
                 const yearFilter = document.getElementById('yearFilter').value;
                 const results = document.getElementById('importsResults');
                 results.innerHTML = '<div class="loading">Searching...</div>';
-                console.log('Searching imports for:', query, 'filters:', { countryFilter, yearFilter });
 
                 if (!query) {
                     results.innerHTML = '<div class="result-item">Enter a company name.</div>';
@@ -702,7 +672,7 @@
 
                 const suppliers = mockSuppliers[query] || mockSuppliers['default'];
                 let tableHTML = `
-                    <div class="summary-box">Trade Insights for ${query.toUpperCase()} | Last Updated: ${new Date().toLocaleDateString()} | <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade for Full Report</a></div>
+                    <div class="summary-box">Trade Insights for ${query.toUpperCase()} | Last Updated: ${new Date().toLocaleDateString()} ${isPremium || isTestMode ? '' : '| <a href="plans.html" class="btn">Upgrade for Full Report</a>'}</div>
                     <table class="result-table">
                         <tr>
                             <th onclick="sortTable(0)">Supplier</th>
@@ -733,7 +703,7 @@
                         `;
                     });
                     tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${Math.min(3, filteredSuppliers.length)} of ${suppliers.length} results</p>`;
-                    if (suppliers.length > 3) {
+                    if (suppliers.length > 3 && !isPremium && !isTestMode) {
                         tableHTML += `<div class="premium-note">Upgrade to see all ${suppliers.length} results</div><div class="pagination"></div>`;
                     }
                 } else {
@@ -743,14 +713,13 @@
                 results.innerHTML = tableHTML;
                 updatePagination();
                 updateMap();
-                console.log('Imports search completed, results:', filteredSuppliers.length);
             }
             window.searchImports = searchImports;
 
             function viewReport() {
                 if (!isPremium && !isTestMode) {
                     alert('This feature requires a Business/Enterprise plan. Upgrade to access full reports.');
-                    window.location.href = 'https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002';
+                    window.location.href = 'plans.html';
                 } else {
                     alert('Full report: Detailed supplier analysis, trade history, and contact info available. Visit plans.html for more!');
                 }
