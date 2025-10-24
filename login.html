@@ -3,36 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - NovaHunt.ai</title>
+    <title>NovaHunt - Log In</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-form { background: #2D3748; padding: 30px; border-radius: 6px; box-shadow: 0 0 10px #00FFCC; }
+        .login-container { background: #2D3748; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px #00FFCC; width: 100%; max-width: 400px; text-align: center; }
+        h2 { color: #00FFCC; margin-bottom: 20px; }
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
-        button { background: #00FFCC; color: #1A202C; padding: 10px; border: none; border-radius: 6px; width: 100%; cursor: pointer; }
-        button:hover { box-shadow: 0 0 15px #00FFCC; }
-        a { color: #90CDF4; text-decoration: none; }
+        .password-container { position: relative; }
+        .password-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; }
+        button { background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 10px; }
+        button:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
+        .error { color: #FC8181; margin-top: 10px; }
+        a { color: #00FFCC; text-decoration: none; }
+        a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
-    <div class="login-form">
-        <h2>Log In to NovaHunt</h2>
+    <div class="login-container">
+        <h2>Log In</h2>
         <input type="email" id="email" placeholder="Email" required>
-        <input type="password" id="password" placeholder="Password" required>
+        <div class="password-container">
+            <input type="password" id="password" placeholder="Password" required>
+            <span class="password-toggle" onclick="togglePassword('password')">👁️</span>
+        </div>
         <button onclick="login()">Log In</button>
-        <p><a href="signup.html">Don't have an account? Sign Up</a></p>
+        <div id="error" class="error" style="display: none;"></div>
+        <p>Don't have an account? <a href="signup.html">Sign Up</a></p>
     </div>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA", authDomain: "novahunt-web-app-v2.firebaseapp.com", projectId: "novahunt-web-app-v2", storageBucket: "novahunt-web-app-v2.firebasestorage.app", messagingSenderId: "915754711081", appId: "1:915754711081:web:f563cc734c901812954438" };
-        const app = firebase.initializeApp(firebaseConfig);
+        const firebaseConfig = {
+            apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
+            authDomain: "novahunt-web-app-v2.firebaseapp.com",
+            projectId: "novahunt-web-app-v2",
+            storageBucket: "novahunt-web-app-v2.firebasestorage.app",
+            messagingSenderId: "915754711081",
+            appId: "1:915754711081:web:f563cc734c901812954438"
+        };
+        firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
 
         function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            auth.signInWithEmailAndPassword(email, password).then(() => window.location.href = 'index.html').catch(err => alert(err.message));
+            const errorDiv = document.getElementById('error');
+            errorDiv.style.display = 'none';
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    window.location.href = 'index.html';
+                })
+                .catch((error) => {
+                    errorDiv.textContent = error.message;
+                    errorDiv.style.display = 'block';
+                });
         }
+        window.login = login;
+
+        function togglePassword(fieldId) {
+            const passwordField = document.getElementById(fieldId);
+            const toggle = document.querySelector(`#${fieldId} + .password-toggle`);
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                toggle.textContent = '👁️‍🗨️';
+            } else {
+                passwordField.type = 'password';
+                toggle.textContent = '👁️';
+            }
+        }
+        window.togglePassword = togglePassword;
     </script>
 </body>
 </html>
