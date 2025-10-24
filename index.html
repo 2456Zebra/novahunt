@@ -94,7 +94,9 @@
         </div>
     </section>
 
-    <div class="nav" id="navLinks"></div>
+    <div class="nav" id="navLinks">
+        <!-- Buttons will populate here on load -->
+    </div>
 
     <section class="section">
         <div class="container">
@@ -203,10 +205,10 @@
             checkAccess();
         }
 
-        // Call updateUI on page load to ensure initial state
+        // Force UI update on page load
         document.addEventListener('DOMContentLoaded', () => {
             console.log('Page loaded, initializing UI');
-            updateUI(auth.currentUser || null); // Fallback to null if undefined
+            updateUI(auth.currentUser || null); // Ensure buttons show even if auth state is pending
             checkAccess();
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -307,18 +309,6 @@
             }
         }
         window.checkAccess = checkAccess;
-
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('Page loaded, initializing UI');
-            updateUI(auth.currentUser || null);
-            checkAccess();
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const tabName = e.target.getAttribute('onclick').match(/switchTab\('([^']+)'/)[1];
-                    switchTab(tabName, e.target);
-                });
-            });
-        });
 
         function initMap() {
             const mapDiv = document.getElementById('map');
