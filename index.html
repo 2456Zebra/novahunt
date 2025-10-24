@@ -152,7 +152,7 @@
         let map;
 
         // Update UI based on auth state with debug log
-        onAuthStateChanged(auth, async (user) => {
+        auth.onAuthStateChanged(async (user) => {
             console.log('Auth state changed, user:', user ? 'logged in' : 'not logged in');
             
             if (user) {
@@ -193,6 +193,12 @@
             checkAccess();
         }
 
+        // Call updateUI on page load to ensure initial state
+        document.addEventListener('DOMContentLoaded', () => {
+            updateUI(auth.currentUser);
+            checkAccess();
+        });
+
         function logout() {
             auth.signOut().then(() => {
                 updateUI(null);
@@ -213,10 +219,10 @@
         window.toggleTestMode = toggleTestMode;
 
         async function checkSubscriptionStatus(uid) {
-            const userRef = doc(db, 'users', uid);
+            const userRef = db.doc('users/' + uid);
             try {
-                const docSnap = await getDoc(userRef);
-                if (docSnap.exists()) {
+                const docSnap = await userRef.get();
+                if (docSnap.exists) {
                     const data = docSnap.data();
                     isPremium = data.isPremium === true;
                     console.log('Subscription status:', isPremium);
@@ -227,6 +233,8 @@
                 console.error('Error checking subscription:', error);
                 isPremium = false;
             }
+            // Re-check access after subscription update
+            checkAccess();
         }
         window.checkSubscriptionStatus = checkSubscriptionStatus;
 
@@ -426,13 +434,13 @@
 
         // Load user credits from Firestore
         async function loadUserCredits(uid) {
-            const userRef = doc(db, 'users', uid);
+            const userRef = db.doc('users/' + uid);
             const now = new Date();
             const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             
             try {
-                const docSnap = await getDoc(userRef);
-                if (docSnap.exists()) {
+                const docSnap = await userRef.get();
+                if (docSnap.exists) {
                     const data = docSnap.data();
                     console.log('User data from Firestore:', data);
                     
@@ -442,7 +450,7 @@
                             userCredits = data.monthlyCredits.credits;
                         } else {
                             userCredits = 250; // Enterprise gets 250 credits
-                            await setDoc(userRef, { 
+                            await userRef.set({ 
                                 monthlyCredits: { month: currentMonth, credits: userCredits } 
                             }, { merge: true });
                         }
@@ -452,7 +460,7 @@
                             userCredits = data.monthlyCredits.credits;
                         } else {
                             userCredits = 100; // Premium gets 100 credits
-                            await setDoc(userRef, { 
+                            await userRef.set({ 
                                 monthlyCredits: { month: currentMonth, credits: userCredits } 
                             }, { merge: true });
                         }
@@ -462,7 +470,7 @@
                             userCredits = data.monthlyCredits.credits;
                         } else {
                             userCredits = 5; // Free gets 5 credits
-                            await setDoc(userRef, { 
+                            await userRef.set({ 
                                 monthlyCredits: { month: currentMonth, credits: userCredits } 
                             }, { merge: true });
                         }
@@ -471,7 +479,7 @@
                 } else {
                     console.log('No user document found, creating new free user');
                     userCredits = 5;
-                    await setDoc(userRef, { 
+                    await userRef.set({ 
                         isPremium: false,
                         plan: 'free',
                         monthlyCredits: { month: currentMonth, credits: userCredits } 
@@ -494,11 +502,11 @@
                     userCredits -= cost;
                     
                     // Update Firestore with new credit count
-                    const userRef = doc(db, 'users', user.uid);
+                    const userRef = db.doc('users/' + user.uid);
                     const now = new Date();
                     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
                     
-                    await setDoc(userRef, { 
+                    await userRef.set({ 
                         monthlyCredits: { month: currentMonth, credits: userCredits } 
                     }, { merge: true });
                     
