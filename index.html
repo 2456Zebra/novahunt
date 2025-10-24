@@ -142,6 +142,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             // Global Firebase setup with error handling
             let firebase = null;
+            let auth = null; // Global auth object
+            let db = null;   // Global db object
             try {
                 const firebaseConfig = {
                     apiKey: "AIzaSyArKU9HQx7An_PhRM2jlzIHVnLp1EmISlA",
@@ -153,8 +155,8 @@
                 };
                 firebase = window.firebase || (window.firebase = {});
                 const app = firebase.initializeApp(firebaseConfig);
-                const auth = firebase.auth();
-                const db = firebase.firestore();
+                auth = firebase.auth();
+                db = firebase.firestore();
                 console.log('Firebase initialized successfully');
             } catch (e) {
                 console.error('Firebase initialization failed:', e);
@@ -171,8 +173,8 @@
             let map;
 
             // Update UI based on auth state
-            if (firebase && firebase.auth) {
-                firebase.auth().onAuthStateChanged(async (user) => {
+            if (firebase && auth) {
+                auth.onAuthStateChanged(async (user) => {
                     console.log('Auth state changed at:', new Date().toLocaleTimeString(), 'user:', user ? user.email : 'null');
                     if (user) {
                         try {
@@ -263,7 +265,7 @@
             window.checkSubscriptionStatus = checkSubscriptionStatus;
 
             function checkAccess() {
-                console.log('checkAccess called at:', new Date().toLocaleTimeString(), 'isTestMode:', isTestMode, 'isPremium:', isPremium);
+                console.log('checkAccess called at:', new Date().toLocaleTimeString(), 'isTestMode:', isTestMode, 'isPremium:', isPremium, 'user:', auth.currentUser ? auth.currentUser.email : 'null');
                 const aiTab = document.getElementById('ai-tab');
                 const importsTab = document.getElementById('imports-tab');
                 if (!aiTab || !importsTab) {
@@ -271,14 +273,12 @@
                     return;
                 }
 
-                if (!isTestMode && !isPremium) {
-                    if (auth.currentUser) {
-                        aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade Now</a></div>';
-                        importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade Now</a></div>';
-                    } else {
-                        aiTab.innerHTML = '<div class="upgrade-message">Please <a href="login.html" class="btn">Sign In</a> or <a href="signup.html" class="btn">Sign Up</a> to access premium features.</div>';
-                        importsTab.innerHTML = '<div class="upgrade-message">Please <a href="login.html" class="btn">Sign In</a> or <a href="signup.html" class="btn">Sign Up</a> to access premium features.</div>';
-                    }
+                if (!isTestMode && !isPremium && !auth.currentUser) {
+                    aiTab.innerHTML = '<div class="upgrade-message">Please <a href="login.html" class="btn">Sign In</a> or <a href="signup.html" class="btn">Sign Up</a> to access this feature.</div>';
+                    importsTab.innerHTML = '<div class="upgrade-message">Please <a href="login.html" class="btn">Sign In</a> or <a href="signup.html" class="btn">Sign Up</a> to access this feature.</div>';
+                } else if (!isTestMode && !isPremium && auth.currentUser) {
+                    aiTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade Now</a></div>';
+                    importsTab.innerHTML = '<div class="upgrade-message">This feature is for Business/Enterprise users. <a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade Now</a></div>';
                 } else {
                     aiTab.innerHTML = `
                         <p style="text-align: center; opacity: 0.8;">Ask me anything (e.g., 'Find marketing managers in tech USA')</p>
@@ -389,7 +389,7 @@
                                 `;
                             });
                         }
-                        if (mockTotal > 10 && !isPremium && !isTestMode && auth.currentUser) {
+                        if (mockTotal > 10 && !isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
                             results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                         } else if (!isPremium && !isTestMode && !auth.currentUser) {
                             results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
@@ -423,7 +423,7 @@
                                 `;
                             });
                         }
-                        if (mockTotal > 10 && !isPremium && !isTestMode && auth.currentUser) {
+                        if (mockTotal > 10 && !isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
                             results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
                         } else if (!isPremium && !isTestMode && !auth.currentUser) {
                             results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
@@ -521,8 +521,10 @@
                         results.innerHTML += '<div class="result-item">No leads found. Try a different query or upgrade for deeper search.</div>';
                     }
 
-                    if (!isPremium && !isTestMode && auth.currentUser) {
+                    if (!isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
                         results.innerHTML += `<div class="premium-note"><a href="https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002" class="btn">Upgrade for Deeper Insights</a></div>`;
+                    } else if (!isPremium && !isTestMode && !auth.currentUser) {
+                        results.innerHTML += '<div class="premium-note">Please log in or sign up to access more leads. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     }
                     console.log('AI search completed, results:', xPosts.length);
                 } catch (error) {
