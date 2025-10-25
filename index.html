@@ -887,7 +887,9 @@
                 const theme = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
                 document.body.setAttribute('data-theme', theme);
                 document.getElementById('themeSwitch').nextElementSibling.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
-                if (map) map.getContainer().style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim();
+                if (map) {
+                    map.getContainer().style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim();
+                }
             }
             window.toggleTheme = toggleTheme;
         });
