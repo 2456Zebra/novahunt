@@ -208,7 +208,7 @@
                 if (user) {
                     try {
                         await checkSubscriptionStatus(user.uid);
-                        await loadUserCredits(user.uid);
+                        userCredits = await loadUserCredits(user.uid); // Ensure credits load after subscription check
                     } catch (error) {
                         console.error('Error loading user data:', error);
                         isPremium = false;
@@ -270,10 +270,16 @@
                     const docSnap = await userRef.get();
                     if (docSnap.exists) {
                         const data = docSnap.data();
-                        isPremium = data.isPremium === true || data.plan === 'enterprise';
-                        console.log(`Subscription status for ${uid}: isPremium=${isPremium}, plan=${data.plan || 'undefined'}`);
+                        console.log('Firestore data for UID', uid, ':', JSON.stringify(data));
+                        isPremium = data.isPremium === true || (data.plan && data.plan.toLowerCase() === 'enterprise');
+                        if (!data.isPremium && data.plan === 'enterprise') {
+                            await userRef.set({ isPremium: true }, { merge: true });
+                            isPremium = true;
+                            console.log('Updated isPremium to true for enterprise plan');
+                        }
                     } else {
                         isPremium = false;
+                        console.log('No document found for UID', uid);
                     }
                 } catch (error) {
                     console.error('Error checking subscription:', error);
@@ -439,7 +445,7 @@
                     const docSnap = await userRef.get();
                     if (docSnap.exists) {
                         const data = docSnap.data();
-                        console.log('Firestore data for', uid, ':', data);
+                        console.log('Firestore data for UID', uid, ':', JSON.stringify(data));
                         if (data.isPremium && data.plan === 'enterprise') {
                             userCredits = data.monthlyCredits?.credits || 9999;
                         } else if (data.isPremium) {
