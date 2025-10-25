@@ -60,11 +60,12 @@
         .test-mode-toggle input { margin-right: 5px; }
         .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; }
         .nav .user-info, .nav button, .nav a { display: inline-block; margin-right: 10px; }
-        .dashboard { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin: 20px 0; box-shadow: 0 0 10px #00FFCC; text-align: center; }
         .tour-btn { position: fixed; bottom: 20px; right: 20px; background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
         .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
         .password-toggle { cursor: pointer; margin-left: 5px; color: #00FFCC; }
-        .suggestions { margin-top: 5px; color: #90CDF4; font-size: 0.9em; }
+        .dashboard { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00FFCC; text-align: center; }
+        .suggestions { color: #90CDF4; cursor: pointer; margin-top: 5px; font-size: 0.9em; }
+        .suggestions div { margin-bottom: 5px; }
         @media (max-width: 768px) {
             h1 { font-size: 2em; }
             h2 { font-size: 1.5em; }
@@ -237,6 +238,8 @@
                         <button class="btn" onclick="logout()">Logout</button>
                         <a href="plans.html" class="btn">Plans</a>
                     `;
+                    // Clear existing dashboards
+                    document.querySelectorAll('.dashboard').forEach(d => d.remove());
                     showDashboard(user);
                 } else {
                     navLinks.innerHTML = `
@@ -244,21 +247,28 @@
                         <a href="signup.html" class="btn">Sign Up</a>
                         <a href="plans.html" class="btn">Plans</a>
                     `;
-                    document.querySelector('.dashboard')?.remove();
+                    // Remove dashboard if not logged in
+                    document.querySelectorAll('.dashboard').forEach(d => d.remove());
                 }
                 checkAccess();
             }
 
-            function showDashboard(user) {
+            async function showDashboard(user) {
                 const dashboard = document.createElement('div');
                 dashboard.className = 'dashboard';
+                dashboard.id = 'dashboard';
                 dashboard.innerHTML = `
                     <h3>Dashboard</h3>
-                    <p>Credits Left: ${userCredits}</p>
+                    <p>Credits Left: <span id="credits">${userCredits}</span></p>
                     <p>Plan: ${isPremium ? 'Enterprise' : 'Free'}</p>
                     <p>Recent Searches: ${JSON.parse(localStorage.getItem('recentSearches') || '[]').slice(0, 3).join(', ') || 'None'}</p>
                 `;
                 document.body.insertBefore(dashboard, document.querySelector('section.section'));
+            }
+
+            function updateDashboardCredits() {
+                const creditsSpan = document.getElementById('credits');
+                if (creditsSpan) creditsSpan.textContent = userCredits;
             }
 
             function logout() {
@@ -509,7 +519,7 @@
                     userCredits = 5;
                 }
                 console.log(`Loaded credits for ${uid}: ${userCredits}`);
-                if (auth.currentUser) showDashboard(auth.currentUser);
+                if (auth.currentUser) updateDashboardCredits();
                 return userCredits;
             }
             window.loadUserCredits = loadUserCredits;
@@ -526,6 +536,7 @@
                         await userRef.set({ monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                         button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
                         alert(`Email revealed! ${userCredits} credits remaining this month.`);
+                        updateDashboardCredits(); // Refresh dashboard
                     } else {
                         alert('Not enough credits this month. Upgrade to reveal more emails.');
                         window.location.href = 'plans.html';
@@ -552,7 +563,7 @@
                     if (!searchTerm) searchTerm = query;
 
                     const xPosts = await searchX(`"${searchTerm}" -filter:retweets`, 5);
-                    results.innerHTML = `<p style="color: #A0AEC0;">AI found ${xPosts.length} potential leads for: "${query}"</p><p style="color: #90CDF4;">AI Summary: Based on your query, here are ${xPosts.length} high-confidence leads in ${searchTerm || 'your target area'}.</p>`;
+                    results.innerHTML = `<p style="color: #A0AEC0;">AI found ${xPosts.length} potential leads for: "${query}"</p>`;
 
                     if (xPosts.length > 0) {
                         xPosts.forEach(post => {
@@ -798,7 +809,6 @@
                 results.innerHTML = tableHTML;
                 updatePagination();
                 updateMap();
-                updateRecentSearches(query);
             }
             window.searchImports = searchImports;
 
@@ -819,7 +829,7 @@
                     if (recent.length > 5) recent.pop();
                     localStorage.setItem('recentSearches', JSON.stringify(recent));
                 }
-                if (auth.currentUser) showDashboard(auth.currentUser);
+                if (auth.currentUser) updateDashboard(auth.currentUser);
             }
 
             function startTour() {
