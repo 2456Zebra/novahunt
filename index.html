@@ -270,8 +270,8 @@
                     const docSnap = await userRef.get();
                     if (docSnap.exists) {
                         const data = docSnap.data();
-                        isPremium = data.isPremium === true;
-                        console.log(`Subscription status for ${uid}: isPremium=${isPremium}, plan=${data.plan}`);
+                        isPremium = data.isPremium === true || data.plan === 'enterprise';
+                        console.log(`Subscription status for ${uid}: isPremium=${isPremium}, plan=${data.plan || 'undefined'}`);
                     } else {
                         isPremium = false;
                     }
@@ -376,129 +376,57 @@
 
                 results.innerHTML = '<div class="loading">Searching...</div>';
                 const mockTotal = (query === 'coca-cola.com') ? 50 : (query === 'monsterenergy.com' ? 15 : 20);
-                const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000, 'Timeout'));
-                const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a';
-                const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
-                const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-                Promise.race([
-                    fetch(proxyUrl + apiUrl, { mode: 'cors' }).then(response => response.json()),
-                    timeoutPromise
-                ]).then(data => {
-                    if (data === 'Timeout') {
-                        const mockEmails = {
-                            'coca-cola.com': [
-                                { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@coca-cola.com', dept: 'marketing', confidence: 85 },
-                                { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@coca-cola.com', dept: 'sales', confidence: 90 }
-                            ],
-                            'monsterenergy.com': [
-                                { name: 'John Doe', role: 'Marketing Manager', email: 'john.doe@monsterenergy.com', dept: 'marketing', confidence: 83 },
-                                { name: 'Lisa Ray', role: 'Sales Director', email: 'lisa.ray@monsterenergy.com', dept: 'sales', confidence: 89 }
-                            ],
-                            'default': [
-                                { name: 'Test User', role: 'Manager', email: 'test.user@default.com', dept: 'marketing', confidence: 80 }
-                            ]
-                        };
-                        const emails = mockEmails[query] || mockEmails['default'];
-                        const filteredEmails = emails.filter(email => 
-                            (departmentFilter === 'all' || email.dept === departmentFilter) &&
-                            (roleFilter === 'all' || email.role.toLowerCase().includes(roleFilter))
-                        );
-                        const emailsByDept = {};
-                        filteredEmails.forEach(email => {
-                            if (!emailsByDept[email.dept]) emailsByDept[email.dept] = [];
-                            emailsByDept[email.dept].push(email);
-                        });
-                        results.innerHTML = `<p style="color: #A0AEC0;">Found ${filteredEmails.length} emails across departments (mock data).</p>`;
-                        for (const [dept, emails] of Object.entries(emailsByDept)) {
-                            results.innerHTML += `<div class="department-header">${dept.charAt(0).toUpperCase() + dept.slice(1)} (${emails.length})</div>`;
-                            emails.forEach(email => {
-                                const maskedEmail = `********@${query.split('.')[0]}.com`;
-                                results.innerHTML += `
-                                    <div class="result-item">
-                                        <h3>${email.name}</h3>
-                                        <p class="result-desc">Role: ${email.role}</p>
-                                        <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.email}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${email.confidence}%</p>
-                                    </div>
-                                `;
-                            });
-                        }
-                    } else {
-                        const emails = data.data.emails || [];
-                        const filteredEmails = emails.filter(email => 
-                            (departmentFilter === 'all' || email.department === departmentFilter) &&
-                            (roleFilter === 'all' || email.position.toLowerCase().includes(roleFilter))
-                        );
-                        const emailsByDept = {};
-                        filteredEmails.forEach(email => {
-                            const dept = email.department || 'Unknown';
-                            if (!emailsByDept[dept]) emailsByDept[dept] = [];
-                            emailsByDept[dept].push(email);
-                        });
-                        results.innerHTML = `<p style="color: #A0AEC0;">Found ${filteredEmails.length} emails across departments.</p>`;
-                        for (const [dept, emails] of Object.entries(emailsByDept)) {
-                            results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
-                            emails.slice(0, 10).forEach(email => {
-                                const maskedEmail = `********@${query.split('.')[0]}.com`;
-                                results.innerHTML += `
-                                    <div class="result-item">
-                                        <h3>${email.first_name} ${email.last_name || ''}</h3>
-                                        <p class="result-desc">Role: ${email.position || 'N/A'}</p>
-                                        <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.value}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${email.confidence || 'N/A'}%</p>
-                                    </div>
-                                `;
-                            });
-                        }
-                    }
-                    if (mockTotal > 10 && !isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
-                        results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
-                    } else if (!isPremium && !isTestMode && !auth.currentUser) {
-                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
-                    }
-                }).catch(err => {
-                    console.error('API fetch failed for:', query, 'error:', err);
-                    const mockEmails = {
-                        'coca-cola.com': [
-                            { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@coca-cola.com', dept: 'marketing', confidence: 85 },
-                            { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@coca-cola.com', dept: 'sales', confidence: 90 }
-                        ],
-                        'monsterenergy.com': [
-                            { name: 'John Doe', role: 'Marketing Manager', email: 'john.doe@monsterenergy.com', dept: 'marketing', confidence: 83 },
-                            { name: 'Lisa Ray', role: 'Sales Director', email: 'lisa.ray@monsterenergy.com', dept: 'sales', confidence: 89 }
-                        ],
-                        'default': [
-                            { name: 'Test User', role: 'Manager', email: 'test.user@default.com', dept: 'marketing', confidence: 80 }
-                        ]
-                    };
-                    const emails = mockEmails[query] || mockEmails['default'];
-                    const filteredEmails = emails.filter(email => 
-                        (departmentFilter === 'all' || email.dept === departmentFilter) &&
-                        (roleFilter === 'all' || email.role.toLowerCase().includes(roleFilter))
-                    );
-                    const emailsByDept = {};
-                    filteredEmails.forEach(email => {
-                        if (!emailsByDept[email.dept]) emailsByDept[email.dept] = [];
-                        emailsByDept[email.dept].push(email);
-                    });
-                    results.innerHTML = `<p style="color: #A0AEC0;">Found ${filteredEmails.length} emails across departments (mock data).</p>`;
-                    for (const [dept, emails] of Object.entries(emailsByDept)) {
-                        results.innerHTML += `<div class="department-header">${dept.charAt(0).toUpperCase() + dept.slice(1)} (${emails.length})</div>`;
-                        emails.forEach(email => {
-                            const maskedEmail = `********@${query.split('.')[0]}.com`;
-                            results.innerHTML += `
-                                <div class="result-item">
-                                    <h3>${email.name}</h3>
-                                    <p class="result-desc">Role: ${email.role}</p>
-                                    <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.email}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${email.confidence}%</p>
-                                </div>
-                            `;
-                        });
-                    }
-                    if (mockTotal > 10 && !isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
-                        results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
-                    } else if (!isPremium && !isTestMode && !auth.currentUser) {
-                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
-                    }
+                const mockEmails = {
+                    'coca-cola.com': [
+                        { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@coca-cola.com', dept: 'marketing', confidence: 85 },
+                        { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@coca-cola.com', dept: 'sales', confidence: 90 },
+                        { name: 'Sarah Lee', role: 'IT Specialist', email: 'sarah.lee@coca-cola.com', dept: 'it', confidence: 75 },
+                        { name: 'Tom Brown', role: 'HR Manager', email: 'tom.brown@coca-cola.com', dept: 'hr', confidence: 80 },
+                        { name: 'Emily Davis', role: 'Marketing Director', email: 'emily.davis@coca-cola.com', dept: 'marketing', confidence: 88 },
+                        { name: 'Alex Carter', role: 'Sales Specialist', email: 'alex.carter@coca-cola.com', dept: 'sales', confidence: 82 },
+                        { name: 'Rachel Kim', role: 'IT Director', email: 'rachel.kim@coca-cola.com', dept: 'it', confidence: 87 },
+                        { name: 'David Lee', role: 'HR Specialist', email: 'david.lee@coca-cola.com', dept: 'hr', confidence: 78 }
+                    ].slice(0, isPremium || isTestMode ? 8 : 2),
+                    'monsterenergy.com': [
+                        { name: 'John Doe', role: 'Marketing Manager', email: 'john.doe@monsterenergy.com', dept: 'marketing', confidence: 83 },
+                        { name: 'Lisa Ray', role: 'Sales Director', email: 'lisa.ray@monsterenergy.com', dept: 'sales', confidence: 89 },
+                        { name: 'Mark Hill', role: 'IT Specialist', email: 'mark.hill@monsterenergy.com', dept: 'it', confidence: 76 }
+                    ].slice(0, isPremium || isTestMode ? 3 : 2),
+                    'default': [
+                        { name: 'Test User', role: 'Manager', email: 'test.user@default.com', dept: 'marketing', confidence: 80 }
+                    ]
+                };
+
+                const emails = mockEmails[query] || mockEmails['default'];
+                const filteredEmails = emails.filter(email => 
+                    (departmentFilter === 'all' || email.dept === departmentFilter) &&
+                    (roleFilter === 'all' || email.role.toLowerCase().includes(roleFilter))
+                );
+                const emailsByDept = {};
+                filteredEmails.forEach(email => {
+                    if (!emailsByDept[email.dept]) emailsByDept[email.dept] = [];
+                    emailsByDept[email.dept].push(email);
                 });
+
+                results.innerHTML = `<p style="color: #A0AEC0;">Found ${filteredEmails.length} emails across departments (mock data).</p>`;
+                for (const [dept, emails] of Object.entries(emailsByDept)) {
+                    results.innerHTML += `<div class="department-header">${dept.charAt(0).toUpperCase() + dept.slice(1)} (${emails.length})</div>`;
+                    emails.forEach(email => {
+                        const maskedEmail = `********@${query.split('.')[0]}.com`;
+                        results.innerHTML += `
+                            <div class="result-item">
+                                <h3>${email.name}</h3>
+                                <p class="result-desc">Role: ${email.role}</p>
+                                <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.email}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${email.confidence}%</p>
+                            </div>
+                        `;
+                    });
+                }
+                if (mockTotal > (isPremium || isTestMode ? 8 : 2) && !isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
+                    results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - (isPremium || isTestMode ? 8 : 2)} Additional Emails</a></div>`;
+                } else if (!isPremium && !isTestMode && !auth.currentUser) {
+                    results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
+                }
             }
             window.searchCompany = searchCompany;
 
@@ -511,8 +439,9 @@
                     const docSnap = await userRef.get();
                     if (docSnap.exists) {
                         const data = docSnap.data();
+                        console.log('Firestore data for', uid, ':', data);
                         if (data.isPremium && data.plan === 'enterprise') {
-                            userCredits = data.monthlyCredits?.credits || 250;
+                            userCredits = data.monthlyCredits?.credits || 9999;
                         } else if (data.isPremium) {
                             userCredits = data.monthlyCredits?.credits || 100;
                         } else {
