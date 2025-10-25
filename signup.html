@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NovaHunt - Sign Up</title>
-    <link rel="stylesheet" href="styles.css">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .signup-container { background: #2D3748; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px #00FFCC; width: 100%; max-width: 400px; text-align: center; }
@@ -71,7 +70,7 @@
                         return Promise.reject(new Error('Email already in use'));
                     }
 
-                    // Redirect to Stripe for paid plans before completing sign-up
+                    // Redirect to Stripe for paid plans
                     const stripeUrls = {
                         pro: 'https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002',
                         business: 'https://buy.stripe.com/test_aFacN59cX0tWgh4ci900001',
@@ -79,8 +78,10 @@
                     };
                     const planType = plan.split(' ')[0];
                     if (planType !== 'free') {
-                        window.location.href = stripeUrls[planType] || 'plans.html';
-                        return; // Exit early, payment will handle account setup post-confirmation
+                        // Store temporary signup data in sessionStorage to use after payment
+                        sessionStorage.setItem('signupData', JSON.stringify({ email, password, plan: planType }));
+                        window.location.href = `${stripeUrls[planType]}?success_url=https://novahunt.ai/index.html?plan=${planType}&cancel_url=https://novahunt.ai/signup.html`;
+                        return;
                     }
 
                     // Proceed with free plan sign-up
@@ -90,8 +91,8 @@
                             const user = userCredential.user;
                             return db.doc(`users/${user.uid}`).set({
                                 email: email,
-                                isPremium: planType !== 'free',
-                                plan: planType,
+                                isPremium: false,
+                                plan: 'free',
                                 monthlyCredits: { month: new Date().toISOString().slice(0, 7), credits: credits }
                             });
                         })
