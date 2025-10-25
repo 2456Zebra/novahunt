@@ -403,7 +403,7 @@
                             maxZoom: 19,
                             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                         }).addTo(map);
-                        map.getContainer().style.background = var(--bg-color);
+                        map.getContainer().style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim();
                     }
                 }
             }
@@ -516,7 +516,6 @@
                             userCredits = data.isPremium && data.plan === 'enterprise' ? 9999 : data.isPremium ? 250 : 5;
                             await userRef.set({ monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                         }
-                        // Force 9999 credits only on initial load for test11
                         if (uid === 'wCw6JFwAUzLh9cSmYVYkcZEUzRv2' && !data.monthlyCredits) {
                             userCredits = 9999;
                             await userRef.set({ monthlyCredits: { month: currentMonth, credits: 9999 } }, { merge: true });
@@ -619,12 +618,10 @@
                         { text: "Marketing managers in USA hiring now @MarketGuru", username: "MarketGuru" },
                         { text: "Tech USA jobs @CodeMaster", username: "CodeMaster" }
                     ];
-                    // Dynamic filtering based on searchTerm
                     const filteredPosts = basePosts.filter(post => 
                         post.text.toLowerCase().includes(searchTerm.toLowerCase()) || 
                         post.username.toLowerCase().includes(searchTerm.toLowerCase())
                     );
-                    // Add a dynamic post if no exact match
                     if (filteredPosts.length === 0 && searchTerm) {
                         filteredPosts.push({
                             text: `Potential lead found for "${searchTerm}" @${searchTerm}Lead`,
@@ -890,6 +887,7 @@
                 const theme = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
                 document.body.setAttribute('data-theme', theme);
                 document.getElementById('themeSwitch').nextElementSibling.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
+                if (map) map.getContainer().style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim();
             }
             window.toggleTheme = toggleTheme;
         });
