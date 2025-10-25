@@ -71,20 +71,33 @@
                         return Promise.reject(new Error('Email already in use'));
                     }
 
-                    const credits = { free: 5, pro: 100, business: 250, enterprise: 9999 }[plan.split(' ')[0]] || 5;
+                    // Redirect to Stripe for paid plans before completing sign-up
+                    const stripeUrls = {
+                        pro: 'https://buy.stripe.com/test_3cI7sLbl5dgI1ma5TL00002',
+                        business: 'https://buy.stripe.com/test_aFacN59cX0tWgh4ci900001',
+                        enterprise: 'https://buy.stripe.com/test_fZu5kD88T3G85Cqbe500000'
+                    };
+                    const planType = plan.split(' ')[0];
+                    if (planType !== 'free') {
+                        window.location.href = stripeUrls[planType] || 'plans.html';
+                        return; // Exit early, payment will handle account setup post-confirmation
+                    }
+
+                    // Proceed with free plan sign-up
+                    const credits = { free: 5, pro: 100, business: 250, enterprise: 9999 }[planType] || 5;
                     return auth.createUserWithEmailAndPassword(email, password)
                         .then((userCredential) => {
                             const user = userCredential.user;
                             return db.doc(`users/${user.uid}`).set({
                                 email: email,
-                                isPremium: plan !== 'free',
-                                plan: plan.split(' ')[0],
+                                isPremium: planType !== 'free',
+                                plan: planType,
                                 monthlyCredits: { month: new Date().toISOString().slice(0, 7), credits: credits }
                             });
+                        })
+                        .then(() => {
+                            window.location.href = 'index.html';
                         });
-                })
-                .then(() => {
-                    window.location.href = 'index.html';
                 })
                 .catch((error) => {
                     if (error.message !== 'Email already in use') {
