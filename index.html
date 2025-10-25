@@ -9,10 +9,10 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css?v=1.1.2" />
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-sizing; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-        .section { padding: 60px 0; }
+        .section { padding: 60px 0; background: #1A202C; }
         h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
         h2 { font-size: 2em; font-weight: 700; color: #E2E8F0; margin-bottom: 20px; text-align: center; }
         p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
@@ -26,12 +26,7 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .results { margin-top: 20px; }
-        .result-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .result-table th, .result-table td { padding: 10px; text-align: left; border-bottom: 1px solid #4A5568; word-wrap: break-word; }
-        .result-table th { background: #2D3748; font-weight: 600; color: #E2E8F0; cursor: pointer; }
-        .result-table th:hover { background: #4A5568; }
-        .result-table td { background: #2D3748; }
-        .result-table .premium { color: #1A202C; font-style: italic; background: #00FFCC; padding: 5px 10px; border-radius: 4px; text-align: center; }
+        .result-item { background: #2D3748; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
         .loading { color: #90CDF4; font-style: italic; text-align: center; }
         .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00FFCC; }
         .pagination { text-align: center; margin-top: 10px; }
@@ -148,7 +143,7 @@
 
     <button class="tour-btn" onclick="startTour()">Take a Tour</button>
 
-    <footer style="text-align: center; padding: 20px 0; color: #A0AEC0; font-size: 0.9em;">
+    <footer style="text-align: center; padding: 20px 0; color: #A0AEC0; font-size: 0.9em; background: #1A202C;">
         © 2025 NovaHunt.ai | All rights reserved | <a href="terms.html" style="color: #90CDF4; text-decoration: none;">Terms</a> | <a href="privacy.html" style="color: #90CDF4; text-decoration: none;">Privacy</a> | <a href="plans.html" style="color: #90CDF4; text-decoration: none;">Plans</a> | <a href="faq.html" style="color: #90CDF4; text-decoration: none;">FAQ</a>
     </footer>
 
@@ -536,7 +531,7 @@
                         await userRef.set({ monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                         button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
                         alert(`Email revealed! ${userCredits} credits remaining this month.`);
-                        updateDashboardCredits(); // Refresh dashboard
+                        updateDashboardCredits();
                     } else {
                         alert('Not enough credits this month. Upgrade to reveal more emails.');
                         window.location.href = 'plans.html';
@@ -563,7 +558,7 @@
                     if (!searchTerm) searchTerm = query;
 
                     const xPosts = await searchX(`"${searchTerm}" -filter:retweets`, 5);
-                    results.innerHTML = `<p style="color: #A0AEC0;">AI found ${xPosts.length} potential leads for: "${query}"</p>`;
+                    results.innerHTML = `<p style="color: #A0AEC0;">AI found ${xPosts.length} potential leads for: "${query}"</p><p style="color: #90CDF4;">AI Summary: Based on your query, here are ${xPosts.length} high-confidence leads in ${searchTerm || 'your target area'}.</p>`;
 
                     if (xPosts.length > 0) {
                         xPosts.forEach(post => {
@@ -829,7 +824,7 @@
                     if (recent.length > 5) recent.pop();
                     localStorage.setItem('recentSearches', JSON.stringify(recent));
                 }
-                if (auth.currentUser) updateDashboard(auth.currentUser);
+                if (auth.currentUser) updateDashboardCredits();
             }
 
             function startTour() {
