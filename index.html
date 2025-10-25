@@ -174,7 +174,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script>
-        // Ensure DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             let firebase = null;
             let auth = null;
@@ -884,9 +883,11 @@
             window.startTour = startTour;
 
             function toggleTheme() {
-                const theme = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-                document.body.setAttribute('data-theme', theme);
-                document.getElementById('themeSwitch').nextElementSibling.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
+                const currentTheme = document.body.getAttribute('data-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                document.body.setAttribute('data-theme', newTheme);
+                const label = document.getElementById('themeSwitch').nextElementSibling;
+                label.textContent = `Switch to ${newTheme === 'light' ? 'Dark' : 'Light'} Theme`;
                 if (map) {
                     map.getContainer().style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim();
                 }
