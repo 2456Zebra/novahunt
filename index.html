@@ -277,9 +277,28 @@
                             isPremium = true;
                             console.log('Updated isPremium to true for enterprise plan');
                         }
+                        // Force Enterprise setup for test11
+                        if (uid === 'wCw6JFwAUzLh9cSmYVYkcZEUzRv2' && (!data.plan || data.plan !== 'enterprise')) {
+                            await userRef.set({
+                                isPremium: true,
+                                plan: 'enterprise',
+                                monthlyCredits: { month: new Date().toISOString().slice(0, 7), credits: 9999 }
+                            }, { merge: true });
+                            isPremium = true;
+                            console.log('Forced Enterprise setup for test11 UID');
+                        }
                     } else {
                         isPremium = false;
                         console.log('No document found for UID', uid);
+                        if (uid === 'wCw6JFwAUzLh9cSmYVYkcZEUzRv2') {
+                            await userRef.set({
+                                isPremium: true,
+                                plan: 'enterprise',
+                                monthlyCredits: { month: new Date().toISOString().slice(0, 7), credits: 9999 }
+                            }, { merge: true });
+                            isPremium = true;
+                            console.log('Created Enterprise document for test11 UID');
+                        }
                     }
                 } catch (error) {
                     console.error('Error checking subscription:', error);
@@ -456,6 +475,12 @@
                         if (!data.monthlyCredits || data.monthlyCredits.month !== currentMonth) {
                             userCredits = data.isPremium && data.plan === 'enterprise' ? 9999 : data.isPremium ? 250 : 5;
                             await userRef.set({ monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
+                        }
+                        // Force 9999 credits for test11
+                        if (uid === 'wCw6JFwAUzLh9cSmYVYkcZEUzRv2' && userCredits !== 9999) {
+                            userCredits = 9999;
+                            await userRef.set({ monthlyCredits: { month: currentMonth, credits: 9999 } }, { merge: true });
+                            console.log('Forced 9999 credits for test11 UID');
                         }
                     } else {
                         userCredits = 5;
