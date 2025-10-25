@@ -9,58 +9,76 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css?v=1.1.2" />
     <style>
+        :root {
+            --bg-color: #1A202C;
+            --text-color: #E2E8F0;
+            --secondary-text: #A0AEC0;
+            --accent-color: #00FFCC;
+            --card-bg: #2D3748;
+            --border-color: #4A5568;
+        }
+        [data-theme="light"] {
+            --bg-color: #FFFFFF;
+            --text-color: #1A202C;
+            --secondary-text: #718096;
+            --accent-color: #00CC99;
+            --card-bg: #F7FAFC;
+            --border-color: #CBD5E0;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1A202C; color: #E2E8F0; line-height: 1.6; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-color); color: var(--text-color); line-height: 1.6; transition: all 0.3s; }
         .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-        .section { padding: 60px 0; background: #1A202C; }
-        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: #00FFCC; margin-bottom: 15px; text-shadow: 0 0 10px #00FFCC; }
-        h2 { font-size: 2em; font-weight: 700; color: #E2E8F0; margin-bottom: 20px; text-align: center; }
-        p { font-size: 1.1em; color: #A0AEC0; margin-bottom: 20px; text-align: center; }
-        .btn { background: #00FFCC; color: #1A202C; padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
-        .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
-        .btn-primary { background: #00FFCC; color: #1A202C; font-size: 1em; padding: 10px 20px; border-radius: 6px; }
+        .section { padding: 60px 0; background: var(--bg-color); }
+        h1 { font-size: 2.8em; font-weight: 800; text-align: center; color: var(--accent-color); margin-bottom: 15px; text-shadow: 0 0 10px var(--accent-color); }
+        h2 { font-size: 2em; font-weight: 700; color: var(--text-color); margin-bottom: 20px; text-align: center; }
+        p { font-size: 1.1em; color: var(--secondary-text); margin-bottom: 20px; text-align: center; }
+        .btn { background: var(--accent-color); color: var(--bg-color); padding: 6px 12px; border: none; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; text-decoration: none; display: inline-block; }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 15px var(--accent-color); }
+        .btn-primary { background: var(--accent-color); color: var(--bg-color); font-size: 1em; padding: 10px 20px; border-radius: 6px; }
         .btn-inline { padding: 4px 8px; font-size: 0.8em; margin: 0 5px; }
-        .search-tabs { display: flex; background: #2D3748; border-radius: 6px; overflow: hidden; margin-bottom: 20px; justify-content: center; }
-        .tab-btn { flex: 1; padding: 12px; background: transparent; color: #E2E8F0; border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
-        .tab-btn.active { background: #00FFCC; color: #1A202C; }
+        .search-tabs { display: flex; background: var(--card-bg); border-radius: 6px; overflow: hidden; margin-bottom: 20px; justify-content: center; }
+        .tab-btn { flex: 1; padding: 12px; background: transparent; color: var(--text-color); border: none; cursor: pointer; font-size: 1em; transition: background 0.3s; }
+        .tab-btn.active { background: var(--accent-color); color: var(--bg-color); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .results { margin-top: 20px; }
-        .result-item { background: #2D3748; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+        .result-item { background: var(--card-bg); padding: 10px; border-radius: 4px; margin-bottom: 10px; }
         .loading { color: #90CDF4; font-style: italic; text-align: center; }
-        .summary-box { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00FFCC; }
+        .summary-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px var(--accent-color); }
         .pagination { text-align: center; margin-top: 10px; }
-        .pagination button { background: #4A5568; color: #E2E8F0; border: 1px solid #718096; border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
-        .pagination button:hover { background: #718096; }
-        .pagination button.active { background: #00FFCC; color: #1A202C; }
-        .department-header { font-size: 1.2em; font-weight: 600; color: #E2E8F0; margin: 10px 0 5px; }
+        .pagination button { background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 5px 10px; margin: 0 5px; cursor: pointer; }
+        .pagination button:hover { background: var(--border-color); }
+        .pagination button.active { background: var(--accent-color); color: var(--bg-color); }
+        .department-header { font-size: 1.2em; font-weight: 600; color: var(--text-color); margin: 10px 0 5px; }
         .premium-note { font-size: 0.8em; color: #90CDF4; margin-top: 10px; text-align: center; padding-bottom: 20px; }
-        .error { color: #FC8181; font-size: 1em; margin-top: 10px; text-align: center; font-weight: bold; padding: 10px; background: #2D3748; border-radius: 4px; }
+        .error { color: #FC8181; font-size: 1em; margin-top: 10px; text-align: center; font-weight: bold; padding: 10px; background: var(--card-bg); border-radius: 4px; }
         .filter-group { margin-bottom: 10px; display: flex; gap: 10px; justify-content: center; }
-        .filter-group select { padding: 8px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0; }
+        .filter-group select { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color); }
         .toggle-group { display: none; }
-        #map { height: 400px; width: 100%; margin-top: 40px; border: 2px solid #00FFCC; border-radius: 6px; position: relative; }
-        .map-placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #A0AEC0; font-style: italic; }
+        #map { height: 400px; width: 100%; margin-top: 40px; border: 2px solid var(--accent-color); border-radius: 6px; position: relative; }
+        .map-placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: var(--secondary-text); font-style: italic; }
         .plans-section { padding: 40px 0; }
-        .plan-card { background: #2D3748; border: 1px solid #4A5568; border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px #00FFCC; }
-        .plan-card h3 { color: #00FFCC; margin-bottom: 10px; }
+        .plan-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin: 15px; text-align: center; max-width: 250px; display: inline-block; vertical-align: top; box-shadow: 0 0 10px var(--accent-color); }
+        .plan-card h3 { color: var(--accent-color); margin-bottom: 10px; }
         .plan-card ul { list-style: none; padding: 0; }
-        .plan-card ul li { margin: 10px 0; color: #A0AEC0; }
-        .plan-card .price { font-size: 1.5em; color: #E2E8F0; margin: 10px 0; }
+        .plan-card ul li { margin: 10px 0; color: var(--secondary-text); }
+        .plan-card .price { font-size: 1.5em; color: var(--text-color); margin: 10px 0; }
         .plan-card .btn { margin-top: 15px; }
         .back-button { text-align: center; margin: 20px 0; }
         .upgrade-message { color: #FC8181; text-align: center; margin-top: 20px; font-weight: bold; }
-        .badge { background: #FFCC00; color: #1A202C; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
+        .badge { background: #FFCC00; color: var(--bg-color); padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-bottom: 10px; }
         .test-mode-toggle { text-align: center; margin: 10px 0; }
         .test-mode-toggle input { margin-right: 5px; }
         .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; }
         .nav .user-info, .nav button, .nav a { display: inline-block; margin-right: 10px; }
-        .tour-btn { position: fixed; bottom: 20px; right: 20px; background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
-        .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
-        .password-toggle { cursor: pointer; margin-left: 5px; color: #00FFCC; }
-        .dashboard { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px #00FFCC; text-align: center; }
+        .tour-btn { position: fixed; bottom: 20px; right: 20px; background: var(--accent-color); color: var(--bg-color); padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
+        .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px var(--accent-color); }
+        .password-toggle { cursor: pointer; margin-left: 5px; color: var(--accent-color); }
+        .dashboard { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 10px var(--accent-color); text-align: center; }
         .suggestions { color: #90CDF4; cursor: pointer; margin-top: 5px; font-size: 0.9em; }
         .suggestions div { margin-bottom: 5px; }
+        .theme-toggle { text-align: center; margin: 10px 0; }
+        .theme-toggle input { margin-right: 5px; }
         @media (max-width: 768px) {
             h1 { font-size: 2em; }
             h2 { font-size: 1.5em; }
@@ -75,7 +93,7 @@
     </style>
 </head>
 <body>
-    <section class="section" style="padding-top: 80px; background: #1A202C; box-shadow: 0 4px 20px rgba(0, 255, 204, 0.3);">
+    <section class="section" style="padding-top: 80px; box-shadow: 0 4px 20px rgba(0, 255, 204, 0.3);">
         <div class="container">
             <h1>🥷 NovaHunt</h1>
             <p style="font-size: 1.2em;">AI-Powered Lead Generation That Hunts for You</p>
@@ -89,6 +107,10 @@
             <div class="test-mode-toggle">
                 <input type="checkbox" id="testMode" onchange="toggleTestMode()">
                 <label for="testMode">Enable Test Mode (Business/Enterprise Access)</label>
+            </div>
+            <div class="theme-toggle">
+                <input type="checkbox" id="themeSwitch" onchange="toggleTheme()">
+                <label for="themeSwitch">Switch to Light Theme</label>
             </div>
         </div>
     </section>
@@ -123,14 +145,14 @@
                         <option value="specialist">Specialist</option>
                     </select>
                 </div>
-                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
                 <div id="companyError" class="error" style="display: none;"></div>
                 <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
                 <p style="text-align: center; opacity: 0.8;">Ask me anything (e.g., 'Find marketing managers in tech USA')</p>
-                <input type="text" id="aiInput" placeholder="Type your query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;" oninput="showSuggestions()">
+                <input type="text" id="aiInput" placeholder="Type your query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);" oninput="showSuggestions()">
                 <div id="suggestions" class="suggestions"></div>
                 <button class="btn" onclick="searchAIConversational()">Get AI Leads</button>
                 <div id="aiResults" class="results"></div>
@@ -143,8 +165,8 @@
 
     <button class="tour-btn" onclick="startTour()">Take a Tour</button>
 
-    <footer style="text-align: center; padding: 20px 0; color: #A0AEC0; font-size: 0.9em; background: #1A202C;">
-        © 2025 NovaHunt.ai | All rights reserved | <a href="terms.html" style="color: #90CDF4; text-decoration: none;">Terms</a> | <a href="privacy.html" style="color: #90CDF4; text-decoration: none;">Privacy</a> | <a href="plans.html" style="color: #90CDF4; text-decoration: none;">Plans</a> | <a href="faq.html" style="color: #90CDF4; text-decoration: none;">FAQ</a>
+    <footer style="text-align: center; padding: 20px 0; color: var(--secondary-text); background: var(--bg-color);">
+        © 2025 NovaHunt.ai | All rights reserved | <a href="terms.html" style="color: var(--accent-color); text-decoration: none;">Terms</a> | <a href="privacy.html" style="color: var(--accent-color); text-decoration: none;">Privacy</a> | <a href="plans.html" style="color: var(--accent-color); text-decoration: none;">Plans</a> | <a href="faq.html" style="color: var(--accent-color); text-decoration: none;">FAQ</a>
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js?v=1.1.2"></script>
@@ -154,7 +176,6 @@
     <script>
         // Ensure DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
-            // Global Firebase setup with error handling
             let firebase = null;
             let auth = null;
             let db = null;
@@ -184,7 +205,6 @@
             let isTestMode = false;
             let map;
 
-            // Handle post-payment redirect
             const urlParams = new URLSearchParams(window.location.search);
             const plan = urlParams.get('plan');
             const success = urlParams.get('success');
@@ -197,7 +217,7 @@
                     monthlyCredits: { month: new Date().toISOString().slice(0, 7), credits: credits }
                 }, { merge: true }).then(() => {
                     alert(`Welcome! Your ${plan} plan is activated.`);
-                    window.location.href = 'index.html'; // Reload to apply changes
+                    window.location.href = 'index.html';
                 });
             }
 
@@ -206,7 +226,7 @@
                 if (user) {
                     try {
                         await checkSubscriptionStatus(user.uid);
-                        userCredits = await loadUserCredits(user.uid); // Ensure credits load after subscription check
+                        userCredits = await loadUserCredits(user.uid);
                     } catch (error) {
                         console.error('Error loading user data:', error);
                         isPremium = false;
@@ -233,7 +253,6 @@
                         <button class="btn" onclick="logout()">Logout</button>
                         <a href="plans.html" class="btn">Plans</a>
                     `;
-                    // Clear existing dashboards
                     document.querySelectorAll('.dashboard').forEach(d => d.remove());
                     showDashboard(user);
                 } else {
@@ -242,7 +261,6 @@
                         <a href="signup.html" class="btn">Sign Up</a>
                         <a href="plans.html" class="btn">Plans</a>
                     `;
-                    // Remove dashboard if not logged in
                     document.querySelectorAll('.dashboard').forEach(d => d.remove());
                 }
                 checkAccess();
@@ -252,11 +270,12 @@
                 const dashboard = document.createElement('div');
                 dashboard.className = 'dashboard';
                 dashboard.id = 'dashboard';
+                const recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]').slice(0, 3).join(', ') || 'None';
                 dashboard.innerHTML = `
                     <h3>Dashboard</h3>
                     <p>Credits Left: <span id="credits">${userCredits}</span></p>
                     <p>Plan: ${isPremium ? 'Enterprise' : 'Free'}</p>
-                    <p>Recent Searches: ${JSON.parse(localStorage.getItem('recentSearches') || '[]').slice(0, 3).join(', ') || 'None'}</p>
+                    <p>Recent Searches: ${recentSearches}</p>
                 `;
                 document.body.insertBefore(dashboard, document.querySelector('section.section'));
             }
@@ -264,6 +283,10 @@
             function updateDashboardCredits() {
                 const creditsSpan = document.getElementById('credits');
                 if (creditsSpan) creditsSpan.textContent = userCredits;
+                if (auth.currentUser) {
+                    document.querySelectorAll('.dashboard').forEach(d => d.remove());
+                    showDashboard(auth.currentUser);
+                }
             }
 
             function logout() {
@@ -296,9 +319,7 @@
                         if (!data.isPremium && data.plan === 'enterprise') {
                             await userRef.set({ isPremium: true }, { merge: true });
                             isPremium = true;
-                            console.log('Updated isPremium to true for enterprise plan');
                         }
-                        // Force Enterprise setup for test11
                         if (uid === 'wCw6JFwAUzLh9cSmYVYkcZEUzRv2' && (!data.plan || data.plan !== 'enterprise')) {
                             await userRef.set({
                                 isPremium: true,
@@ -306,11 +327,9 @@
                                 monthlyCredits: { month: new Date().toISOString().slice(0, 7), credits: 9999 }
                             }, { merge: true });
                             isPremium = true;
-                            console.log('Forced Enterprise setup for test11 UID');
                         }
                     } else {
                         isPremium = false;
-                        console.log('No document found for UID', uid);
                         if (uid === 'wCw6JFwAUzLh9cSmYVYkcZEUzRv2') {
                             await userRef.set({
                                 isPremium: true,
@@ -318,7 +337,6 @@
                                 monthlyCredits: { month: new Date().toISOString().slice(0, 7), credits: 9999 }
                             }, { merge: true });
                             isPremium = true;
-                            console.log('Created Enterprise document for test11 UID');
                         }
                     }
                 } catch (error) {
@@ -337,7 +355,6 @@
                     console.log('Tab elements not found');
                     return;
                 }
-
                 if (!isTestMode && !isPremium && !auth.currentUser) {
                     aiTab.innerHTML = '<div class="upgrade-message">Please <a href="login.html" class="btn">Sign In</a> or <a href="signup.html" class="btn">Sign Up</a> to access this feature.</div>';
                     importsTab.innerHTML = '<div class="upgrade-message">Please <a href="login.html" class="btn">Sign In</a> or <a href="signup.html" class="btn">Sign Up</a> to access this feature.</div>';
@@ -347,7 +364,7 @@
                 } else {
                     aiTab.innerHTML = `
                         <p style="text-align: center; opacity: 0.8;">Ask me anything (e.g., 'Find marketing managers in tech USA')</p>
-                        <input type="text" id="aiInput" placeholder="Type your query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;" oninput="showSuggestions()">
+                        <input type="text" id="aiInput" placeholder="Type your query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);" oninput="showSuggestions()">
                         <div id="suggestions" class="suggestions"></div>
                         <button class="btn" onclick="searchAIConversational()">Get AI Leads</button>
                         <div id="aiResults" class="results"></div>
@@ -368,7 +385,7 @@
                                 <option value="2022">2022</option>
                             </select>
                         </div>
-                        <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                        <input type="text" id="importsInput" placeholder="Company for import search..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
                         <button class="btn" onclick="searchImports()">Find Suppliers</button>
                         <div id="importsResults" class="results"></div>
                         <div id="map"><div class="map-placeholder">Waiting for search results to display competitor suppliers...</div></div>
@@ -386,7 +403,7 @@
                             maxZoom: 19,
                             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                         }).addTo(map);
-                        map.getContainer().style.background = '#1A202C';
+                        map.getContainer().style.background = var(--bg-color);
                     }
                 }
             }
@@ -455,7 +472,7 @@
                     emailsByDept[email.dept].push(email);
                 });
 
-                results.innerHTML = `<p style="color: #A0AEC0;">Found ${filteredEmails.length} emails across departments (mock data).</p>`;
+                results.innerHTML = `<p style="color: var(--secondary-text);">Found ${filteredEmails.length} emails across departments (mock data).</p>`;
                 for (const [dept, emails] of Object.entries(emailsByDept)) {
                     results.innerHTML += `<div class="department-header">${dept.charAt(0).toUpperCase() + dept.slice(1)} (${emails.length})</div>`;
                     emails.forEach(email => {
@@ -499,15 +516,20 @@
                             userCredits = data.isPremium && data.plan === 'enterprise' ? 9999 : data.isPremium ? 250 : 5;
                             await userRef.set({ monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                         }
-                        // Force 9999 credits for test11
-                        if (uid === 'wCw6JFwAUzLh9cSmYVYkcZEUzRv2' && userCredits !== 9999) {
+                        // Force 9999 credits only on initial load for test11
+                        if (uid === 'wCw6JFwAUzLh9cSmYVYkcZEUzRv2' && !data.monthlyCredits) {
                             userCredits = 9999;
                             await userRef.set({ monthlyCredits: { month: currentMonth, credits: 9999 } }, { merge: true });
-                            console.log('Forced 9999 credits for test11 UID');
+                            console.log('Forced initial 9999 credits for test11 UID');
                         }
                     } else {
                         userCredits = 5;
                         await userRef.set({ isPremium: false, plan: 'free', monthlyCredits: { month: currentMonth, credits: userCredits } });
+                        if (uid === 'wCw6JFwAUzLh9cSmYVYkcZEUzRv2') {
+                            userCredits = 9999;
+                            await userRef.set({ isPremium: true, plan: 'enterprise', monthlyCredits: { month: currentMonth, credits: 9999 } }, { merge: true });
+                            console.log('Created Enterprise document with 9999 credits for test11 UID');
+                        }
                     }
                 } catch (error) {
                     console.error('Error loading credits:', error);
@@ -557,10 +579,12 @@
                     let searchTerm = keywords.filter(k => !['in', 'find', 'managers', 'leads'].includes(k.toLowerCase())).join(' ');
                     if (!searchTerm) searchTerm = query;
 
-                    const xPosts = await searchX(`"${searchTerm}" -filter:retweets`, 5);
-                    results.innerHTML = `<p style="color: #A0AEC0;">AI found ${xPosts.length} potential leads for: "${query}"</p><p style="color: #90CDF4;">AI Summary: Based on your query, here are ${xPosts.length} high-confidence leads in ${searchTerm || 'your target area'}.</p>`;
+                    const xPosts = await searchX(searchTerm);
+                    const leadCount = xPosts.length;
+                    const summary = `AI Summary: Based on your query "${query}", I found ${leadCount} potential leads in ${searchTerm || 'your target area'}. Results are tailored to match your input!`;
+                    results.innerHTML = `<p style="color: var(--secondary-text);">AI found ${leadCount} potential leads for: "${query}"</p><p style="color: #90CDF4;">${summary}</p>`;
 
-                    if (xPosts.length > 0) {
+                    if (leadCount > 0) {
                         xPosts.forEach(post => {
                             const name = post.username || 'Unknown User';
                             results.innerHTML += `
@@ -588,14 +612,26 @@
             }
             window.searchAIConversational = searchAIConversational;
 
-            async function searchX(query, limit) {
+            async function searchX(searchTerm) {
                 try {
-                    const posts = [
+                    const basePosts = [
                         { text: "Looking for tech leads? Check @TechLeadPro!", username: "TechLeadPro" },
                         { text: "Marketing managers in USA hiring now @MarketGuru", username: "MarketGuru" },
                         { text: "Tech USA jobs @CodeMaster", username: "CodeMaster" }
-                    ].slice(0, limit);
-                    return posts;
+                    ];
+                    // Dynamic filtering based on searchTerm
+                    const filteredPosts = basePosts.filter(post => 
+                        post.text.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        post.username.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                    // Add a dynamic post if no exact match
+                    if (filteredPosts.length === 0 && searchTerm) {
+                        filteredPosts.push({
+                            text: `Potential lead found for "${searchTerm}" @${searchTerm}Lead`,
+                            username: `${searchTerm}Lead`
+                        });
+                    }
+                    return filteredPosts.slice(0, 5);
                 } catch (error) {
                     console.error('X search mock failed:', error);
                     return [];
@@ -621,6 +657,7 @@
                 ].filter(s => s.includes(input));
                 suggestions.innerHTML = suggestionTemplates.map(s => `<div style="cursor: pointer;" onclick="document.getElementById('aiInput').value='${s}';suggestions.innerHTML='';searchAIConversational();">${s}</div>`).join('<br>');
             }
+            window.showSuggestions = showSuggestions;
 
             let sortDirection = 1;
             let currentPage = 1;
@@ -698,8 +735,8 @@
                             if (coords[0] !== 0 || coords[1] !== 0) {
                                 const radius = Math.min(20, tradeValue / 1000) || 5;
                                 L.circleMarker(coords, {
-                                    color: '#00FFCC',
-                                    fillColor: '#00FFCC',
+                                    color: var(--accent-color),
+                                    fillColor: var(--accent-color),
                                     fillOpacity: 0.5,
                                     radius: radius
                                 }).addTo(map).bindTooltip(`<b>${supplier}</b><br>Trade Value: $${tradeValue.toLocaleString()}<br>Country: ${country}`, {
@@ -793,7 +830,7 @@
                             </tr>
                         `;
                     });
-                    tableHTML += `<p style="color: #A0AEC0; text-align: center;">Showing ${Math.min(3, filteredSuppliers.length)} of ${suppliers.length} results</p>`;
+                    tableHTML += `<p style="color: var(--secondary-text); text-align: center;">Showing ${Math.min(3, filteredSuppliers.length)} of ${suppliers.length} results</p>`;
                     if (suppliers.length > 3 && !isPremium && !isTestMode) {
                         tableHTML += `<div class="premium-note">Upgrade to see all ${suppliers.length} results</div><div class="pagination"></div>`;
                     }
@@ -835,7 +872,7 @@
                     "Try 'Hunt Industry Leads' with AI queries (e.g., 'Find marketing managers in tech USA'). AI suggests queries as you type!",
                     "Explore 'Hunt Import Records' for supplier data with the map (e.g., acme imports).",
                     "Toggle 'Test Mode' to simulate premium access. Sign up for the full experience!",
-                    "End of tour! Visit plans.html to upgrade."
+                    "Switch themes with the toggle above. End of tour! Visit plans.html to upgrade."
                 ];
                 alert(steps[step - 1]);
                 const interval = setInterval(() => {
@@ -848,6 +885,13 @@
                 }, 3000);
             }
             window.startTour = startTour;
+
+            function toggleTheme() {
+                const theme = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+                document.body.setAttribute('data-theme', theme);
+                document.getElementById('themeSwitch').nextElementSibling.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
+            }
+            window.toggleTheme = toggleTheme;
         });
     </script>
 </body>
