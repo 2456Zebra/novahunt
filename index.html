@@ -171,6 +171,13 @@
             let isTestMode = false;
             let map;
 
+            // Check URL parameters for plan setup after Stripe payment
+            const urlParams = new URLSearchParams(window.location.search);
+            const planFromUrl = urlParams.get('plan');
+            if (planFromUrl && auth.currentUser) {
+                setupPlanAfterPayment(planFromUrl);
+            }
+
             auth.onAuthStateChanged(async (user) => {
                 console.log('Auth state changed at:', new Date().toLocaleTimeString(), 'user:', user ? user.email : 'null');
                 if (user) {
@@ -747,6 +754,20 @@
                 }, 3000);
             }
             window.startTour = startTour;
+
+            async function setupPlanAfterPayment(plan) {
+                if (auth.currentUser) {
+                    const user = auth.currentUser;
+                    const credits = { pro: 100, business: 250, enterprise: 9999 }[plan] || 5;
+                    await db.doc(`users/${user.uid}`).set({
+                        isPremium: true,
+                        plan: plan,
+                        monthlyCredits: { month: new Date().toISOString().slice(0, 7), credits: credits }
+                    }, { merge: true });
+                    alert(`Plan ${plan} activated! Please log in again to apply changes.`);
+                    auth.signOut().then(() => window.location.href = 'login.html');
+                }
+            }
         });
     </script>
 </body>
