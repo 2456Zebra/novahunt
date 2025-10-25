@@ -110,6 +110,21 @@
             </div>
             <div id="company-tab" class="tab-content active">
                 <p style="text-align: center; opacity: 0.8;">Enter a company name or domain (e.g., coca-cola.com).</p>
+                <div class="filter-group">
+                    <select id="departmentFilter" onchange="searchCompany()">
+                        <option value="all">All Departments</option>
+                        <option value="marketing">Marketing</option>
+                        <option value="sales">Sales</option>
+                        <option value="it">IT</option>
+                        <option value="hr">HR</option>
+                    </select>
+                    <select id="roleFilter" onchange="searchCompany()">
+                        <option value="all">All Roles</option>
+                        <option value="manager">Manager</option>
+                        <option value="director">Director</option>
+                        <option value="specialist">Specialist</option>
+                    </select>
+                </div>
                 <input type="text" id="companyInput" placeholder="Company or domain..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
                 <div id="companyError" class="error" style="display: none;"></div>
                 <button class="btn-primary" onclick="searchCompany()">Find Emails & Contacts</button>
@@ -171,11 +186,21 @@
             let isTestMode = false;
             let map;
 
-            // Check URL parameters for plan setup after Stripe payment
+            // Handle post-payment redirect
             const urlParams = new URLSearchParams(window.location.search);
-            const planFromUrl = urlParams.get('plan');
-            if (planFromUrl && auth.currentUser) {
-                setupPlanAfterPayment(planFromUrl);
+            const plan = urlParams.get('plan');
+            const success = urlParams.get('success');
+            if (success === 'true' && plan && auth.currentUser) {
+                const user = auth.currentUser;
+                const credits = { pro: 100, business: 250, enterprise: 9999 }[plan] || 5;
+                db.doc(`users/${user.uid}`).set({
+                    isPremium: true,
+                    plan: plan,
+                    monthlyCredits: { month: new Date().toISOString().slice(0, 7), credits: credits }
+                }, { merge: true }).then(() => {
+                    alert(`Welcome! Your ${plan} plan is activated.`);
+                    window.location.href = 'index.html'; // Reload to apply changes
+                });
             }
 
             auth.onAuthStateChanged(async (user) => {
@@ -246,6 +271,7 @@
                     if (docSnap.exists) {
                         const data = docSnap.data();
                         isPremium = data.isPremium === true;
+                        console.log(`Subscription status for ${uid}: isPremium=${isPremium}, plan=${data.plan}`);
                     } else {
                         isPremium = false;
                     }
@@ -335,6 +361,8 @@
 
             function searchCompany() {
                 const query = document.getElementById('companyInput').value.trim();
+                const departmentFilter = document.getElementById('departmentFilter').value;
+                const roleFilter = document.getElementById('roleFilter').value;
                 const results = document.getElementById('companyResults');
                 const errorDiv = document.getElementById('companyError');
                 errorDiv.style.display = 'none';
@@ -347,59 +375,42 @@
                 }
 
                 results.innerHTML = '<div class="loading">Searching...</div>';
+                const mockTotal = (query === 'coca-cola.com') ? 50 : (query === 'monsterenergy.com' ? 15 : 20);
+                const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000, 'Timeout'));
                 const apiKey = 'b2eb114113547c1eeb296f358fb10653acc0727a';
-                const proxyUrl = 'https://api.allorigins.win/raw?url=';
                 const apiUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(query)}&api_key=${apiKey}`;
-                fetch(proxyUrl + encodeURIComponent(apiUrl))
-                    .then(response => response.json())
-                    .then(data => {
-                        results.innerHTML = '';
-                        const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : data.data.emails.length);
-                        results.innerHTML += `<p style="color: #A0AEC0;">Found ${mockTotal} emails across departments.</p>`;
+                const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+                Promise.race([
+                    fetch(proxyUrl + apiUrl, { mode: 'cors' }).then(response => response.json()),
+                    timeoutPromise
+                ]).then(data => {
+                    if (data === 'Timeout') {
+                        const mockEmails = {
+                            'coca-cola.com': [
+                                { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@coca-cola.com', dept: 'marketing', confidence: 85 },
+                                { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@coca-cola.com', dept: 'sales', confidence: 90 }
+                            ],
+                            'monsterenergy.com': [
+                                { name: 'John Doe', role: 'Marketing Manager', email: 'john.doe@monsterenergy.com', dept: 'marketing', confidence: 83 },
+                                { name: 'Lisa Ray', role: 'Sales Director', email: 'lisa.ray@monsterenergy.com', dept: 'sales', confidence: 89 }
+                            ],
+                            'default': [
+                                { name: 'Test User', role: 'Manager', email: 'test.user@default.com', dept: 'marketing', confidence: 80 }
+                            ]
+                        };
+                        const emails = mockEmails[query] || mockEmails['default'];
+                        const filteredEmails = emails.filter(email => 
+                            (departmentFilter === 'all' || email.dept === departmentFilter) &&
+                            (roleFilter === 'all' || email.role.toLowerCase().includes(roleFilter))
+                        );
                         const emailsByDept = {};
-                        (data.data.emails || []).slice(0, 10).forEach(email => {
-                            const dept = email.department || 'Unknown';
-                            if (!emailsByDept[dept]) emailsByDept[dept] = [];
-                            emailsByDept[dept].push(email);
+                        filteredEmails.forEach(email => {
+                            if (!emailsByDept[email.dept]) emailsByDept[email.dept] = [];
+                            emailsByDept[email.dept].push(email);
                         });
+                        results.innerHTML = `<p style="color: #A0AEC0;">Found ${filteredEmails.length} emails across departments (mock data).</p>`;
                         for (const [dept, emails] of Object.entries(emailsByDept)) {
-                            results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
-                            emails.slice(0, 10).forEach(email => {
-                                const name = `${email.first_name || ''} ${email.last_name || ''}`.trim() || 'N/A';
-                                const role = email.position || 'N/A';
-                                const confidence = email.confidence || 'N/A';
-                                const maskedEmail = `********@${query.split('.')[0]}.com`;
-                                results.innerHTML += `
-                                    <div class="result-item">
-                                        <h3>${name}</h3>
-                                        <p class="result-desc">Role: ${role}</p>
-                                        <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.value}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${confidence}%</p>
-                                    </div>
-                                `;
-                            });
-                        }
-                        if (mockTotal > 10 && !isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
-                            results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
-                        } else if (!isPremium && !isTestMode && !auth.currentUser) {
-                            results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
-                        }
-                    })
-                    .catch(err => {
-                        console.error('API fetch failed for:', query, 'error:', err);
-                        results.innerHTML = `<div class="result-item">API Error: ${err.message}. Showing mock data for ${query}...</div>`;
-                        const mockTotal = (query === 'coca-cola.com') ? 444 : (query === 'monsterenergy.com' ? 45 : 10);
-                        results.innerHTML += `<p style="color: #A0AEC0;">Mock data: Found ${mockTotal} emails across departments.</p>`;
-                        const mockEmails = [
-                            { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@' + query.split('.')[0] + '.com', dept: 'Marketing', confidence: 80 },
-                            { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@' + query.split('.')[0] + '.com', dept: 'Sales', confidence: 85 }
-                        ];
-                        const mockEmailsByDept = {};
-                        mockEmails.forEach(email => {
-                            if (!mockEmailsByDept[email.dept]) mockEmailsByDept[email.dept] = [];
-                            mockEmailsByDept[email.dept].push(email);
-                        });
-                        for (const [dept, emails] of Object.entries(mockEmailsByDept)) {
-                            results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
+                            results.innerHTML += `<div class="department-header">${dept.charAt(0).toUpperCase() + dept.slice(1)} (${emails.length})</div>`;
                             emails.forEach(email => {
                                 const maskedEmail = `********@${query.split('.')[0]}.com`;
                                 results.innerHTML += `
@@ -411,12 +422,83 @@
                                 `;
                             });
                         }
-                        if (mockTotal > 10 && !isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
-                            results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
-                        } else if (!isPremium && !isTestMode && !auth.currentUser) {
-                            results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
+                    } else {
+                        const emails = data.data.emails || [];
+                        const filteredEmails = emails.filter(email => 
+                            (departmentFilter === 'all' || email.department === departmentFilter) &&
+                            (roleFilter === 'all' || email.position.toLowerCase().includes(roleFilter))
+                        );
+                        const emailsByDept = {};
+                        filteredEmails.forEach(email => {
+                            const dept = email.department || 'Unknown';
+                            if (!emailsByDept[dept]) emailsByDept[dept] = [];
+                            emailsByDept[dept].push(email);
+                        });
+                        results.innerHTML = `<p style="color: #A0AEC0;">Found ${filteredEmails.length} emails across departments.</p>`;
+                        for (const [dept, emails] of Object.entries(emailsByDept)) {
+                            results.innerHTML += `<div class="department-header">${dept} (${emails.length})</div>`;
+                            emails.slice(0, 10).forEach(email => {
+                                const maskedEmail = `********@${query.split('.')[0]}.com`;
+                                results.innerHTML += `
+                                    <div class="result-item">
+                                        <h3>${email.first_name} ${email.last_name || ''}</h3>
+                                        <p class="result-desc">Role: ${email.position || 'N/A'}</p>
+                                        <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.value}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${email.confidence || 'N/A'}%</p>
+                                    </div>
+                                `;
+                            });
                         }
+                    }
+                    if (mockTotal > 10 && !isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
+                        results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                    } else if (!isPremium && !isTestMode && !auth.currentUser) {
+                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
+                    }
+                }).catch(err => {
+                    console.error('API fetch failed for:', query, 'error:', err);
+                    const mockEmails = {
+                        'coca-cola.com': [
+                            { name: 'Jane Smith', role: 'Marketing Manager', email: 'jane.smith@coca-cola.com', dept: 'marketing', confidence: 85 },
+                            { name: 'Mike Johnson', role: 'Sales Director', email: 'mike.johnson@coca-cola.com', dept: 'sales', confidence: 90 }
+                        ],
+                        'monsterenergy.com': [
+                            { name: 'John Doe', role: 'Marketing Manager', email: 'john.doe@monsterenergy.com', dept: 'marketing', confidence: 83 },
+                            { name: 'Lisa Ray', role: 'Sales Director', email: 'lisa.ray@monsterenergy.com', dept: 'sales', confidence: 89 }
+                        ],
+                        'default': [
+                            { name: 'Test User', role: 'Manager', email: 'test.user@default.com', dept: 'marketing', confidence: 80 }
+                        ]
+                    };
+                    const emails = mockEmails[query] || mockEmails['default'];
+                    const filteredEmails = emails.filter(email => 
+                        (departmentFilter === 'all' || email.dept === departmentFilter) &&
+                        (roleFilter === 'all' || email.role.toLowerCase().includes(roleFilter))
+                    );
+                    const emailsByDept = {};
+                    filteredEmails.forEach(email => {
+                        if (!emailsByDept[email.dept]) emailsByDept[email.dept] = [];
+                        emailsByDept[email.dept].push(email);
                     });
+                    results.innerHTML = `<p style="color: #A0AEC0;">Found ${filteredEmails.length} emails across departments (mock data).</p>`;
+                    for (const [dept, emails] of Object.entries(emailsByDept)) {
+                        results.innerHTML += `<div class="department-header">${dept.charAt(0).toUpperCase() + dept.slice(1)} (${emails.length})</div>`;
+                        emails.forEach(email => {
+                            const maskedEmail = `********@${query.split('.')[0]}.com`;
+                            results.innerHTML += `
+                                <div class="result-item">
+                                    <h3>${email.name}</h3>
+                                    <p class="result-desc">Role: ${email.role}</p>
+                                    <p class="email">${maskedEmail} <button class="btn" onclick="revealEmail('${email.email}', this, 1)">Reveal (1 Credit)</button> | Confidence: ${email.confidence}%</p>
+                                </div>
+                            `;
+                        });
+                    }
+                    if (mockTotal > 10 && !isPremium && !isTestMode && (!auth.currentUser || (auth.currentUser && !isPremium))) {
+                        results.innerHTML += `<div class="premium-note"><a href="plans.html" class="btn">Upgrade to See All ${mockTotal - 10} Additional Emails</a></div>`;
+                    } else if (!isPremium && !isTestMode && !auth.currentUser) {
+                        results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
+                    }
+                });
             }
             window.searchCompany = searchCompany;
 
@@ -437,7 +519,7 @@
                             userCredits = data.monthlyCredits?.credits || 5;
                         }
                         if (!data.monthlyCredits || data.monthlyCredits.month !== currentMonth) {
-                            userCredits = data.isPremium && data.plan === 'enterprise' ? 250 : data.isPremium ? 100 : 5;
+                            userCredits = data.isPremium && data.plan === 'enterprise' ? 9999 : data.isPremium ? 250 : 5;
                             await userRef.set({ monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                         }
                     } else {
@@ -448,6 +530,7 @@
                     console.error('Error loading credits:', error);
                     userCredits = 5;
                 }
+                console.log(`Loaded credits for ${uid}: ${userCredits}`);
                 return userCredits;
             }
             window.loadUserCredits = loadUserCredits;
@@ -754,20 +837,6 @@
                 }, 3000);
             }
             window.startTour = startTour;
-
-            async function setupPlanAfterPayment(plan) {
-                if (auth.currentUser) {
-                    const user = auth.currentUser;
-                    const credits = { pro: 100, business: 250, enterprise: 9999 }[plan] || 5;
-                    await db.doc(`users/${user.uid}`).set({
-                        isPremium: true,
-                        plan: plan,
-                        monthlyCredits: { month: new Date().toISOString().slice(0, 7), credits: credits }
-                    }, { merge: true });
-                    alert(`Plan ${plan} activated! Please log in again to apply changes.`);
-                    auth.signOut().then(() => window.location.href = 'login.html');
-                }
-            }
         });
     </script>
 </body>
