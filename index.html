@@ -60,9 +60,11 @@
         .test-mode-toggle input { margin-right: 5px; }
         .nav { position: fixed; top: 20px; right: 20px; z-index: 1000; }
         .nav .user-info, .nav button, .nav a { display: inline-block; margin-right: 10px; }
+        .dashboard { background: #2D3748; border: 1px solid #4A5568; border-radius: 6px; padding: 15px; margin: 20px 0; box-shadow: 0 0 10px #00FFCC; text-align: center; }
         .tour-btn { position: fixed; bottom: 20px; right: 20px; background: #00FFCC; color: #1A202C; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
         .tour-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px #00FFCC; }
         .password-toggle { cursor: pointer; margin-left: 5px; color: #00FFCC; }
+        .suggestions { margin-top: 5px; color: #90CDF4; font-size: 0.9em; }
         @media (max-width: 768px) {
             h1 { font-size: 2em; }
             h2 { font-size: 1.5em; }
@@ -131,9 +133,9 @@
                 <div id="companyResults" class="results"></div>
             </div>
             <div id="ai-tab" class="tab-content">
-                <!-- AI Conversational Search -->
                 <p style="text-align: center; opacity: 0.8;">Ask me anything (e.g., 'Find marketing managers in tech USA')</p>
-                <input type="text" id="aiInput" placeholder="Type your query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                <input type="text" id="aiInput" placeholder="Type your query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;" oninput="showSuggestions()">
+                <div id="suggestions" class="suggestions"></div>
                 <button class="btn" onclick="searchAIConversational()">Get AI Leads</button>
                 <div id="aiResults" class="results"></div>
             </div>
@@ -235,14 +237,28 @@
                         <button class="btn" onclick="logout()">Logout</button>
                         <a href="plans.html" class="btn">Plans</a>
                     `;
+                    showDashboard(user);
                 } else {
                     navLinks.innerHTML = `
                         <a href="login.html" class="btn">Sign In</a>
                         <a href="signup.html" class="btn">Sign Up</a>
                         <a href="plans.html" class="btn">Plans</a>
                     `;
+                    document.querySelector('.dashboard')?.remove();
                 }
                 checkAccess();
+            }
+
+            function showDashboard(user) {
+                const dashboard = document.createElement('div');
+                dashboard.className = 'dashboard';
+                dashboard.innerHTML = `
+                    <h3>Dashboard</h3>
+                    <p>Credits Left: ${userCredits}</p>
+                    <p>Plan: ${isPremium ? 'Enterprise' : 'Free'}</p>
+                    <p>Recent Searches: ${JSON.parse(localStorage.getItem('recentSearches') || '[]').slice(0, 3).join(', ') || 'None'}</p>
+                `;
+                document.body.insertBefore(dashboard, document.querySelector('section.section'));
             }
 
             function logout() {
@@ -326,7 +342,8 @@
                 } else {
                     aiTab.innerHTML = `
                         <p style="text-align: center; opacity: 0.8;">Ask me anything (e.g., 'Find marketing managers in tech USA')</p>
-                        <input type="text" id="aiInput" placeholder="Type your query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;">
+                        <input type="text" id="aiInput" placeholder="Type your query..." style="width: 100%; max-width: 400px; margin: 0 auto 10px; display: block; padding: 10px; border: 1px solid #4A5568; border-radius: 4px; background: #1A202C; color: #E2E8F0;" oninput="showSuggestions()">
+                        <div id="suggestions" class="suggestions"></div>
                         <button class="btn" onclick="searchAIConversational()">Get AI Leads</button>
                         <div id="aiResults" class="results"></div>
                     `;
@@ -452,6 +469,7 @@
                 } else if (!isPremium && !isTestMode && !auth.currentUser) {
                     results.innerHTML += '<div class="premium-note">Please log in or sign up to reveal emails. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                 }
+                updateRecentSearches(query);
             }
             window.searchCompany = searchCompany;
 
@@ -491,6 +509,7 @@
                     userCredits = 5;
                 }
                 console.log(`Loaded credits for ${uid}: ${userCredits}`);
+                if (auth.currentUser) showDashboard(auth.currentUser);
                 return userCredits;
             }
             window.loadUserCredits = loadUserCredits;
@@ -533,7 +552,7 @@
                     if (!searchTerm) searchTerm = query;
 
                     const xPosts = await searchX(`"${searchTerm}" -filter:retweets`, 5);
-                    results.innerHTML = `<p style="color: #A0AEC0;">AI found ${xPosts.length} potential leads for: "${query}"</p>`;
+                    results.innerHTML = `<p style="color: #A0AEC0;">AI found ${xPosts.length} potential leads for: "${query}"</p><p style="color: #90CDF4;">AI Summary: Based on your query, here are ${xPosts.length} high-confidence leads in ${searchTerm || 'your target area'}.</p>`;
 
                     if (xPosts.length > 0) {
                         xPosts.forEach(post => {
@@ -559,6 +578,7 @@
                     console.error('AI search failed:', error);
                     results.innerHTML = '<div class="result-item">Error processing your request. Try again later.</div>';
                 }
+                updateRecentSearches(query);
             }
             window.searchAIConversational = searchAIConversational;
 
@@ -580,6 +600,21 @@
                 searchAIConversational();
             }
             window.searchAI = searchAI;
+
+            function showSuggestions() {
+                const input = document.getElementById('aiInput').value.toLowerCase();
+                const suggestions = document.getElementById('suggestions');
+                if (!input) {
+                    suggestions.innerHTML = '';
+                    return;
+                }
+                const suggestionTemplates = [
+                    `Find ${input} managers in tech USA`,
+                    `Find ${input} directors in finance`,
+                    `Find ${input} specialists in healthcare`
+                ].filter(s => s.includes(input));
+                suggestions.innerHTML = suggestionTemplates.map(s => `<div style="cursor: pointer;" onclick="document.getElementById('aiInput').value='${s}';suggestions.innerHTML='';searchAIConversational();">${s}</div>`).join('<br>');
+            }
 
             let sortDirection = 1;
             let currentPage = 1;
@@ -763,6 +798,7 @@
                 results.innerHTML = tableHTML;
                 updatePagination();
                 updateMap();
+                updateRecentSearches(query);
             }
             window.searchImports = searchImports;
 
@@ -776,12 +812,22 @@
             }
             window.viewReport = viewReport;
 
+            function updateRecentSearches(query) {
+                let recent = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+                if (!recent.includes(query)) {
+                    recent.unshift(query);
+                    if (recent.length > 5) recent.pop();
+                    localStorage.setItem('recentSearches', JSON.stringify(recent));
+                }
+                if (auth.currentUser) showDashboard(auth.currentUser);
+            }
+
             function startTour() {
                 let step = 1;
                 const steps = [
                     "Welcome to NovaHunt! This tour will showcase premium features.",
                     "Use 'Hunt Corporate Emails' to find emails (e.g., coca-cola.com).",
-                    "Try 'Hunt Industry Leads' with AI queries (e.g., 'Find marketing managers in tech USA').",
+                    "Try 'Hunt Industry Leads' with AI queries (e.g., 'Find marketing managers in tech USA'). AI suggests queries as you type!",
                     "Explore 'Hunt Import Records' for supplier data with the map (e.g., acme imports).",
                     "Toggle 'Test Mode' to simulate premium access. Sign up for the full experience!",
                     "End of tour! Visit plans.html to upgrade."
