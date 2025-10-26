@@ -175,6 +175,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('Script loaded at:', new Date().toLocaleTimeString());
             let firebase = null;
             let auth = null;
             let db = null;
@@ -883,6 +884,7 @@
             window.startTour = startTour;
 
             function toggleTheme() {
+                console.log('Toggling theme at:', new Date().toLocaleTimeString());
                 const currentTheme = document.body.getAttribute('data-theme');
                 const newTheme = currentTheme === 'light' ? 'dark' : 'light';
                 document.body.setAttribute('data-theme', newTheme);
