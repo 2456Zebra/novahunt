@@ -175,7 +175,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('Script loaded at:', new Date().toLocaleTimeString());
+            console.log('Script loaded at v25:', new Date().toLocaleTimeString());
             let firebase = null;
             let auth = null;
             let db = null;
@@ -301,7 +301,7 @@
 
             function toggleTestMode() {
                 isTestMode = document.getElementById('testMode').checked;
-                console.log(`Test mode ${isTestMode ? 'enabled' : 'disabled'} at:`, new Date().toLocaleTimeString());
+                console.log(`Test mode ${isTestMode ? 'enabled' : 'disabled'} at v25:`, new Date().toLocaleTimeString());
                 alert(`Test mode ${isTestMode ? 'enabled' : 'disabled'}. Premium features ${isTestMode ? 'available' : 'restricted'}.`);
                 checkAccess();
             }
@@ -348,7 +348,7 @@
             window.checkSubscriptionStatus = checkSubscriptionStatus;
 
             function checkAccess() {
-                console.log('checkAccess called at:', new Date().toLocaleTimeString(), 'isTestMode:', isTestMode, 'isPremium:', isPremium, 'user:', auth.currentUser ? auth.currentUser.email : 'null');
+                console.log('checkAccess called at v25:', new Date().toLocaleTimeString(), 'isTestMode:', isTestMode, 'isPremium:', isPremium, 'user:', auth.currentUser ? auth.currentUser.email : 'null');
                 const aiTab = document.getElementById('ai-tab');
                 const importsTab = document.getElementById('imports-tab');
                 if (!aiTab || !importsTab) {
@@ -884,7 +884,7 @@
             window.startTour = startTour;
 
             function toggleTheme() {
-                console.log('Toggling theme at:', new Date().toLocaleTimeString());
+                console.log('Toggling theme at v25:', new Date().toLocaleTimeString());
                 const currentTheme = document.body.getAttribute('data-theme');
                 const newTheme = currentTheme === 'light' ? 'dark' : 'light';
                 document.body.setAttribute('data-theme', newTheme);
