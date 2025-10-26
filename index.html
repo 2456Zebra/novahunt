@@ -175,7 +175,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('Script loaded at v25:', new Date().toLocaleTimeString());
+            console.log('Script loaded at v26:', new Date().toLocaleTimeString());
             let firebase = null;
             let auth = null;
             let db = null;
@@ -192,9 +192,9 @@
                 const app = firebase.initializeApp(firebaseConfig);
                 auth = firebase.auth();
                 db = firebase.firestore();
-                console.log('Firebase initialized successfully');
+                console.log('Firebase initialized successfully at v26');
             } catch (e) {
-                console.error('Firebase initialization failed:', e);
+                console.error('Firebase initialization failed at v26:', e);
                 const navLinks = document.getElementById('navLinks');
                 if (navLinks) navLinks.innerHTML = '<a href="login.html" class="btn">Sign In</a><a href="signup.html" class="btn">Sign Up</a><a href="plans.html" class="btn">Plans</a>';
                 return;
@@ -222,13 +222,13 @@
             }
 
             auth.onAuthStateChanged(async (user) => {
-                console.log('Auth state changed at:', new Date().toLocaleTimeString(), 'user:', user ? user.email : 'null');
+                console.log('Auth state changed at v26:', new Date().toLocaleTimeString(), 'user:', user ? user.email : 'null');
                 if (user) {
                     try {
                         await checkSubscriptionStatus(user.uid);
                         userCredits = await loadUserCredits(user.uid);
                     } catch (error) {
-                        console.error('Error loading user data:', error);
+                        console.error('Error loading user data at v26:', error);
                         isPremium = false;
                         userCredits = 5;
                     }
@@ -241,10 +241,10 @@
             });
 
             function updateUI(user) {
-                console.log('Updating UI, user:', user ? user.email : 'null');
+                console.log('Updating UI at v26, user:', user ? user.email : 'null');
                 const navLinks = document.getElementById('navLinks');
                 if (!navLinks) {
-                    console.error('navLinks element not found at:', new Date().toLocaleTimeString());
+                    console.error('navLinks element not found at v26:', new Date().toLocaleTimeString());
                     return;
                 }
                 if (user) {
@@ -301,20 +301,20 @@
 
             function toggleTestMode() {
                 isTestMode = document.getElementById('testMode').checked;
-                console.log(`Test mode ${isTestMode ? 'enabled' : 'disabled'} at v25:`, new Date().toLocaleTimeString());
+                console.log('Test mode toggled at v26:', isTestMode ? 'enabled' : 'disabled', new Date().toLocaleTimeString());
                 alert(`Test mode ${isTestMode ? 'enabled' : 'disabled'}. Premium features ${isTestMode ? 'available' : 'restricted'}.`);
                 checkAccess();
             }
             window.toggleTestMode = toggleTestMode;
 
             async function checkSubscriptionStatus(uid) {
-                console.log('Checking subscription for UID:', uid);
+                console.log('Checking subscription at v26 for UID:', uid);
                 const userRef = db.doc('users/' + uid);
                 try {
                     const docSnap = await userRef.get();
                     if (docSnap.exists) {
                         const data = docSnap.data();
-                        console.log('Firestore data for UID', uid, ':', JSON.stringify(data));
+                        console.log('Firestore data at v26 for UID', uid, ':', JSON.stringify(data));
                         isPremium = data.isPremium === true || (data.plan && data.plan.toLowerCase() === 'enterprise');
                         if (!data.isPremium && data.plan === 'enterprise') {
                             await userRef.set({ isPremium: true }, { merge: true });
@@ -340,7 +340,7 @@
                         }
                     }
                 } catch (error) {
-                    console.error('Error checking subscription:', error);
+                    console.error('Error checking subscription at v26:', error);
                     isPremium = false;
                 }
                 checkAccess();
@@ -348,11 +348,11 @@
             window.checkSubscriptionStatus = checkSubscriptionStatus;
 
             function checkAccess() {
-                console.log('checkAccess called at v25:', new Date().toLocaleTimeString(), 'isTestMode:', isTestMode, 'isPremium:', isPremium, 'user:', auth.currentUser ? auth.currentUser.email : 'null');
+                console.log('checkAccess called at v26:', new Date().toLocaleTimeString(), 'isTestMode:', isTestMode, 'isPremium:', isPremium, 'user:', auth.currentUser ? auth.currentUser.email : 'null');
                 const aiTab = document.getElementById('ai-tab');
                 const importsTab = document.getElementById('imports-tab');
                 if (!aiTab || !importsTab) {
-                    console.log('Tab elements not found');
+                    console.log('Tab elements not found at v26');
                     return;
                 }
                 if (!isTestMode && !isPremium && !auth.currentUser) {
@@ -496,7 +496,7 @@
             window.searchCompany = searchCompany;
 
             async function loadUserCredits(uid) {
-                console.log('Loading credits for UID:', uid);
+                console.log('Loading credits at v26 for UID:', uid);
                 const userRef = db.doc('users/' + uid);
                 const now = new Date();
                 const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -504,7 +504,7 @@
                     const docSnap = await userRef.get();
                     if (docSnap.exists) {
                         const data = docSnap.data();
-                        console.log('Firestore data for UID', uid, ':', JSON.stringify(data));
+                        console.log('Firestore data at v26 for UID', uid, ':', JSON.stringify(data));
                         if (data.isPremium && data.plan === 'enterprise') {
                             userCredits = data.monthlyCredits?.credits || 9999;
                         } else if (data.isPremium) {
@@ -519,7 +519,7 @@
                         if (uid === 'wCw6JFwAUzLh9cSmYVYkcZEUzRv2' && !data.monthlyCredits) {
                             userCredits = 9999;
                             await userRef.set({ monthlyCredits: { month: currentMonth, credits: 9999 } }, { merge: true });
-                            console.log('Forced initial 9999 credits for test11 UID');
+                            console.log('Forced initial 9999 credits for test11 UID at v26');
                         }
                     } else {
                         userCredits = 5;
@@ -527,14 +527,14 @@
                         if (uid === 'wCw6JFwAUzLh9cSmYVYkcZEUzRv2') {
                             userCredits = 9999;
                             await userRef.set({ isPremium: true, plan: 'enterprise', monthlyCredits: { month: currentMonth, credits: 9999 } }, { merge: true });
-                            console.log('Created Enterprise document with 9999 credits for test11 UID');
+                            console.log('Created Enterprise document with 9999 credits for test11 UID at v26');
                         }
                     }
                 } catch (error) {
-                    console.error('Error loading credits:', error);
+                    console.error('Error loading credits at v26:', error);
                     userCredits = 5;
                 }
-                console.log(`Loaded credits for ${uid}: ${userCredits}`);
+                console.log(`Loaded credits at v26 for ${uid}: ${userCredits}`);
                 if (auth.currentUser) updateDashboardCredits();
                 return userCredits;
             }
@@ -551,7 +551,7 @@
                         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
                         await userRef.set({ monthlyCredits: { month: currentMonth, credits: userCredits } }, { merge: true });
                         button.parentElement.innerHTML = email + ` | Credits left: ${userCredits}`;
-                        alert(`Email revealed! ${userCredits} credits remaining this month.`);
+                        alert(`Email revealed at v26! ${userCredits} credits remaining this month.`);
                         updateDashboardCredits();
                     } else {
                         alert('Not enough credits this month. Upgrade to reveal more emails.');
@@ -580,7 +580,7 @@
 
                     const xPosts = await searchX(searchTerm);
                     const leadCount = xPosts.length;
-                    const summary = `AI Summary: Based on your query "${query}", I found ${leadCount} potential leads in ${searchTerm || 'your target area'}. Results are tailored to match your input!`;
+                    const summary = `AI Summary at v26: Based on your query "${query}", I found ${leadCount} potential leads in ${searchTerm || 'your target area'}. Results are tailored to match your input!`;
                     results.innerHTML = `<p style="color: var(--secondary-text);">AI found ${leadCount} potential leads for: "${query}"</p><p style="color: #90CDF4;">${summary}</p>`;
 
                     if (leadCount > 0) {
@@ -604,7 +604,7 @@
                         results.innerHTML += '<div class="premium-note">Please log in or sign up to access more leads. <a href="login.html" class="btn btn-inline">Log In</a> <a href="signup.html" class="btn btn-inline">Sign Up</a></div>';
                     }
                 } catch (error) {
-                    console.error('AI search failed:', error);
+                    console.error('AI search failed at v26:', error);
                     results.innerHTML = '<div class="result-item">Error processing your request. Try again later.</div>';
                 }
                 updateRecentSearches(query);
@@ -630,7 +630,7 @@
                     }
                     return filteredPosts.slice(0, 5);
                 } catch (error) {
-                    console.error('X search mock failed:', error);
+                    console.error('X search mock failed at v26:', error);
                     return [];
                 }
             }
@@ -884,7 +884,7 @@
             window.startTour = startTour;
 
             function toggleTheme() {
-                console.log('Toggling theme at v25:', new Date().toLocaleTimeString());
+                console.log('Toggling theme at v26:', new Date().toLocaleTimeString());
                 const currentTheme = document.body.getAttribute('data-theme');
                 const newTheme = currentTheme === 'light' ? 'dark' : 'light';
                 document.body.setAttribute('data-theme', newTheme);
