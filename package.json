@@ -1,0 +1,17 @@
+{
+  "name": "novahunt",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "firebase": "^10.7.1"
+  },
+  "scripts": {
+    "build": "react-scripts build",
+    "start": "react-scripts start"
+  },
+  "devDependencies": {
+    "react-scripts": "5.0.1"
+  }
+}
