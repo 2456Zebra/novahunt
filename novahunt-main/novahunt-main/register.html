@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaHunt - Register</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥷</text></svg>" type="image/svg+xml">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #FFFFFF; color: #1A1A1A; line-height: 1.6; }
+        .container { max-width: 500px; margin: 0 auto; padding: 40px 20px; }
+        h1 { font-size: 2em; font-weight: 800; text-align: center; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 1em; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; border: 1px solid #E0E0E0; border-radius: 4px; font-size: 1em; }
+        .btn { background: #007BFF; color: #FFFFFF; padding: 10px 20px; border: none; border-radius: 4px; font-size: 1em; cursor: pointer; transition: background 0.3s; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #0056b3; }
+        .back-link { text-align: center; margin-top: 20px; }
+        .back-link a { color: #007BFF; text-decoration: none; font-size: 1em; }
+        .back-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Register for NovaHunt</h1>
+        <p style="text-align: center; color: #4A4A4A;">Complete the form to activate your plan.</p>
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <input type="hidden" id="plan" name="plan" value="">
+            <button type="submit" class="btn">Register</button>
+        </form>
+        <div class="back-link"><a href="index.html">Back to Dashboard</a></div>
+
+        <script>
+            // Get plan from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const plan = urlParams.get('plan');
+            document.getElementById('plan').value = plan || '';
+
+            // Mock registration submission
+            document.getElementById('registerForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                if (email && password) {
+                    alert(`Registration successful for ${email} with plan ${plan}!`);
+                    if (plan === 'free') {
+                        window.location.href = 'index.html';
+                    } else {
+                        window.location.href = 'https://stripe.com';
+                    }
+                } else {
+                    alert('Please fill in all fields.');
+                }
+            });
+        </script>
+    </body>
+</html>
