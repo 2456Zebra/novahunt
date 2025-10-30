@@ -12,6 +12,8 @@
     "start": "react-scripts start"
   },
   "devDependencies": {
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "@rollup/plugin-terser": "^0.4.2",
+    "@jridgewell/sourcemap-codec": "^1.4.8"
   }
 }
