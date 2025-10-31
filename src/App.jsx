@@ -61,11 +61,12 @@ function App() {
 
         {/* Pricing Cards */}
     {/* Pricing Cards */}
+{/* Pricing Cards */}
 <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
   <div style={{ border: "1px solid #ddd", padding: "1.5rem", borderRadius: "12px", minWidth: "200px" }}>
     <h3>Pro</h3>
     <p style={{ fontSize: "1.5rem", margin: "0.5rem 0" }}><strong>$29</strong>/month</p>
-    <ul style={{ fontSize: "0.9rem", textAlign: "left", color: "#666" }}>
+    <ul style={{ fontSize: "0.9rem", textAlign: "left", color: "#666", margin: "0.5rem 0", paddingLeft: "1.2rem" }}>
       <li>500 Leads/Month</li>
       <li>Email Validation</li>
       <li>Basic Reports</li>
@@ -74,7 +75,7 @@ function App() {
   <div style={{ border: "1px solid #ddd", padding: "1.5rem", borderRadius: "12px", minWidth: "200px" }}>
     <h3>Business</h3>
     <p style={{ fontSize: "1.5rem", margin: "0.5rem 0" }}><strong>$59</strong>/month</p>
-    <ul style={{ fontSize: "0.9rem", textAlign: "left", color: "#666" }}>
+    <ul style={{ fontSize: "0.9rem", textAlign: "left", color: "#666", margin: "0.5rem 0", paddingLeft: "1.2rem" }}>
       <li>2,000 Leads/Month</li>
       <li>Advanced Filters</li>
       <li>CSV Export</li>
@@ -83,12 +84,13 @@ function App() {
   <div style={{ border: "1px solid #ddd", padding: "1.5rem", borderRadius: "12px", minWidth: "200px" }}>
     <h3>Enterprise</h3>
     <p style={{ fontSize: "1.5rem", margin: "0.5rem 0" }}><strong>$99</strong>/month</p>
-    <ul style={{ fontSize: "0.9rem", textAlign: "left", color: "#666" }}>
+    <ul style={{ fontSize: "0.9rem", textAlign: "left", color: "#666", margin: "0.5rem 0", paddingLeft: "1.2rem" }}>
       <li>Unlimited Leads</li>
       <li>API Access</li>
       <li>Custom Integration</li>
     </ul>
   </div>
+</div>
 </div>
 
       {/* Search Section */}
