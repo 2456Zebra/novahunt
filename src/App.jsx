@@ -1,29 +1,16 @@
-import React, { useState } from "react";
-import SignInModal from "./components/SignInModal";
+import React from "react";
+import HeaderButtons from "./components/HeaderButtons";
 
 function App() {
-  const [modalOpen, setModalOpen] = useState(false);
-
   return (
     <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif", maxWidth: "800px", margin: "0 auto" }}>
+      {/* Header with Buttons */}
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
         <h1 style={{ margin: 0, fontSize: "2rem", color: "#1a1a1a" }}>NovaHunt</h1>
-        <button
-          onClick={() => setModalOpen(true)}
-          style={{
-            background: "#007bff",
-            color: "white",
-            border: "none",
-            padding: "0.75rem 1.5rem",
-            borderRadius: "8px",
-            fontSize: "1rem",
-            cursor: "pointer",
-          }}
-        >
-          Sign In
-        </button>
+        <HeaderButtons />
       </header>
 
+      {/* Hero Section */}
       <section style={{ textAlign: "center", marginBottom: "3rem" }}>
         <h2 style={{ fontSize: "2.5rem", marginBottom: "1rem", color: "#1a1a1a" }}>
           AI-Powered Lead Generation That Hunts for You
@@ -32,6 +19,7 @@ function App() {
           Redefine B2B success with cutting-edge AI precision.
         </p>
 
+        {/* Pricing Cards */}
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
           <div style={{ border: "1px solid #ddd", padding: "1.5rem", borderRadius: "12px", minWidth: "200px" }}>
             <h3>Pro</h3>
@@ -52,6 +40,7 @@ function App() {
         </p>
       </section>
 
+      {/* Search Section */}
       <section style={{ textAlign: "center" }}>
         <h2 style={{ fontSize: "1.8rem", marginBottom: "1rem" }}>Search for Leads</h2>
         <p style={{ color: "#555", marginBottom: "1.5rem" }}>
@@ -84,8 +73,6 @@ function App() {
           }}
         />
       </section>
-
-      <SignInModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 }
