@@ -5,10 +5,50 @@ function App() {
   return (
     <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif", maxWidth: "800px", margin: "0 auto" }}>
       {/* Header with Buttons */}
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-        <h1 style={{ margin: 0, fontSize: "2rem", color: "#1a1a1a" }}>NovaHunt</h1>
-        <HeaderButtons />
-      </header>
+ <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+  <h1 style={{ margin: 0, fontSize: "2rem", color: "#1a1a1a" }}>NovaHunt</h1>
+  <div style={{ display: "flex", gap: "1rem" }}>
+    <button
+      onClick={() => alert("Import Records - Coming soon!")}
+      style={{
+        background: "none",
+        border: "1px solid #007bff",
+        color: "#007bff",
+        padding: "0.5rem 1rem",
+        borderRadius: "8px",
+        cursor: "pointer",
+      }}
+    >
+      Import Records
+    </button>
+    <button
+      onClick={() => alert("Sign Up - Coming soon!")}
+      style={{
+        background: "#007bff",
+        color: "white",
+        border: "none",
+        padding: "0.5rem 1rem",
+        borderRadius: "8px",
+        cursor: "pointer",
+      }}
+    >
+      Sign Up
+    </button>
+    <button
+      onClick={() => alert("Sign In - Coming soon!")}
+      style={{
+        background: "#007bff",
+        color: "white",
+        border: "none",
+        padding: "0.5rem 1rem",
+        borderRadius: "8px",
+        cursor: "pointer",
+      }}
+    >
+      Sign In
+    </button>
+  </div>
+</header>
 
       {/* Hero Section */}
       <section style={{ textAlign: "center", marginBottom: "3rem" }}>
