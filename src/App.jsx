@@ -81,38 +81,60 @@ function App() {
       </section>
 
       {/* Search Section */}
-      <section style={{ textAlign: "center" }}>
-        <h2 style={{ fontSize: "1.8rem", marginBottom: "1rem" }}>Search for Leads</h2>
-        <p style={{ color: "#555", marginBottom: "1.5rem" }}>
-          Unleash NovaHunt’s power across multiple modes.
-        </p>
-        <input
-          type="text"
-          placeholder="Enter a company name or domain (e.g., coca-cola.com)"
-          style={{
-            width: "100%",
-            maxWidth: "500px",
-            padding: "1rem",
-            fontSize: "1rem",
-            border: "1px solid #ccc",
-            borderRadius: "8px",
-            marginBottom: "1rem",
-          }}
-        />
-        <br />
-        <input
-          type="text"
-          placeholder="Ask me anything (e.g., 'Find marketing managers in tech USA')"
-          style={{
-            width: "100%",
-            maxWidth: "500px",
-            padding: "1rem",
-            fontSize: "1rem",
-            border: "1px solid #ccc",
-            borderRadius: "8px",
-          }}
-        />
-      </section>
+     {/* Search Section */}
+<section style={{ textAlign: "center" }}>
+  <h2 style={{ fontSize: "1.8rem", marginBottom: "1rem" }}>Search for Leads</h2>
+  <p style={{ color: "#555", marginBottom: "1.5rem" }}>
+    Unleash NovaHunt's power across multiple modes.
+  </p>
+
+  {/* Mode Tabs */}
+  <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+    <button style={{ padding: "0.5rem 1rem", background: "#007bff", color: "white", border: "none", borderRadius: "8px" }}>
+      Corporate Emails
+    </button>
+    <button style={{ padding: "0.5rem 1rem", background: "#007bff", color: "white", border: "none", borderRadius: "8px" }}>
+      Industry Leads
+    </button>
+    <button style={{ padding: "0.5rem 1rem", background: "#007bff", color: "white", border: "none", borderRadius: "8px" }}>
+      Import Records
+    </button>
+  </div>
+
+  <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "1rem" }}>
+    <strong>Corporate Emails:</strong> Hunt for emails on company domains (e.g., coca-cola.com → john@cola.com).<br/>
+    <strong>Industry Leads:</strong> Find targeted contacts by industry, role, location (e.g., "marketing managers in tech USA").<br/>
+    <strong>Import Records:</strong> Upload your CSV and enrich with emails and data (coming soon).
+  </p>
+
+  <input
+    type="text"
+    placeholder="Enter a company name or domain (e.g., coca-cola.com)"
+    style={{
+      width: "100%",
+      maxWidth: "500px",
+      padding: "1rem",
+      fontSize: "1rem",
+      border: "1px solid #ccc",
+      borderRadius: "8px",
+      marginBottom: "1rem",
+    }}
+  />
+  <br />
+  <input
+    type="text"
+    placeholder="Ask me anything (e.g., 'Find marketing managers in tech USA')"
+    style={{
+      width: "100%",
+      maxWidth: "500px",
+      padding: "1rem",
+      fontSize: "1rem",
+      border: "1px solid #ccc",
+      borderRadius: "8px",
+    }}
+  />
+</section>
+      
     </div>
   );
 }
