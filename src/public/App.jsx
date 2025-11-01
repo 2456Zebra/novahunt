@@ -1,5 +1,5 @@
-import React from "react";
 import HeaderButtons from "./components/HeaderButtons";
+import SignInModal from "./components/SignInModal";
 import UpgradeButton from "./components/UpgradeButton";
 
 function App() {
