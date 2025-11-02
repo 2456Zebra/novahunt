@@ -1,4 +1,5 @@
 // NovaHunt LIVE!
+console.log("NovaHunt loaded!");
 document.getElementById("root").innerHTML = `
   <div style="text-align:center; padding:2rem; font-family:Arial;">
     <h1 style="color:#007bff;">NovaHunt</h1>
