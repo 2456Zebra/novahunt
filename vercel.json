@@ -2,8 +2,7 @@
   "version": 2,
   "public": true,
   "builds": [
-    { "src": "public/**", "use": "@vercel/static" },
-    { "src": "index.html", "use": "@vercel/static" }
+    { "src": "**", "use": "@vercel/static" }
   ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
