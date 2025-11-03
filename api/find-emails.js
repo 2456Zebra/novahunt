@@ -1,21 +1,28 @@
-// api/find-emails.js — Vercel Serverless Function (stub)
+// api/find-emails.js - serverless function for Vercel
+// Behavior: PROVIDER=demo (default) => deterministic fake leads
+// Set PROVIDER=apollo|clearbit|hunter to enable real provider logic (not included here).
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  const domain = (req.query.domain || '').toLowerCase();
+  if (!domain) return res.status(400).json({ error: 'domain required' });
 
-  const { query } = req.body;
-  if (!query) return res.status(400).json({ error: 'No query' });
+  // Normalize to base host
+  const toBase = (d) => d.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0] || 'example.com';
+  const base = toBase(domain);
 
-  // DEMO MODE: Return fake emails
-  const fakeEmails = [
-    `john.doe@${query}`,
-    `jane.smith@${query}`,
-    `marketing@${query}`,
-    `sales@${query}`,
-    `hr@${query}`
+  const demoLeads = [
+    { email: `john.doe@${base}`, name: 'John Doe', title: 'Head of Marketing', confidence: 0.92 },
+    { email: `jane.smith@${base}`, name: 'Jane Smith', title: 'VP Sales', confidence: 0.87 },
+    { email: `marketing@${base}`, name: '', title: '', confidence: 0.8 },
+    { email: `press@${base}`, name: '', title: '', confidence: 0.66 },
+    { email: `info@${base}`, name: '', title: '', confidence: 0.55 }
   ];
 
-  // TODO: Replace with Apollo/Clearbit API
-  // const apolloRes = await fetch(`https://api.apollo.io/v1/people/search`, { ... });
+  const provider = (process.env.PROVIDER || 'demo').toLowerCase();
+  if (provider === 'demo') {
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(200).json({ provider: 'demo', emails: demoLeads });
+  }
 
-  res.status(200).json({ emails: fakeEmails });
+  // provider not implemented yet
+  return res.status(501).json({ error: 'provider not implemented', provider });
 }
