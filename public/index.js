@@ -234,8 +234,30 @@
     }
   });
 
-  document.getElementById('nh-upgrade').addEventListener('click', () => {
-    alert('Upgrade to Pro: unlimited leads. Stripe checkout will be added soon.');
+  document.getElementById('nh-upgrade').addEventListener('click', async () => {
+    // Prompt for email then call server to create a Checkout session and redirect to Stripe Checkout
+    const email = prompt('Enter your email to start Checkout (use test email for sandbox):');
+    if (!email) return;
+    document.getElementById('nh-message').textContent = 'Starting checkout...';
+    try {
+      const resp = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, successUrl: window.location.origin + '/?success=1', cancelUrl: window.location.origin + '/?canceled=1' })
+      });
+      const json = await resp.json();
+      if (json && json.url) {
+        window.location.href = json.url;
+      } else {
+        console.error('Failed to create checkout session', json);
+        alert('Unable to start checkout. Check console for details.');
+        document.getElementById('nh-message').textContent = '';
+      }
+    } catch (err) {
+      console.error('Checkout request failed', err);
+      alert('Unable to start checkout. Check console for details.');
+      document.getElementById('nh-message').textContent = '';
+    }
   });
 
   document.getElementById('nh-signin').addEventListener('click', () => { alert('Sign In (demo): magic link would be sent.'); });
