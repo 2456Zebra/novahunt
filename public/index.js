@@ -144,7 +144,7 @@
 
       <div id="nh-demo" style="margin-top:1.5rem; text-align:left; display:inline-block; width:80%; max-width:900px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="margin:.25rem 0">Demo: Sample Leads</h3>
+          <h3 id="nh-demo-title" style="margin:.25rem 0">Demo: Sample Leads</h3>
           <div id="nh-mode-msg" style="font-size:.9rem; color:#666">Free: 3 demo leads • Pro: unlock more</div>
         </div>
 
@@ -170,6 +170,7 @@
   const primaryBtn = document.getElementById('nh-search');
   const helpBox = document.getElementById('nh-help-top');
   const modeMsg = document.getElementById('nh-mode-msg');
+  const demoTitle = document.getElementById('nh-demo-title');
 
   function updateUIForMode() {
     const mode = modeSelect.value;
@@ -178,16 +179,19 @@
       document.getElementById('nh-domain').placeholder = 'Enter domain (e.g. stripe.com)';
       helpBox.textContent = 'Enter a domain to hunt publicly available or AI-inferred corporate email patterns. The first 3 leads are free as a demo.';
       modeMsg.textContent = 'Free: 3 demo leads • Pro: unlock more';
+      if (demoTitle) demoTitle.textContent = 'Demo: Sample Emails';
     } else if (mode === 'import') {
       primaryBtn.textContent = 'Upload CSV';
       document.getElementById('nh-domain').placeholder = 'Optional: use domain to filter import (or leave blank)';
       helpBox.innerHTML = 'Upload a CSV of domains or names to enrich. For demo, you can paste comma-separated emails in the prompt after clicking the button.';
       modeMsg.textContent = 'Import mode • Enrich bulk records';
+      if (demoTitle) demoTitle.textContent = 'Demo: Import Records';
     } else if (mode === 'ai') {
       primaryBtn.textContent = 'Hunt AI Leads';
       document.getElementById('nh-domain').placeholder = 'Try natural language (e.g. "marketing managers in tech USA")';
       helpBox.textContent = 'AI mode: use natural language; the system will attempt to find relevant lead roles and inferred emails (demo results shown).';
       modeMsg.textContent = 'AI-powered search • Try natural queries';
+      if (demoTitle) demoTitle.textContent = 'Demo: AI Leads';
     }
   }
 
