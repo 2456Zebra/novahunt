@@ -295,13 +295,16 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, successUrl: window.location.origin + '/?success=1', cancelUrl: window.location.origin + '/?canceled=1' })
       });
-      const json = await resp.json();
+      let json = null;
+      try { json = await resp.json(); } catch (e) { json = null; }
+
       if (resp.ok && json && json.url) {
         // redirect to Stripe Checkout
         window.location.href = json.url;
       } else {
+        const errMsg = json && json.error ? json.error : (resp.statusText || `Error ${resp.status}`);
         console.error('Failed to create checkout session', json);
-        showMessage(json && json.error ? json.error : 'Unable to start checkout. Check console for details.', 'error');
+        showMessage(errMsg, 'error');
       }
     } catch (err) {
       console.error('Checkout request failed', err);
@@ -311,7 +314,7 @@
     }
   });
 
-  // Sign in / Sign up handlers - functional endpoints
+  // Sign in / Sign up handlers - functional endpoints (safe parsing)
   btnSignin.addEventListener('click', async () => {
     const email = prompt('Enter your email to sign in (we will send a magic link):');
     if (!email) return;
@@ -323,11 +326,15 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const json = await resp.json();
+      let json = null;
+      try { json = await resp.json(); } catch (e) { json = null; }
+
       if (resp.ok) {
         showMessage(`Magic link sent to ${email}.`, 'success');
+        if (json && json.link) console.info('Dev magic link:', json.link);
       } else {
-        showMessage(json && json.error ? json.error : 'Unable to send sign-in link.', 'error');
+        const errMsg = json && json.error ? json.error : (resp.statusText || `Error ${resp.status}`);
+        showMessage(errMsg, 'error');
       }
     } catch (err) {
       console.error('Sign-in request failed', err);
@@ -348,11 +355,15 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const json = await resp.json();
+      let json = null;
+      try { json = await resp.json(); } catch (e) { json = null; }
+
       if (resp.ok) {
         showMessage(`Account created for ${email}. A verification link was sent.`, 'success');
+        if (json && json.demoLeads) console.info('Demo leads granted:', json.demoLeads);
       } else {
-        showMessage(json && json.error ? json.error : 'Unable to create account.', 'error');
+        const errMsg = json && json.error ? json.error : (resp.statusText || `Error ${resp.status}`);
+        showMessage(errMsg, 'error');
       }
     } catch (err) {
       console.error('Sign-up request failed', err);
