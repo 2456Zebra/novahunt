@@ -138,14 +138,14 @@
         <button id="nh-search" style="margin-left:.5rem; padding:.5rem 1rem; border-radius:6px; background:#007bff; color:#fff; border:none;">Hunt Emails</button>
       </div>
 
+      <!-- help placed directly under the top controls so it changes with the pulldown -->
+      <div id="nh-help-top" style="margin-top:.75rem; max-width:900px; margin-left:auto; margin-right:auto; color:#666; font-size:0.95rem; text-align:center;"> 
+      </div>
+
       <div id="nh-demo" style="margin-top:1.5rem; text-align:left; display:inline-block; width:80%; max-width:900px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h3 style="margin:.25rem 0">Demo: Sample Leads</h3>
           <div id="nh-mode-msg" style="font-size:.9rem; color:#666">Free: 3 demo leads • Pro: unlock more</div>
-        </div>
-
-        <div id="nh-help" style="background:#fafafa; border:1px solid #eee; padding:1rem; border-radius:6px; color:#666; font-size:0.95rem;">
-          <!-- Light grey message that changes based on mode -->
         </div>
 
         <ul id="nh-results" style="background:#fafafa; border:1px solid #eee; padding:1rem; border-radius:6px; list-style:none; margin:0; margin-top:8px;"></ul>
@@ -168,7 +168,7 @@
   // UI wiring
   const modeSelect = document.getElementById('nh-mode');
   const primaryBtn = document.getElementById('nh-search');
-  const helpBox = document.getElementById('nh-help');
+  const helpBox = document.getElementById('nh-help-top');
   const modeMsg = document.getElementById('nh-mode-msg');
 
   function updateUIForMode() {
