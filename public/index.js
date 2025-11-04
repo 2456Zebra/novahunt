@@ -193,6 +193,16 @@
       modeMsg.textContent = 'AI-powered search • Try natural queries';
       if (demoTitle) demoTitle.textContent = 'Demo: AI Leads';
     }
+
+    // Immediately update the demo results shown when the user changes the mode.
+    // Use the current domain field if present, otherwise default to coca-cola.com for a nicer demo.
+    const domainForDemo = (document.getElementById('nh-domain').value || '').trim() || 'coca-cola.com';
+    const samples = sampleLeadsFor(domainForDemo, mode);
+    renderResults(samples, false);
+
+    // Update the small message to reflect the shown demo type
+    const typeLabel = mode === 'emails' ? 'sample emails' : mode === 'import' ? 'import records' : 'AI leads';
+    document.getElementById('nh-message').textContent = `Showing 3 demo ${typeLabel} for ${domainForDemo}.`;
   }
 
   modeSelect.addEventListener('change', updateUIForMode);
@@ -267,7 +277,7 @@
   document.getElementById('nh-signin').addEventListener('click', () => { alert('Sign In (demo): magic link would be sent.'); });
   document.getElementById('nh-signup').addEventListener('click', () => { alert('Sign Up (demo): 50 free leads added to your account (on real signup).'); });
 
-  // initial sample
+  // initial sample (kept for backward compatibility; updateUIForMode already updated the display above)
   renderResults(sampleLeadsFor('coca-cola.com', 'emails'));
   document.getElementById('nh-message').textContent = 'Demo loaded (3 sample leads).';
 })();
