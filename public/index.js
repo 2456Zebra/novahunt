@@ -15,6 +15,12 @@
     }
   }
 
+  function showMessage(text, type = 'info') {
+    const el = document.getElementById('nh-message');
+    el.textContent = text || '';
+    el.style.color = type === 'error' ? '#d9534f' : type === 'success' ? '#28a745' : '#007bff';
+  }
+
   // mode-aware renderResults: showAll controls pagination, mode controls presentation
   function renderResults(items, showAll = false, mode = 'emails') {
     const ul = document.getElementById('nh-results');
@@ -187,6 +193,20 @@
   const helpBox = document.getElementById('nh-help-top');
   const modeMsg = document.getElementById('nh-mode-msg');
   const demoTitle = document.getElementById('nh-demo-title');
+  const btnUpgrade = document.getElementById('nh-upgrade');
+  const btnSignin = document.getElementById('nh-signin');
+  const btnSignup = document.getElementById('nh-signup');
+
+  function setButtonLoading(btn, loadingText = 'Please wait...') {
+    if (!btn) return () => {};
+    const prevText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = loadingText;
+    return () => {
+      btn.disabled = false;
+      btn.textContent = prevText;
+    };
+  }
 
   function updateUIForMode() {
     const mode = modeSelect.value;
@@ -217,7 +237,7 @@
 
     // Update the small message to reflect the shown demo type
     const typeLabel = mode === 'emails' ? 'sample emails' : mode === 'import' ? 'import records' : 'AI leads';
-    document.getElementById('nh-message').textContent = `Showing 3 demo ${typeLabel} for ${domainForDemo}.`;
+    showMessage(`Showing 3 demo ${typeLabel} for ${domainForDemo}.`, 'info');
   }
 
   modeSelect.addEventListener('change', updateUIForMode);
@@ -232,7 +252,7 @@
       const paste = prompt('Paste comma-separated emails for demo import (or click Cancel):');
       if (!paste) return;
       const emails = paste.split(',').map(s => s.trim()).filter(Boolean);
-      document.getElementById('nh-message').textContent = `Imported ${emails.length} records (demo).`;
+      showMessage(`Imported ${emails.length} records (demo).`, 'success');
       try {
         const resp = await fetch('/api/import', {
           method: 'POST',
@@ -254,20 +274,21 @@
     // For emails and AI modes: show immediate samples and then try API
     const samples = sampleLeadsFor(domain, mode);
     renderResults(samples, false, mode);
-    document.getElementById('nh-message').textContent = `Showing 3 demo leads for ${domain}.`;
+    showMessage(`Showing 3 demo leads for ${domain}.`, 'info');
 
     const api = await callApi(domain, mode);
     if (api && Array.isArray(api.emails) && api.emails.length) {
       renderResults(api.emails, false, mode);
-      document.getElementById('nh-message').textContent = `Found ${api.emails.length} leads for ${domain}.`;
+      showMessage(`Found ${api.emails.length} leads for ${domain}.`, 'success');
     }
   });
 
-  document.getElementById('nh-upgrade').addEventListener('click', async () => {
-    // Prompt for email then call server to create a Checkout session and redirect to Stripe Checkout
+  // Upgrade to Pro: create checkout session and redirect
+  btnUpgrade.addEventListener('click', async () => {
     const email = prompt('Enter your email to start Checkout (use test email for sandbox):');
     if (!email) return;
-    document.getElementById('nh-message').textContent = 'Starting checkout...';
+    const done = setButtonLoading(btnUpgrade, 'Starting checkout...');
+    showMessage('Starting checkout...', 'info');
     try {
       const resp = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -275,22 +296,71 @@
         body: JSON.stringify({ email, successUrl: window.location.origin + '/?success=1', cancelUrl: window.location.origin + '/?canceled=1' })
       });
       const json = await resp.json();
-      if (json && json.url) {
+      if (resp.ok && json && json.url) {
+        // redirect to Stripe Checkout
         window.location.href = json.url;
       } else {
         console.error('Failed to create checkout session', json);
-        alert('Unable to start checkout. Check console for details.');
-        document.getElementById('nh-message').textContent = '';
+        showMessage(json && json.error ? json.error : 'Unable to start checkout. Check console for details.', 'error');
       }
     } catch (err) {
       console.error('Checkout request failed', err);
-      alert('Unable to start checkout. Check console for details.');
-      document.getElementById('nh-message').textContent = '';
+      showMessage('Unable to start checkout. Check console for details.', 'error');
+    } finally {
+      done();
     }
   });
 
-  document.getElementById('nh-signin').addEventListener('click', () => { alert('Sign In (demo): magic link would be sent.'); });
-  document.getElementById('nh-signup').addEventListener('click', () => { alert('Sign Up (demo): 50 free leads added to your account (on real signup).'); });
+  // Sign in / Sign up handlers - functional endpoints
+  btnSignin.addEventListener('click', async () => {
+    const email = prompt('Enter your email to sign in (we will send a magic link):');
+    if (!email) return;
+    const done = setButtonLoading(btnSignin, 'Sending sign-in link...');
+    showMessage('Sending sign-in link...', 'info');
+    try {
+      const resp = await fetch('/api/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const json = await resp.json();
+      if (resp.ok) {
+        showMessage(`Magic link sent to ${email}.`, 'success');
+      } else {
+        showMessage(json && json.error ? json.error : 'Unable to send sign-in link.', 'error');
+      }
+    } catch (err) {
+      console.error('Sign-in request failed', err);
+      showMessage('Network error. Check console.', 'error');
+    } finally {
+      done();
+    }
+  });
+
+  btnSignup.addEventListener('click', async () => {
+    const email = prompt('Enter your email to sign up:');
+    if (!email) return;
+    const done = setButtonLoading(btnSignup, 'Creating account...');
+    showMessage('Creating account...', 'info');
+    try {
+      const resp = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const json = await resp.json();
+      if (resp.ok) {
+        showMessage(`Account created for ${email}. A verification link was sent.`, 'success');
+      } else {
+        showMessage(json && json.error ? json.error : 'Unable to create account.', 'error');
+      }
+    } catch (err) {
+      console.error('Sign-up request failed', err);
+      showMessage('Network error. Check console.', 'error');
+    } finally {
+      done();
+    }
+  });
 
   // NOTE: no unconditional initial render here; updateUIForMode drives initial display
 })();
