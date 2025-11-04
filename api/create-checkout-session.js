@@ -1,34 +1,47 @@
+// /api/create-checkout-session.js
+// Next/Vercel API route: accepts POST, handles OPTIONS preflight, returns JSON
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
+  // Allow OPTIONS preflight for safety (CORS / some clients)
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).end();
   }
 
-  const { successUrl, cancelUrl, email } = req.body || {};
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { email, successUrl, cancelUrl } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  // If Stripe env missing, return a mock URL so dev frontend still works
+  if (!process.env.STRIPE_SECRET || !process.env.STRIPE_PRICE_ID) {
+    console.warn('Stripe env not configured — returning mock checkout URL for dev.');
+    const proto = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.headers.host || 'localhost';
+    const mockUrl = `${proto}://${host}/?mock-checkout=1&email=${encodeURIComponent(email)}`;
+    return res.status(200).json({ url: mockUrl });
+  }
 
   try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET);
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: process.env.STRIPE_PRICE_ID,
-          quantity: 1,
-        },
-      ],
       customer_email: email,
-      metadata: { user_email: email || '' },
-      success_url: successUrl || 'https://novahunt.ai/?success=1',
-      cancel_url: cancelUrl || 'https://novahunt.ai/?canceled=1',
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+      success_url: successUrl || `${req.headers.referer || '/'}?success=1`,
+      cancel_url: cancelUrl || `${req.headers.referer || '/'}?canceled=1`,
     });
 
-    res.status(200).json({ url: session.url, id: session.id });
+    const checkoutUrl = session.url || (session.id ? `https://checkout.stripe.com/pay/${session.id}` : null);
+    if (!checkoutUrl) return res.status(500).json({ error: 'Stripe did not return a checkout URL' });
+    return res.status(200).json({ url: checkoutUrl });
   } catch (err) {
-    console.error('Stripe create session error', err);
-    res.status(500).json({ error: 'Internal error' });
+    console.error('Stripe create session failed:', err);
+    return res.status(500).json({ error: 'Unable to create checkout session' });
   }
 }
