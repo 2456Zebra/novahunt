@@ -15,7 +15,8 @@
     }
   }
 
-  function renderResults(items, showAll = false) {
+  // mode-aware renderResults: showAll controls pagination, mode controls presentation
+  function renderResults(items, showAll = false, mode = 'emails') {
     const ul = document.getElementById('nh-results');
     ul.innerHTML = '';
     const list = showAll ? items : items.slice(0, 3);
@@ -30,7 +31,10 @@
       emailEl.style.alignItems = 'center';
 
       const left = document.createElement('div');
-      left.innerHTML = `<strong style="color:#111;">${maskEmail(it.email)}</strong><div style="font-size:0.9rem;color:#666">${it.name || '—'} ${it.title ? '• ' + it.title : ''}</div>`;
+
+      // Import mode shows raw email/record (no masking), emails/ai mask addresses
+      const displayEmail = mode === 'import' ? (it.email || '') : maskEmail(it.email || '');
+      left.innerHTML = `<strong style="color:#111;">${displayEmail}</strong><div style="font-size:0.9rem;color:#666">${it.name || '—'} ${it.title ? '• ' + it.title : ''}</div>`;
 
       const right = document.createElement('div');
       right.style.textAlign = 'right';
@@ -63,7 +67,7 @@
     if (items.length > 3 && !showAll) {
       moreWrap.innerHTML = `<button id="nh-show-more" style="padding:.5rem .75rem;border-radius:6px;background:#007bff;color:#fff;border:none;margin-top:8px;">Show ${items.length - 3} more</button>`;
       document.getElementById('nh-show-more').addEventListener('click', () => {
-        renderResults(items, true);
+        renderResults(items, true, mode);
       });
     } else {
       moreWrap.innerHTML = '';
@@ -85,7 +89,7 @@
         { email: `bizdev@${base}`, name: '', title: '', confidence: 0.65 }
       ];
     } else if (mode === 'import') {
-      // Import mode shows example enrichment results
+      // Import mode shows example enrichment results (records)
       return [
         { email: `imported.user1@${base}`, name: 'Imported User 1', title: 'Marketing Manager', confidence: 0.78 },
         { email: `imported.user2@${base}`, name: 'Imported User 2', title: 'Sales Lead', confidence: 0.72 },
@@ -174,7 +178,6 @@
 
   function updateUIForMode() {
     const mode = modeSelect.value;
-    console.log('updateUIForMode called, mode=', mode); // debug: confirm mode changes
     if (mode === 'emails') {
       primaryBtn.textContent = 'Hunt Emails';
       document.getElementById('nh-domain').placeholder = 'Enter domain (e.g. stripe.com)';
@@ -196,10 +199,9 @@
     }
 
     // Immediately update the demo results shown when the user changes the mode.
-    // Use the current domain field if present, otherwise default to coca-cola.com for a nicer demo.
     const domainForDemo = (document.getElementById('nh-domain').value || '').trim() || 'coca-cola.com';
     const samples = sampleLeadsFor(domainForDemo, mode);
-    renderResults(samples, false);
+    renderResults(samples, false, mode);
 
     // Update the small message to reflect the shown demo type
     const typeLabel = mode === 'emails' ? 'sample emails' : mode === 'import' ? 'import records' : 'AI leads';
@@ -227,24 +229,24 @@
         });
         const json = await resp.json();
         if (json && Array.isArray(json.results)) {
-          renderResults(json.results, false);
+          renderResults(json.results, false, 'import');
         } else {
-          renderResults(sampleLeadsFor(domain, 'import'), false);
+          renderResults(sampleLeadsFor(domain, 'import'), false, 'import');
         }
       } catch (e) {
-        renderResults(sampleLeadsFor(domain, 'import'), false);
+        renderResults(sampleLeadsFor(domain, 'import'), false, 'import');
       }
       return;
     }
 
     // For emails and AI modes: show immediate samples and then try API
     const samples = sampleLeadsFor(domain, mode);
-    renderResults(samples, false);
+    renderResults(samples, false, mode);
     document.getElementById('nh-message').textContent = `Showing 3 demo leads for ${domain}.`;
 
     const api = await callApi(domain, mode);
     if (api && Array.isArray(api.emails) && api.emails.length) {
-      renderResults(api.emails, false);
+      renderResults(api.emails, false, mode);
       document.getElementById('nh-message').textContent = `Found ${api.emails.length} leads for ${domain}.`;
     }
   });
@@ -278,5 +280,5 @@
   document.getElementById('nh-signin').addEventListener('click', () => { alert('Sign In (demo): magic link would be sent.'); });
   document.getElementById('nh-signup').addEventListener('click', () => { alert('Sign Up (demo): 50 free leads added to your account (on real signup).'); });
 
-  // NOTE: removed unconditional initial render that forced email samples on load.
+  // NOTE: no unconditional initial render here; updateUIForMode drives initial display
 })();
