@@ -32,9 +32,21 @@
 
       const left = document.createElement('div');
 
-      // Import mode shows raw email/record (no masking), emails/ai mask addresses
-      const displayEmail = mode === 'import' ? (it.email || '') : maskEmail(it.email || '');
-      left.innerHTML = `<strong style="color:#111;">${displayEmail}</strong><div style="font-size:0.9rem;color:#666">${it.name || '—'} ${it.title ? '• ' + it.title : ''}</div>`;
+      // mode-specific primary display:
+      // - ai: show name/role as primary, email (masked if present) as secondary
+      // - import: show raw email/record (no masking)
+      // - emails (default): show masked email as primary, name/title secondary
+      if (mode === 'ai') {
+        const primary = it.name || it.title || '(Lead)';
+        const secondaryParts = [];
+        if (it.title) secondaryParts.push(it.title);
+        if (it.email) secondaryParts.push(maskEmail(it.email));
+        const secondary = secondaryParts.length ? secondaryParts.join(' • ') : '';
+        left.innerHTML = `<strong style="color:#111;">${primary}</strong><div style="font-size:0.9rem;color:#666">${secondary}</div>`;
+      } else {
+        const displayEmail = mode === 'import' ? (it.email || '') : maskEmail(it.email || '');
+        left.innerHTML = `<strong style="color:#111;">${displayEmail}</strong><div style="font-size:0.9rem;color:#666">${it.name || '—'} ${it.title ? '• ' + it.title : ''}</div>`;
+      }
 
       const right = document.createElement('div');
       right.style.textAlign = 'right';
@@ -84,9 +96,9 @@
       return [
         { email: `sara.marketing@${base}`, name: 'Sara Marketing', title: 'Growth Marketer', confidence: 0.94 },
         { email: `tom.lead@${base}`, name: 'Tom Lead', title: 'Head of Demand Gen', confidence: 0.89 },
-        { email: `ops@${base}`, name: '', title: '', confidence: 0.82 },
-        { email: `partnerships@${base}`, name: '', title: '', confidence: 0.7 },
-        { email: `bizdev@${base}`, name: '', title: '', confidence: 0.65 }
+        { email: `ops@${base}`, name: '', title: 'Operations', confidence: 0.82 },
+        { email: `partnerships@${base}`, name: '', title: 'Partnerships', confidence: 0.70 },
+        { email: `bizdev@${base}`, name: '', title: 'Business Development', confidence: 0.65 }
       ];
     } else if (mode === 'import') {
       // Import mode shows example enrichment results (records)
@@ -101,7 +113,7 @@
     return [
       { email: `john.doe@${base}`, name: 'John Doe', title: 'Head of Marketing', confidence: 0.92 },
       { email: `jane.smith@${base}`, name: 'Jane Smith', title: 'VP Sales', confidence: 0.87 },
-      { email: `marketing@${base}`, name: '', title: '', confidence: 0.8 },
+      { email: `marketing@${base}`, name: '', title: '', confidence: 0.80 },
       { email: `press@${base}`, name: '', title: '', confidence: 0.66 },
       { email: `info@${base}`, name: '', title: '', confidence: 0.55 },
     ];
