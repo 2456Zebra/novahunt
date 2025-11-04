@@ -174,6 +174,7 @@
 
   function updateUIForMode() {
     const mode = modeSelect.value;
+    console.log('updateUIForMode called, mode=', mode); // debug: confirm mode changes
     if (mode === 'emails') {
       primaryBtn.textContent = 'Hunt Emails';
       document.getElementById('nh-domain').placeholder = 'Enter domain (e.g. stripe.com)';
@@ -277,7 +278,5 @@
   document.getElementById('nh-signin').addEventListener('click', () => { alert('Sign In (demo): magic link would be sent.'); });
   document.getElementById('nh-signup').addEventListener('click', () => { alert('Sign Up (demo): 50 free leads added to your account (on real signup).'); });
 
-  // initial sample (kept for backward compatibility; updateUIForMode already updated the display above)
-  renderResults(sampleLeadsFor('coca-cola.com', 'emails'));
-  document.getElementById('nh-message').textContent = 'Demo loaded (3 sample leads).';
+  // NOTE: removed unconditional initial render that forced email samples on load.
 })();
