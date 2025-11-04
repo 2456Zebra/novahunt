@@ -2,6 +2,7 @@
   const root = document.getElementById('root');
   if (!root) return;
 
+  // Helpers
   function maskEmail(email) {
     try {
       const [local, domain] = email.split('@');
@@ -69,9 +70,30 @@
     }
   }
 
-  function sampleLeadsFor(domain) {
+  // Mode-aware sample leads generator
+  function sampleLeadsFor(domain, mode) {
     const d = domain.replace(/^https?:\/\/|^www\./g, '').split('/')[0] || 'example.com';
     const base = d.includes('.') ? d : `${d}.com`;
+
+    if (mode === 'ai') {
+      // AI leads: more role-like, slightly higher confidence for demo
+      return [
+        { email: `sara.marketing@${base}`, name: 'Sara Marketing', title: 'Growth Marketer', confidence: 0.94 },
+        { email: `tom.lead@${base}`, name: 'Tom Lead', title: 'Head of Demand Gen', confidence: 0.89 },
+        { email: `ops@${base}`, name: '', title: '', confidence: 0.82 },
+        { email: `partnerships@${base}`, name: '', title: '', confidence: 0.7 },
+        { email: `bizdev@${base}`, name: '', title: '', confidence: 0.65 }
+      ];
+    } else if (mode === 'import') {
+      // Import mode shows example enrichment results
+      return [
+        { email: `imported.user1@${base}`, name: 'Imported User 1', title: 'Marketing Manager', confidence: 0.78 },
+        { email: `imported.user2@${base}`, name: 'Imported User 2', title: 'Sales Lead', confidence: 0.72 },
+        { email: `imported.user3@${base}`, name: 'Imported User 3', title: 'Director', confidence: 0.68 }
+      ];
+    }
+
+    // default: plain email hunt
     return [
       { email: `john.doe@${base}`, name: 'John Doe', title: 'Head of Marketing', confidence: 0.92 },
       { email: `jane.smith@${base}`, name: 'Jane Smith', title: 'VP Sales', confidence: 0.87 },
@@ -81,41 +103,60 @@
     ];
   }
 
-  async function callApi(domain) {
+  async function callApi(domain, mode) {
     try {
-      const resp = await fetch(`/api/find-emails?domain=${encodeURIComponent(domain)}`);
-      if (!resp.ok) return null;
-      return resp.json();
+      // For import mode we call /api/import with dummy data; emails mode calls find-emails
+      if (mode === 'import') {
+        // no-op for demo; server-side import expects POST JSON; return null to use samples
+        return null;
+      } else {
+        const resp = await fetch(`/api/find-emails?domain=${encodeURIComponent(domain)}`);
+        if (!resp.ok) return null;
+        return resp.json();
+      }
     } catch (e) {
       return null;
     }
   }
 
+  // Build UI
   root.innerHTML = `
     <div style="font-family:Arial, Helvetica, sans-serif; padding:2rem; text-align:center;">
       <h1 style="color:#007bff; margin:0">NovaHunt</h1>
       <p style="color:#333; margin-top:.25rem">AI-Powered Lead Generation</p>
 
-      <div style="margin-top:1rem;">
+      <div style="margin-top:1rem; display:flex; justify-content:center; gap:8px; align-items:center;">
+        <select id="nh-mode" aria-label="Choose hunt mode" style="padding:.5rem; border:1px solid #ddd; border-radius:6px;">
+          <option value="emails" selected>Hunt Emails</option>
+          <option value="import">Hunt Import Records</option>
+          <option value="ai">Hunt AI Leads</option>
+        </select>
+
         <input id="nh-domain" placeholder="Enter domain (e.g. stripe.com or coca-cola.com)"
-          style="width:60%; padding:.5rem; border:1px solid #ddd; border-radius:6px" />
+          style="width:46%; padding:.5rem; border:1px solid #ddd; border-radius:6px" />
+
         <button id="nh-search" style="margin-left:.5rem; padding:.5rem 1rem; border-radius:6px; background:#007bff; color:#fff; border:none;">Hunt Emails</button>
       </div>
 
-      <div id="nh-demo" style="margin-top:1.5rem; text-align:left; display:inline-block; width:80%; max-width:800px;">
+      <div id="nh-demo" style="margin-top:1.5rem; text-align:left; display:inline-block; width:80%; max-width:900px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h3 style="margin:.25rem 0">Demo: Sample Leads</h3>
-          <div style="font-size:.9rem; color:#666">Free: 3 demo leads • Pro: unlock more</div>
+          <div id="nh-mode-msg" style="font-size:.9rem; color:#666">Free: 3 demo leads • Pro: unlock more</div>
         </div>
-        <ul id="nh-results" style="background:#fafafa; border:1px solid #eee; padding:1rem; border-radius:6px; list-style:none; margin:0;"></ul>
+
+        <div id="nh-help" style="background:#fafafa; border:1px solid #eee; padding:1rem; border-radius:6px; color:#666; font-size:0.95rem;">
+          <!-- Light grey message that changes based on mode -->
+        </div>
+
+        <ul id="nh-results" style="background:#fafafa; border:1px solid #eee; padding:1rem; border-radius:6px; list-style:none; margin:0; margin-top:8px;"></ul>
         <div id="nh-more-wrap"></div>
+
         <div style="margin-top:.75rem; color:#555; font-size:.9rem;">
           Want the full list? <button id="nh-upgrade" style="margin-left:.5rem; padding:.4rem .7rem; border-radius:6px;">Upgrade to Pro</button>
         </div>
       </div>
 
       <div style="margin-top:1.25rem;">
-        <button id="nh-import" style="margin:5px; padding:10px;">Import Records</button>
         <button id="nh-signup" style="margin:5px; padding:10px;">Sign Up</button>
         <button id="nh-signin" style="margin:5px; padding:10px;">Sign In</button>
       </div>
@@ -124,16 +165,70 @@
     </div>
   `;
 
+  // UI wiring
+  const modeSelect = document.getElementById('nh-mode');
+  const primaryBtn = document.getElementById('nh-search');
+  const helpBox = document.getElementById('nh-help');
+  const modeMsg = document.getElementById('nh-mode-msg');
+
+  function updateUIForMode() {
+    const mode = modeSelect.value;
+    if (mode === 'emails') {
+      primaryBtn.textContent = 'Hunt Emails';
+      document.getElementById('nh-domain').placeholder = 'Enter domain (e.g. stripe.com)';
+      helpBox.textContent = 'Enter a domain to hunt publicly available or AI-inferred corporate email patterns. The first 3 leads are free as a demo.';
+      modeMsg.textContent = 'Free: 3 demo leads • Pro: unlock more';
+    } else if (mode === 'import') {
+      primaryBtn.textContent = 'Upload CSV';
+      document.getElementById('nh-domain').placeholder = 'Optional: use domain to filter import (or leave blank)';
+      helpBox.innerHTML = 'Upload a CSV of domains or names to enrich. For demo, you can paste comma-separated emails in the prompt after clicking the button.';
+      modeMsg.textContent = 'Import mode • Enrich bulk records';
+    } else if (mode === 'ai') {
+      primaryBtn.textContent = 'Hunt AI Leads';
+      document.getElementById('nh-domain').placeholder = 'Try natural language (e.g. "marketing managers in tech USA")';
+      helpBox.textContent = 'AI mode: use natural language; the system will attempt to find relevant lead roles and inferred emails (demo results shown).';
+      modeMsg.textContent = 'AI-powered search • Try natural queries';
+    }
+  }
+
+  modeSelect.addEventListener('change', updateUIForMode);
+  updateUIForMode(); // initial
+
   document.getElementById('nh-search').addEventListener('click', async () => {
+    const mode = modeSelect.value;
     const domain = (document.getElementById('nh-domain').value || '').trim() || 'example.com';
-    const samples = sampleLeadsFor(domain);
+
+    if (mode === 'import') {
+      // For demo: prompt for simple comma separated emails and call import endpoint
+      const paste = prompt('Paste comma-separated emails for demo import (or click Cancel):');
+      if (!paste) return;
+      const emails = paste.split(',').map(s => s.trim()).filter(Boolean);
+      document.getElementById('nh-message').textContent = `Imported ${emails.length} records (demo).`;
+      try {
+        const resp = await fetch('/api/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emails })
+        });
+        const json = await resp.json();
+        if (json && Array.isArray(json.results)) {
+          renderResults(json.results, false);
+        } else {
+          renderResults(sampleLeadsFor(domain, 'import'), false);
+        }
+      } catch (e) {
+        renderResults(sampleLeadsFor(domain, 'import'), false);
+      }
+      return;
+    }
+
+    // For emails and AI modes: show immediate samples and then try API
+    const samples = sampleLeadsFor(domain, mode);
     renderResults(samples, false);
     document.getElementById('nh-message').textContent = `Showing 3 demo leads for ${domain}.`;
 
-    // Try real API (if available)
-    const api = await callApi(domain);
+    const api = await callApi(domain, mode);
     if (api && Array.isArray(api.emails) && api.emails.length) {
-      // Expect api.emails to be objects { email, name, title, confidence }
       renderResults(api.emails, false);
       document.getElementById('nh-message').textContent = `Found ${api.emails.length} leads for ${domain}.`;
     }
@@ -145,9 +240,8 @@
 
   document.getElementById('nh-signin').addEventListener('click', () => { alert('Sign In (demo): magic link would be sent.'); });
   document.getElementById('nh-signup').addEventListener('click', () => { alert('Sign Up (demo): 50 free leads added to your account (on real signup).'); });
-  document.getElementById('nh-import').addEventListener('click', () => { alert('Import Records (demo): choose a CSV to enrich.'); });
 
   // initial sample
-  renderResults(sampleLeadsFor('coca-cola.com'));
+  renderResults(sampleLeadsFor('coca-cola.com', 'emails'));
   document.getElementById('nh-message').textContent = 'Demo loaded (3 sample leads).';
 })();
