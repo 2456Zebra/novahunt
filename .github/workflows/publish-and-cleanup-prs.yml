@@ -1,0 +1,88 @@
+# Workflow: Publish canonical PRs and close duplicate drafts
+# Trigger: Manual (workflow_dispatch)
+# This uses the repository's built-in GITHUB_TOKEN (no secrets to provide).
+name: Publish & Clean PRs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish-and-clean:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Publish and clean PRs (Octokit)
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Canonical PRs to mark ready and label
+            const keepPRs = [
+              { number: 18, label: "enhancement", reviewers: ["2456Zebra"] },
+              { number: 15, label: "chore",        reviewers: ["2456Zebra"] }
+            ];
+
+            // Duplicate draft PR numbers to close & attempt branch deletion
+            const duplicatePRs = [17, 19, 12, 13, 14];
+
+            for (const p of keepPRs) {
+              try {
+                // Convert draft -> ready (if applicable)
+                await github.request('POST /repos/{owner}/{repo}/pulls/{pull_number}/ready_for_review', {
+                  owner, repo, pull_number: p.number
+                }).catch(e => {
+                  console.log(`PR #${p.number} ready_for_review attempt:`, e.message || e);
+                });
+
+                // Add label
+                await github.rest.issues.addLabels({
+                  owner, repo, issue_number: p.number,
+                  labels: [p.label]
+                }).catch(e => console.log(`Label PR #${p.number}:`, e.message || e));
+
+                // Request reviewers
+                await github.rest.pulls.requestReviewers({
+                  owner, repo, pull_number: p.number,
+                  reviewers: p.reviewers
+                }).catch(e => console.log(`Request reviewers PR #${p.number}:`, e.message || e));
+
+                console.log(`Processed canonical PR #${p.number}`);
+              } catch (err) {
+                console.log(`Error processing PR #${p.number}:`, err.message || err);
+              }
+            }
+
+            for (const prNumber of duplicatePRs) {
+              try {
+                const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+
+                if (pr.state !== 'closed') {
+                  await github.rest.pulls.update({ owner, repo, pull_number: prNumber, state: 'closed' });
+                  console.log(`Closed duplicate PR #${prNumber}`);
+                } else {
+                  console.log(`Duplicate PR #${prNumber} already closed`);
+                }
+
+                // If the branch is in this repo, try to delete it
+                if (pr.head && pr.head.ref && pr.head.repo && pr.head.repo.full_name === `${owner}/${repo}`) {
+                  const ref = `heads/${pr.head.ref}`;
+                  try {
+                    await github.rest.git.deleteRef({ owner, repo, ref });
+                    console.log(`Deleted branch ${pr.head.ref} (from PR #${prNumber})`);
+                  } catch (delErr) {
+                    console.log(`Could not delete branch ${pr.head.ref} (PR #${prNumber}):`, delErr.message || delErr);
+                  }
+                } else {
+                  console.log(`Skipping branch deletion for PR #${prNumber} (external or missing head)`);
+                }
+              } catch (err) {
+                console.log(`Error closing duplicate PR #${prNumber}:`, err.message || err);
+              }
+            }
+
+            console.log("Publish & cleanup completed.");
