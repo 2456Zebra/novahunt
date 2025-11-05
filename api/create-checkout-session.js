@@ -1,16 +1,14 @@
-// api/create-checkout-session.js
-// Vercel Serverless function: accepts POST, handles OPTIONS preflight, returns JSON. Uses Stripe if STRIPE_SECRET & STRIPE_PRICE_ID are set.
+// /pages/api/create-checkout-session.js
+// Next API route: accepts POST, handles OPTIONS preflight, returns JSON
 
-const Stripe = require('stripe');
+import Stripe from 'stripe';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function parseBody(req) {
-  if (!req.body) return {};
-  if (typeof req.body === 'object') return req.body;
-  try { return JSON.parse(req.body); } catch (e) { return {}; }
-}
-
-module.exports = async function (req, res) {
+export default async function handler(req, res) {
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Credentials', 'false');
+
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -18,11 +16,16 @@ module.exports = async function (req, res) {
   }
 
   if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, successUrl, cancelUrl } = parseBody(req);
-  if (!email) return res.status(400).json({ error: 'Email is required' });
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ error: 'Invalid request body' });
+  }
+
+  const { email, successUrl, cancelUrl } = req.body || {};
+  if (!email || !EMAIL_RE.test(email)) return res.status(400).json({ error: 'Valid email is required' });
 
   // Dev fallback: mock URL if Stripe env vars missing
   if (!process.env.STRIPE_SECRET || !process.env.STRIPE_PRICE_ID) {
@@ -33,7 +36,9 @@ module.exports = async function (req, res) {
   }
 
   try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET);
+    // Initialize Stripe with API version to reduce breaking surprises
+    const stripe = new Stripe(process.env.STRIPE_SECRET, { apiVersion: '2022-11-15' });
+
     const session = await stripe.checkout.sessions.create({
       customer_email: email,
       payment_method_types: ['card'],
@@ -47,7 +52,8 @@ module.exports = async function (req, res) {
     if (!checkoutUrl) return res.status(500).json({ error: 'Stripe did not return a checkout URL' });
     return res.status(200).json({ url: checkoutUrl });
   } catch (err) {
-    console.error('Stripe create session failed:', err);
+    // Avoid printing raw Stripe errors (may contain sensitive info). Log minimal info.
+    console.error('Stripe create session failed');
     return res.status(500).json({ error: 'Unable to create checkout session' });
   }
-};
+}
