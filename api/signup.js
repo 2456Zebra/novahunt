@@ -1,14 +1,13 @@
-// api/signup.js
-// Vercel Serverless function: minimal signup placeholder. Replace with real DB and email verification for production.
+// /pages/api/signup.js
+// Minimal signup placeholder. Replace with real DB and email verification for production.
 
-function parseBody(req) {
-  if (!req.body) return {};
-  if (typeof req.body === 'object') return req.body;
-  try { return JSON.parse(req.body); } catch (e) { return {}; }
-}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-module.exports = async function (req, res) {
+export default async function handler(req, res) {
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Credentials', 'false');
+
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -16,17 +15,31 @@ module.exports = async function (req, res) {
   }
 
   if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email } = parseBody(req);
-  if (!email) return res.status(400).json({ error: 'Email is required' });
+  // Basic shape guard
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ error: 'Invalid request body' });
+  }
+
+  const { email } = req.body || {};
+  if (!email || typeof email !== 'string' || !EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'Valid email is required' });
+  }
 
   try {
-    console.log(`(DEV) Would create user for ${email}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.info(`(DEV) Would create user for ${email}`);
+    } else {
+      console.info('Signup request received');
+    }
+
+    // TODO: Replace with real DB insertion and email verification provider (SendGrid/SES)
     return res.status(201).json({ ok: true, message: 'Account created (dev)', demoLeads: 50 });
   } catch (err) {
     console.error('signup error', err);
     return res.status(500).json({ error: 'Unable to create account' });
   }
-};
+}
