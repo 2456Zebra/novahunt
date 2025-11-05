@@ -1,9 +1,8 @@
-// /api/create-checkout-session.js
-// Next/Vercel API route: accepts POST, handles OPTIONS preflight, returns JSON
+// /pages/api/create-checkout-session.js
+// Next API route: accepts POST, handles OPTIONS preflight, returns JSON
 import Stripe from 'stripe';
 
 export default async function handler(req, res) {
-  // Allow OPTIONS preflight for safety (CORS / some clients)
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -17,9 +16,8 @@ export default async function handler(req, res) {
   const { email, successUrl, cancelUrl } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Email is required' });
 
-  // If Stripe env missing, return a mock URL so dev frontend still works
+  // Dev fallback: mock URL if Stripe env vars missing
   if (!process.env.STRIPE_SECRET || !process.env.STRIPE_PRICE_ID) {
-    console.warn('Stripe env not configured — returning mock checkout URL for dev.');
     const proto = req.headers['x-forwarded-proto'] || 'https';
     const host = req.headers.host || 'localhost';
     const mockUrl = `${proto}://${host}/?mock-checkout=1&email=${encodeURIComponent(email)}`;
