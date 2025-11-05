@@ -5,27 +5,29 @@
   // Helpers
   function maskEmail(email) {
     try {
-      const [local, domain] = email.split('@');
-      if (!local || !domain) return email;
+      const [local, domain] = (email || '').split('@');
+      if (!local || !domain) return email || '';
       const keep = 2; // keep last 2 chars visible
       const maskedLocal = local.length <= keep ? '*'.repeat(local.length) : '*'.repeat(Math.max(0, local.length - keep)) + local.slice(-keep);
       return `${maskedLocal}@${domain}`;
     } catch (e) {
-      return email;
+      return email || '';
     }
   }
 
   function showMessage(text, type = 'info') {
     const el = document.getElementById('nh-message');
+    if (!el) return;
     el.textContent = text || '';
     el.style.color = type === 'error' ? '#d9534f' : type === 'success' ? '#28a745' : '#007bff';
   }
 
-  // mode-aware renderResults: showAll controls pagination, mode controls presentation
+  // safer DOM-building renderResults (avoid innerHTML for dynamic content)
   function renderResults(items, showAll = false, mode = 'emails') {
     const ul = document.getElementById('nh-results');
+    if (!ul) return;
     ul.innerHTML = '';
-    const list = showAll ? items : items.slice(0, 3);
+    const list = showAll ? items : (items || []).slice(0, 3);
     list.forEach((it) => {
       const li = document.createElement('li');
       li.style.padding = '6px 8px';
@@ -38,25 +40,35 @@
 
       const left = document.createElement('div');
 
-      // mode-specific primary display:
-      // - ai: show name/role as primary, email (masked if present) as secondary
-      // - import: show raw email/record (no masking)
-      // - emails (default): show masked email as primary, name/title secondary
+      const primary = document.createElement('div');
+      primary.style.color = '#111';
+      primary.style.fontWeight = '700';
+      const secondary = document.createElement('div');
+      secondary.style.fontSize = '0.9rem';
+      secondary.style.color = '#666';
+
       if (mode === 'ai') {
-        const primary = it.name || it.title || '(Lead)';
+        primary.textContent = it.name || it.title || '(Lead)';
         const secondaryParts = [];
         if (it.title) secondaryParts.push(it.title);
         if (it.email) secondaryParts.push(maskEmail(it.email));
-        const secondary = secondaryParts.length ? secondaryParts.join(' • ') : '';
-        left.innerHTML = `<strong style="color:#111;">${primary}</strong><div style="font-size:0.9rem;color:#666">${secondary}</div>`;
+        secondary.textContent = secondaryParts.join(' • ');
       } else {
         const displayEmail = mode === 'import' ? (it.email || '') : maskEmail(it.email || '');
-        left.innerHTML = `<strong style="color:#111;">${displayEmail}</strong><div style="font-size:0.9rem;color:#666">${it.name || '—'} ${it.title ? '• ' + it.title : ''}</div>`;
+        primary.textContent = displayEmail || '(no email)';
+        secondary.textContent = `${it.name || '—'}${it.title ? ' • ' + it.title : ''}`.trim();
       }
+
+      left.appendChild(primary);
+      left.appendChild(secondary);
 
       const right = document.createElement('div');
       right.style.textAlign = 'right';
-      right.innerHTML = `<div style="font-weight:600;color:#007bff">${Math.round((it.confidence || 0) * 100)}%</div>`;
+      const score = document.createElement('div');
+      score.style.fontWeight = '600';
+      score.style.color = '#007bff';
+      score.textContent = `${Math.round((it.confidence || 0) * 100)}%`;
+      right.appendChild(score);
 
       emailEl.appendChild(left);
       emailEl.appendChild(right);
@@ -82,23 +94,30 @@
 
     const moreWrap = document.getElementById('nh-more-wrap');
     if (!moreWrap) return;
-    if (items.length > 3 && !showAll) {
-      moreWrap.innerHTML = `<button id="nh-show-more" style="padding:.5rem .75rem;border-radius:6px;background:#007bff;color:#fff;border:none;margin-top:8px;">Show ${items.length - 3} more</button>`;
-      document.getElementById('nh-show-more').addEventListener('click', () => {
+    moreWrap.innerHTML = '';
+    if ((items || []).length > 3 && !showAll) {
+      const showMoreBtn = document.createElement('button');
+      showMoreBtn.id = 'nh-show-more';
+      showMoreBtn.style.padding = '.5rem .75rem';
+      showMoreBtn.style.borderRadius = '6px';
+      showMoreBtn.style.background = '#007bff';
+      showMoreBtn.style.color = '#fff';
+      showMoreBtn.style.border = 'none';
+      showMoreBtn.style.marginTop = '8px';
+      showMoreBtn.textContent = `Show ${items.length - 3} more`;
+      showMoreBtn.addEventListener('click', () => {
         renderResults(items, true, mode);
       });
-    } else {
-      moreWrap.innerHTML = '';
+      moreWrap.appendChild(showMoreBtn);
     }
   }
 
-  // Mode-aware sample leads generator
+  // mode-aware sample leads generator
   function sampleLeadsFor(domain, mode) {
-    const d = domain.replace(/^https?:\/\/|^www\./g, '').split('/')[0] || 'example.com';
+    const d = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0] || 'example.com';
     const base = d.includes('.') ? d : `${d}.com`;
 
     if (mode === 'ai') {
-      // AI leads: more role-like, slightly higher confidence for demo
       return [
         { email: `sara.marketing@${base}`, name: 'Sara Marketing', title: 'Growth Marketer', confidence: 0.94 },
         { email: `tom.lead@${base}`, name: 'Tom Lead', title: 'Head of Demand Gen', confidence: 0.89 },
@@ -107,7 +126,6 @@
         { email: `bizdev@${base}`, name: '', title: 'Business Development', confidence: 0.65 }
       ];
     } else if (mode === 'import') {
-      // Import mode shows example enrichment results (records)
       return [
         { email: `imported.user1@${base}`, name: 'Imported User 1', title: 'Marketing Manager', confidence: 0.78 },
         { email: `imported.user2@${base}`, name: 'Imported User 2', title: 'Sales Lead', confidence: 0.72 },
@@ -115,7 +133,6 @@
       ];
     }
 
-    // default: plain email hunt
     return [
       { email: `john.doe@${base}`, name: 'John Doe', title: 'Head of Marketing', confidence: 0.92 },
       { email: `jane.smith@${base}`, name: 'Jane Smith', title: 'VP Sales', confidence: 0.87 },
@@ -127,9 +144,7 @@
 
   async function callApi(domain, mode) {
     try {
-      // For import mode we call /api/import with dummy data; emails mode calls find-emails
       if (mode === 'import') {
-        // no-op for demo; server-side import expects POST JSON; return null to use samples
         return null;
       } else {
         const resp = await fetch(`/api/find-emails?domain=${encodeURIComponent(domain)}`);
@@ -230,12 +245,10 @@
       if (demoTitle) demoTitle.textContent = 'Demo: AI Leads';
     }
 
-    // Immediately update the demo results shown when the user changes the mode.
     const domainForDemo = (document.getElementById('nh-domain').value || '').trim() || 'coca-cola.com';
     const samples = sampleLeadsFor(domainForDemo, mode);
     renderResults(samples, false, mode);
 
-    // Update the small message to reflect the shown demo type
     const typeLabel = mode === 'emails' ? 'sample emails' : mode === 'import' ? 'import records' : 'AI leads';
     showMessage(`Showing 3 demo ${typeLabel} for ${domainForDemo}.`, 'info');
   }
@@ -248,7 +261,6 @@
     const domain = (document.getElementById('nh-domain').value || '').trim() || 'example.com';
 
     if (mode === 'import') {
-      // For demo: prompt for simple comma separated emails and call import endpoint
       const paste = prompt('Paste comma-separated emails for demo import (or click Cancel):');
       if (!paste) return;
       const emails = paste.split(',').map(s => s.trim()).filter(Boolean);
@@ -271,7 +283,6 @@
       return;
     }
 
-    // For emails and AI modes: show immediate samples and then try API
     const samples = sampleLeadsFor(domain, mode);
     renderResults(samples, false, mode);
     showMessage(`Showing 3 demo leads for ${domain}.`, 'info');
@@ -283,7 +294,6 @@
     }
   });
 
-  // Upgrade to Pro: create checkout session and redirect
   btnUpgrade.addEventListener('click', async () => {
     const email = prompt('Enter your email to start Checkout (use test email for sandbox):');
     if (!email) return;
@@ -299,7 +309,6 @@
       try { json = await resp.json(); } catch (e) { json = null; }
 
       if (resp.ok && json && json.url) {
-        // redirect to Stripe Checkout
         window.location.href = json.url;
       } else {
         const errMsg = json && json.error ? json.error : (resp.statusText || `Error ${resp.status}`);
@@ -314,7 +323,6 @@
     }
   });
 
-  // Sign in / Sign up handlers - functional endpoints (safe parsing)
   btnSignin.addEventListener('click', async () => {
     const email = prompt('Enter your email to sign in (we will send a magic link):');
     if (!email) return;
