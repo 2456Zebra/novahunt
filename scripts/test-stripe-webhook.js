@@ -105,7 +105,7 @@ async function runTests() {
   console.log('🧪 Testing Stripe Webhook Endpoint');
   console.log('==================================\n');
   console.log(`Target: ${WEBHOOK_URL}`);
-  console.log(`Secret: ${WEBHOOK_SECRET.substring(0, 15)}...\n`);
+  console.log(`Secret: whsec_***...(${WEBHOOK_SECRET.length} chars)\n`);
 
   const testCases = [
     { name: 'checkout.session.completed', type: 'checkout.session.completed', expectedStatus: 200 },
