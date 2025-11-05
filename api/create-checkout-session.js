@@ -1,8 +1,16 @@
-// /pages/api/create-checkout-session.js
-// Next API route: accepts POST, handles OPTIONS preflight, returns JSON
-import Stripe from 'stripe';
+// api/create-checkout-session.js
+// Vercel Serverless function: accepts POST, handles OPTIONS preflight, returns JSON. Uses Stripe if STRIPE_SECRET & STRIPE_PRICE_ID are set.
 
-export default async function handler(req, res) {
+const Stripe = require('stripe');
+
+function parseBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'object') return req.body;
+  try { return JSON.parse(req.body); } catch (e) { return {}; }
+}
+
+module.exports = async function (req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -13,7 +21,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, successUrl, cancelUrl } = req.body || {};
+  const { email, successUrl, cancelUrl } = parseBody(req);
   if (!email) return res.status(400).json({ error: 'Email is required' });
 
   // Dev fallback: mock URL if Stripe env vars missing
@@ -42,4 +50,4 @@ export default async function handler(req, res) {
     console.error('Stripe create session failed:', err);
     return res.status(500).json({ error: 'Unable to create checkout session' });
   }
-}
+};

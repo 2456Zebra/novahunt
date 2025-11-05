@@ -1,7 +1,14 @@
-// /pages/api/signup.js
-// Minimal signup placeholder. Replace with real DB and email verification for production.
+// api/signup.js
+// Vercel Serverless function: minimal signup placeholder. Replace with real DB and email verification for production.
 
-export default async function handler(req, res) {
+function parseBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'object') return req.body;
+  try { return JSON.parse(req.body); } catch (e) { return {}; }
+}
+
+module.exports = async function (req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -12,7 +19,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email } = req.body || {};
+  const { email } = parseBody(req);
   if (!email) return res.status(400).json({ error: 'Email is required' });
 
   try {
@@ -22,4 +29,4 @@ export default async function handler(req, res) {
     console.error('signup error', err);
     return res.status(500).json({ error: 'Unable to create account' });
   }
-}
+};
