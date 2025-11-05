@@ -1,17 +1,34 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>NovaHunt</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=">    <style>
-      body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #fff; color: #111; }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
+// (snippet: updated btnUpgrade handler plus robust response handling)
+...
+  // === Robust checkout handler (updated) ===
+  btnUpgrade.addEventListener('click', async () => {
+    const email = prompt('Enter your email to start Checkout (use test email for sandbox):');
+    if (!email) return;
+    const done = setButtonLoading(btnUpgrade, 'Starting checkout...');
+    showMessage('Starting checkout...', 'info');
+    try {
+      const resp = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, successUrl: window.location.origin + '/?success=1', cancelUrl: window.location.origin + '/?canceled=1' })
+      });
 
-    <!-- Load the client bundle -->
-    <script type="module" src="/public/index.js"></script>
-  </body>
-</html>
+      const rawText = await resp.text().catch(() => null);
+      let json = null;
+      try { json = rawText ? JSON.parse(rawText) : null; } catch (e) { json = null; }
+
+      if (resp.ok && json && json.url) {
+        window.location.href = json.url;
+      } else {
+        const errMsg = (json && json.error) ? json.error : (rawText || resp.statusText || `Error ${resp.status}`);
+        console.error('Failed to create checkout session (status:', resp.status, ') body:', rawText);
+        showMessage(errMsg, 'error');
+      }
+    } catch (err) {
+      console.error('Checkout request failed', err);
+      showMessage('Unable to start checkout. Check console for details.', 'error');
+    } finally {
+      done();
+    }
+  });
+...
