@@ -114,7 +114,7 @@
 
   // mode-aware sample leads generator
   function sampleLeadsFor(domain, mode) {
-    const d = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0] || 'example.com';
+    const d = domain.replace(/^(https?:\/\/)|(www\.)/g, '').split('/')[0] || 'example.com';
     const base = d.includes('.') ? d : `${d}.com`;
 
     if (mode === 'ai') {
