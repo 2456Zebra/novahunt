@@ -40,6 +40,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing stripe-signature header' });
   }
 
+  // Validate required environment variables
+  if (!process.env.STRIPE_SECRET) {
+    console.error('STRIPE_SECRET environment variable is not set');
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error('STRIPE_WEBHOOK_SECRET environment variable is not set');
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+
   try {
     // Read the raw body
     const rawBody = await getRawBody(req);
@@ -72,6 +83,9 @@ export default async function handler(req, res) {
       // Example: await updateUserSubscription(event.data.object);
 
       // Dev-only: write to file for debugging
+      // NOTE: /tmp logging is for local development only. Replace with proper
+      // database persistence before deploying to production. Some hosting
+      // environments may not have /tmp available or may have ephemeral file systems.
       if (process.env.NODE_ENV !== 'production') {
         const logEntry = JSON.stringify({
           timestamp: new Date().toISOString(),

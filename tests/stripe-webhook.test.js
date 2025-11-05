@@ -6,13 +6,14 @@ const crypto = require('crypto');
 
 /**
  * Generate a test Stripe webhook signature
- * @param {string} payload - JSON string of the webhook payload
+ * @param {object|string} payload - Webhook payload object or JSON string
  * @param {string} secret - Webhook signing secret
  * @returns {string} Stripe signature header value
  */
 function generateStripeSignature(payload, secret) {
   const timestamp = Math.floor(Date.now() / 1000);
-  const signedPayload = `${timestamp}.${payload}`;
+  const payloadString = typeof payload === 'string' ? payload : JSON.stringify(payload);
+  const signedPayload = `${timestamp}.${payloadString}`;
   const signature = crypto
     .createHmac('sha256', secret)
     .update(signedPayload, 'utf8')
