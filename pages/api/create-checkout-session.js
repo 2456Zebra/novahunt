@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   }
 
   const { email, successUrl, cancelUrl } = req.body || {};
-  if (!email || !EMAIL_RE.test(email)) return res.status(400).json({ error: 'Valid email is required' });
+  if (!email || typeof email !== 'string' || !EMAIL_RE.test(email)) return res.status(400).json({ error: 'Valid email is required' });
 
   // Dev fallback: mock URL if Stripe env vars missing
   if (!process.env.STRIPE_SECRET || !process.env.STRIPE_PRICE_ID) {
