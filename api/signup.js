@@ -1,5 +1,5 @@
-// /api/signup.js
-// Minimal signup placeholder. Replace with real user DB and verification.
+// /pages/api/signup.js
+// Minimal signup placeholder. Replace with real DB and email verification for production.
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -16,10 +16,7 @@ export default async function handler(req, res) {
   if (!email) return res.status(400).json({ error: 'Email is required' });
 
   try {
-    // TODO: Persist user to DB, send verification, provision demo credits
     console.log(`(DEV) Would create user for ${email}`);
-
-    // Dev response: created + demo credits
     return res.status(201).json({ ok: true, message: 'Account created (dev)', demoLeads: 50 });
   } catch (err) {
     console.error('signup error', err);
