@@ -43,9 +43,10 @@ const createTestEvent = (eventType = 'checkout.session.completed') => {
 };
 
 // Generate Stripe signature
+// Accepts both object and string payloads for consistency with test file
 function generateStripeSignature(payload, secret) {
   const timestamp = Math.floor(Date.now() / 1000);
-  const payloadString = JSON.stringify(payload);
+  const payloadString = typeof payload === 'string' ? payload : JSON.stringify(payload);
   const signedPayload = `${timestamp}.${payloadString}`;
   const signature = crypto
     .createHmac('sha256', secret)
