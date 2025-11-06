@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Upgrade — NovaHunt</title>
+  <style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:24px}main{max-width:760px;margin:0 auto}input[type=email]{width:100%;padding:8px;margin-top:6px}button{padding:8px 14px;margin-top:12px}#msg{margin-top:12px}</style>
+</head>
+<body>
+  <main>
+    <h1>Upgrade</h1>
+    <p>Enter your email to start checkout.</p>
+    <form id="upgradeForm">
+      <label>Email
+        <input id="email" type="email" required />
+      </label>
+      <div>
+        <button id="start" type="submit">Start checkout</button>
+      </div>
+    </form>
+    <div id="msg" role="status" aria-live="polite"></div>
+  </main>
+  <script>
+    const form = document.getElementById('upgradeForm');
+    const emailEl = document.getElementById('email');
+    const msgEl = document.getElementById('msg');
+    const btn = document.getElementById('start');
+    function setMsg(text, type) {
+      msgEl.textContent = text;
+      msgEl.style.color = type === 'error' ? '#a00' : '#060';
+    }
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setMsg('Starting checkout...', 'info');
+      btn.disabled = true;
+      try {
+        const resp = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: emailEl.value,
+            successUrl: window.location.origin + '/?success=1',
+            cancelUrl: window.location.origin + '/?canceled=1'
+          })
+        });
+        const text = await resp.text().catch(()=>null);
+        let json = null;
+        try { json = text ? JSON.parse(text) : null } catch(e){ json=null }
+        if (resp.ok && json && json.url) {
+          window.location.href = json.url;
+        } else {
+          const err = (json && json.error) ? json.error : (text || resp.statusText || ('Error '+resp.status));
+          console.error('Checkout create failed', resp.status, text);
+          setMsg(err, 'error');
+        }
+      } catch (err) {
+        console.error('Checkout request error', err);
+        setMsg('Unable to start checkout. See console.', 'error');
+      } finally { btn.disabled = false }
+    });
+  </script>
+</body>
+</html>
