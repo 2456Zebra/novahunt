@@ -1,63 +1,41 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Upgrade — NovaHunt</title>
-  <style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:24px}main{max-width:760px;margin:0 auto}input[type=email]{width:100%;padding:8px;margin-top:6px}button{padding:8px 14px;margin-top:12px}#msg{margin-top:12px}</style>
+
+  <!-- Inline critical styles to avoid FOUC while client JS loads -->
+  <style>
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial, sans-serif;}
+    body{display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e6eef8;min-height:100vh;}
+    .nh-root{width:100%;max-width:900px;padding:28px;box-sizing:border-box;}
+    .nh-header{display:flex;align-items:center;gap:12px;}
+    .nh-logo{width:120px;height:auto;}
+    .upgrade-card{background:linear-gradient(180deg,#071033 0%,#0b1330 100%);padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,.6);}
+    .upgrade-title{font-size:1.125rem;margin:0 0 8px 0;}
+    .cta{display:flex;gap:10px;margin-top:12px;}
+    .btn{background:#06b6d4;color:#04263a;padding:10px 16px;border-radius:8px;font-weight:600;text-decoration:none;}
+  </style>
+
+  <link rel="preload" href="/public/index.js" as="script">
 </head>
 <body>
-  <main>
-    <h1>Upgrade</h1>
-    <p>Enter your email to start checkout.</p>
-    <form id="upgradeForm">
-      <label>Email
-        <input id="email" type="email" required />
-      </label>
-      <div>
-        <button id="start" type="submit">Start checkout</button>
+  <main class="nh-root">
+    <header class="nh-header">
+      <img src="/favicon.ico" alt="NovaHunt" class="nh-logo" />
+      <h1 class="upgrade-title">Upgrade your NovaHunt plan</h1>
+    </header>
+
+    <section class="upgrade-card">
+      <p>Get pro features and priority access.</p>
+      <div class="cta">
+        <a class="btn" href="/api/create-checkout-session">Checkout</a>
+        <a class="btn" href="/signup">Sign up</a>
       </div>
-    </form>
-    <div id="msg" role="status" aria-live="polite"></div>
+    </section>
   </main>
-  <script>
-    const form = document.getElementById('upgradeForm');
-    const emailEl = document.getElementById('email');
-    const msgEl = document.getElementById('msg');
-    const btn = document.getElementById('start');
-    function setMsg(text, type) {
-      msgEl.textContent = text;
-      msgEl.style.color = type === 'error' ? '#a00' : '#060';
-    }
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      setMsg('Starting checkout...', 'info');
-      btn.disabled = true;
-      try {
-        const resp = await fetch('/api/create-checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: emailEl.value,
-            successUrl: window.location.origin + '/?success=1',
-            cancelUrl: window.location.origin + '/?canceled=1'
-          })
-        });
-        const text = await resp.text().catch(()=>null);
-        let json = null;
-        try { json = text ? JSON.parse(text) : null } catch(e){ json=null }
-        if (resp.ok && json && json.url) {
-          window.location.href = json.url;
-        } else {
-          const err = (json && json.error) ? json.error : (text || resp.statusText || ('Error '+resp.status));
-          console.error('Checkout create failed', resp.status, text);
-          setMsg(err, 'error');
-        }
-      } catch (err) {
-        console.error('Checkout request error', err);
-        setMsg('Unable to start checkout. See console.', 'error');
-      } finally { btn.disabled = false }
-    });
-  </script>
+
+  <script src="/public/index.js" defer></script>
 </body>
 </html>
