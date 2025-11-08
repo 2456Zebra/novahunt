@@ -1,18 +1,20 @@
 // pages/signin.js
 export default function SignIn() {
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', background: '#fff', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <form style={{ width: '300px', padding: '2rem', border: '1px solid #eee', borderRadius: '8px' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>Sign In</h2>
-        <input type="email" placeholder="Email" style={{ width: '100%', padding: '0.75rem', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '6px' }} />
-        <input type="password" placeholder="Password" style={{ width: '100%', padding: '0.75rem', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '6px' }} />
-        <button style={{ width: '100%', padding: '0.75rem', background: '#0070f3', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>
-          Sign In
-        </button>
-        <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem' }}>
-          <a href="/signup" style={{ color: '#0070f3' }}>Create account</a>
+    <div style={{ minHeight: '100vh', backgroundColor: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ width: '100%', maxWidth: '400px', backgroundColor: '#f9f9f9', padding: '40px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+        <h2 style={{ textAlign: 'center', fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', color: '#111' }}>Sign In</h2>
+        <form style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input type="email" placeholder="Email" required style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '16px' }} />
+          <input type="password" placeholder="Password" required style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '16px' }} />
+          <button type="submit" style={{ padding: '12px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px' }}>
+            Sign In
+          </button>
+        </form>
+        <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '14px', color: '#666' }}>
+          No account? <a href="/signup" style={{ color: '#2563eb', textDecoration: 'underline' }}>Sign up free</a>
         </p>
-      </form>
+      </div>
     </div>
   );
 }
