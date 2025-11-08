@@ -1,4 +1,4 @@
-// pages/index.js — SELF-CONTAINED STYLES + EMAILS (NO TAILWIND NEEDED)
+// pages/index.js — GUARANTEED RENDER: INLINE STYLES + EMAILS (NO TAILWIND/DEPS)
 import { useState } from 'react';
 
 export default function Home() {
@@ -29,106 +29,153 @@ export default function Home() {
   };
 
   return (
-    <html>
-      <head>
-        {/* Inline Tailwind — Forces styles, no build needed */}
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style jsx global>{`
-          body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
-          .min-h-screen { min-height: 100vh; }
-        `}</style>
-      </head>
-      <body className="min-h-screen bg-white text-gray-900">
-        {/* Header */}
-        <header className="border-b border-gray-200 bg-white">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-blue-600">NovaHunt</h1>
-              <nav className="space-x-4">
-                <a href="/upgrade" className="text-blue-600 hover:text-blue-800 font-medium">Upgrade $10/mo</a>
-                <a href="/signin" className="text-gray-700 hover:text-gray-900 font-medium">Sign In</a>
-              </nav>
-            </div>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#ffffff',
+      color: '#111827',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      lineHeight: 1.5
+    }}>
+      {/* Header */}
+      <header style={{
+        borderBottom: '1px solid #e5e7eb',
+        backgroundColor: '#ffffff',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10
+      }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '1rem 1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#2563eb', margin: 0 }}>NovaHunt</h1>
+            <nav style={{ display: 'flex', gap: '1rem' }}>
+              <a href="/upgrade" style={{ color: '#2563eb', fontWeight: '500', textDecoration: 'none' }}>Upgrade $10/mo</a>
+              <a href="/signin" style={{ color: '#374151', fontWeight: '500', textDecoration: 'none' }}>Sign In</a>
+            </nav>
           </div>
-        </header>
+        </div>
+      </header>
 
-        {/* Hero */}
-        <main className="max-w-7xl mx-auto px-4 py-12 text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">Find Any Business Email</h2>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            AI-powered email finder. Real results from public sources. Unlimited with PRO.
+      {/* Hero */}
+      <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '3rem 1.5rem', textAlign: 'center' }}>
+        <h2 style={{ fontSize: '3rem', fontWeight: 'bold', color: '#111827', marginBottom: '1rem' }}>
+          Find Any Business Email
+        </h2>
+        <p style={{ fontSize: '1.25rem', color: '#6b7280', marginBottom: '3rem', maxWidth: '32rem', marginLeft: 'auto', marginRight: 'auto' }}>
+          AI-powered email hunter. Real results from public sources. Unlimited with PRO.
+        </p>
+
+        {/* Search Bar */}
+        <div style={{ maxWidth: '32rem', marginLeft: 'auto', marginRight: 'auto', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              type="text"
+              placeholder="e.g., vercel.com"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              style={{
+                flex: 1,
+                padding: '0.75rem 1rem',
+                fontSize: '1.125rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.5rem',
+                outline: 'none'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+            />
+            <button
+              onClick={handleSearch}
+              disabled={loading}
+              style={{
+                padding: '0.75rem 1.5rem',
+                backgroundColor: loading ? '#9ca3af' : '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontWeight: 'bold',
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {loading ? 'Hunting...' : 'Hunt Emails'}
+            </button>
+          </div>
+          <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            Free trial: 5 searches | <a href="/upgrade" style={{ color: '#2563eb', textDecoration: 'underline' }}>Go PRO for unlimited</a>
           </p>
+        </div>
 
-          {/* Search Bar */}
-          <div className="max-w-md mx-auto mb-8">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="e.g., vercel.com"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="flex-1 px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button
-                onClick={handleSearch}
-                disabled={loading}
-                className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {loading ? 'Hunting...' : 'Hunt Emails'}
-              </button>
-            </div>
-            <p className="mt-4 text-sm text-gray-500">
-              Free trial: 5 searches | <a href="/upgrade" className="text-blue-600 underline">Go PRO for unlimited</a>
-            </p>
+        {/* Message */}
+        {message && (
+          <p style={{
+            fontSize: '1.125rem',
+            fontWeight: '500',
+            marginBottom: '1rem',
+            color: results.length > 0 ? '#059669' : '#6b7280'
+          }}>
+            {message}
+          </p>
+        )}
+
+        {/* Results Table */}
+        {results.length > 0 && (
+          <div style={{
+            maxWidth: '64rem',
+            marginLeft: 'auto',
+            marginRight: 'auto',
+            backgroundColor: '#f9fafb',
+            borderRadius: '0.5rem',
+            padding: '1.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem', color: '#111827' }}>
+              {results.length} Emails Found
+            </h3>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f3f4f6' }}>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '500', color: '#6b7280', textTransform: 'uppercase' }}>Email</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '500', color: '#6b7280', textTransform: 'uppercase' }}>Role</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '500', color: '#6b7280', textTransform: 'uppercase' }}>Confidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r, i) => (
+                  <tr key={i} style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', fontWeight: '500', color: '#111827' }}>{r.email}</td>
+                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{r.role || 'Unknown'}</td>
+                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>
+                      <span style={{
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        backgroundColor: r.score > 80 ? '#d1fae5' : '#fef3c7',
+                        color: r.score > 80 ? '#065f46' : '#92400e'
+                      }}>
+                        {r.score}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+        )}
+      </main>
 
-          {/* Message */}
-          {message && (
-            <p className={`text-lg font-medium mb-4 ${results.length > 0 ? 'text-green-600' : 'text-gray-600'}`}>
-              {message}
-            </p>
-          )}
-
-          {/* Results */}
-          {results.length > 0 && (
-            <div className="max-w-4xl mx-auto bg-gray-50 rounded-lg p-6 shadow-sm">
-              <h3 className="text-xl font-bold mb-4 text-gray-800">{results.length} Emails Found</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full bg-white border border-gray-200">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Confidence</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.map((r, i) => (
-                      <tr key={i} className="border-t hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{r.email}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500">{r.role || 'Unknown'}</td>
-                        <td className="px-6 py-4 text-sm">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            r.score > 80 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {r.score}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </main>
-
-        {/* Footer */}
-        <footer className="bg-gray-50 border-t border-gray-200 mt-16 py-8 text-center text-sm text-gray-500">
-          © 2025 NovaHunt. Built for email hunters. <a href="/upgrade" className="text-blue-600 underline">Start PRO trial</a>
-        </footer>
-      </body>
-    </html>
+      {/* Footer */}
+      <footer style={{
+        backgroundColor: '#f9fafb',
+        borderTop: '1px solid #e5e7eb',
+        marginTop: '4rem',
+        padding: '2rem 1.5rem',
+        textAlign: 'center',
+        fontSize: '0.875rem',
+        color: '#6b7280'
+      }}>
+        © 2025 NovaHunt. Built for email hunters. <a href="/upgrade" style={{ color: '#2563eb', textDecoration: 'underline' }}>Start PRO trial</a>
+      </footer>
+    </div>
   );
 }
