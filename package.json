@@ -13,5 +13,9 @@
     "react-dom": "18.2.0",
     "node-fetch": "^3.3.2",
     "stripe": "^14.0.0"
+  },
+  "resolutions": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   }
 }
