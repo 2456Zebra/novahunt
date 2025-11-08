@@ -1,5 +1,5 @@
-// pages/api/emails.js — REAL HUNTER.IO EMAILS
-const fetch = require('node-fetch');
+// pages/api/emails.js — ESM-COMPATIBLE (import node-fetch)
+import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // 2. Fallbacks if no real emails
+  // 2. Fallbacks
   if (results.length === 0) {
     results = [
       { email: `info@${domain}`, role: 'General', score: 80 },
