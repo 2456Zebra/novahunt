@@ -1,37 +1,53 @@
 // pages/upgrade.js
 export default function Upgrade() {
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', maxWidth: '600px', margin: '4rem auto', padding: '2rem', textAlign: 'center' }}>
-      <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>NovaHunt PRO</h1>
-      <p style={{ fontSize: '1.2rem', color: '#666', margin: '1rem 0' }}>
-        Unlimited email searches. Real results. No limits.
-      </p>
-      <div style={{ fontSize: '3rem', fontWeight: 'bold', margin: '2rem 0' }}>
-        $10 <span style={{ fontSize: '1.5rem', color: '#666' }}>/month</span>
+    <div style={{ fontFamily: 'system-ui, sans-serif', background: '#fff', color: '#000', minHeight: '100vh', padding: '2rem' }}>
+      <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>NovaHunt PRO</h1>
+        <p style={{ fontSize: '1.2rem', color: '#666', marginBottom: '2rem' }}>
+          Unlimited email searches. Real results. No limits.
+        </p>
+
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {/* Monthly */}
+          <form action="/api/checkout" method="POST">
+            <input type="hidden" name="plan" value="monthly" />
+            <button style={{
+              padding: '1.5rem',
+              border: '2px solid #0070f3',
+              borderRadius: '12px',
+              background: '#fff',
+              width: '200px',
+              fontWeight: 'bold'
+            }}>
+              <div style={{ fontSize: '2rem' }}>$10</div>
+              <div style={{ color: '#666' }}>/month</div>
+              <div style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>Unlimited</div>
+            </button>
+          </form>
+
+          {/* Annual */}
+          <form action="/api/checkout" method="POST">
+            <input type="hidden" name="plan" value="annual" />
+            <button style={{
+              padding: '1.5rem',
+              border: '2px solid #10b981',
+              borderRadius: '12px',
+              background: '#ecfdf5',
+              width: '200px',
+              fontWeight: 'bold'
+            }}>
+              <div style={{ fontSize: '2rem' }}>$100</div>
+              <div style={{ color: '#666' }}>/year</div>
+              <div style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>Save 16%</div>
+            </button>
+          </form>
+        </div>
+
+        <p style={{ marginTop: '2rem', color: '#999', fontSize: '0.9rem' }}>
+          Cancel anytime. Powered by Stripe.
+        </p>
       </div>
-      <p style={{ color: '#666', marginBottom: '2rem' }}>
-        For the price of a coffee, hunt emails like a pro.
-      </p>
-      <form action="/api/create-checkout" method="POST">
-        <button
-          type="submit"
-          style={{
-            padding: '1rem 2rem',
-            background: '#0070f3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '1.2rem',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          Upgrade to PRO
-        </button>
-      </form>
-      <p style={{ marginTop: '2rem', fontSize: '0.9rem', color: '#999' }}>
-        Cancel anytime. Powered by Stripe.
-      </p>
     </div>
   );
 }
