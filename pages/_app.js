@@ -1,4 +1,4 @@
-// pages/_app.js
-export default function App({ Component, pageProps }) {
+// pages/_app.js — WRAPS ALL PAGES (fixes black screen on back)
+export default function MyApp({ Component, pageProps }) {
   return <Component {...pageProps} />;
 }
