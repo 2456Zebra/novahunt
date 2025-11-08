@@ -1,4 +1,9 @@
 {
+  "build": {
+    "env": {
+      "NEXT_BUILD_DEBUG": "true"
+    }
+  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
   ]
