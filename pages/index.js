@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 
 export default function Home() {
   const [domain, setDomain] = useState('');
-  const [results, setResults] = useทะState([]);
+  const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const router = useRouter();
@@ -60,7 +60,7 @@ export default function Home() {
         <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'left' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              < tr style={{ borderBottom: '2px solid #eee' }}>
+              <tr style={{ borderBottom: '2px solid #eee' }}>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Email</th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Role</th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Score</th>
