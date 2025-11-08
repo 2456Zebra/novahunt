@@ -1,4 +1,4 @@
-// pages/_app.js — WRAPS ALL PAGES (fixes black screen on back)
+// pages/_app.js — Wraps all pages for stable navigation
 export default function MyApp({ Component, pageProps }) {
   return <Component {...pageProps} />;
 }
