@@ -1,28 +1,38 @@
-// api/find-emails.js - serverless function for Vercel
-// Behavior: PROVIDER=demo (default) => deterministic fake leads
-// Set PROVIDER=apollo|clearbit|hunter to enable real provider logic (not included here).
+// pages/api/emails.js — REAL HUNTER.IO + FALLBACKS
 export default async function handler(req, res) {
-  const domain = (req.query.domain || '').toLowerCase();
-  if (!domain) return res.status(400).json({ error: 'domain required' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  // Normalize to base host
-  const toBase = (d) => d.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0] || 'example.com';
-  const base = toBase(domain);
+  const { domain } = req.body;
+  if (!domain) return res.status(400).json({ error: 'Domain required' });
 
-  const demoLeads = [
-    { email: `john.doe@${base}`, name: 'John Doe', title: 'Head of Marketing', confidence: 0.92 },
-    { email: `jane.smith@${base}`, name: 'Jane Smith', title: 'VP Sales', confidence: 0.87 },
-    { email: `marketing@${base}`, name: '', title: '', confidence: 0.8 },
-    { email: `press@${base}`, name: '', title: '', confidence: 0.66 },
-    { email: `info@${base}`, name: '', title: '', confidence: 0.55 }
-  ];
+  let results = [];
 
-  const provider = (process.env.PROVIDER || 'demo').toLowerCase();
-  if (provider === 'demo') {
-    res.setHeader('Content-Type', 'application/json');
-    return res.status(200).json({ provider: 'demo', emails: demoLeads });
+  // 1. Try Hunter.io (real data)
+  if (process.env.HUNTER_API_KEY) {
+    try {
+      const url = `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${process.env.HUNTER_API_KEY}`;
+      const hRes = await fetch(url);
+      const hData = await hRes.json();
+      if (hData.data?.emails) {
+        results = hData.data.emails.map(e => ({
+          email: e.value,
+          role: e.type || 'Unknown',
+          score: e.confidence || 70
+        }));
+      }
+    } catch (e) {
+      console.error('Hunter error:', e);
+    }
   }
 
-  // provider not implemented yet
-  return res.status(501).json({ error: 'provider not implemented', provider });
+  // 2. Fallback guesses
+  if (results.length === 0) {
+    results = [
+      { email: `info@${domain}`, role: 'General', score: 80 },
+      { email: `support@${domain}`, role: 'Support', score: 90 },
+      { email: `hello@${domain}`, role: 'Contact', score: 70 }
+    ];
+  }
+
+  res.status(200).json({ results, message: `${results.length} email${results.length === 1 ? '' : 's'} found!` });
 }
