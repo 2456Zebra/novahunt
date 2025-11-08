@@ -1,12 +1,4 @@
 {
-  "build": {
-    "env": {
-      "NEXT_PRIVATE_TARGET": "server",
-      "NODE_ENV": "production"
-    }
-  },
-  "clean": true,
-  "crons": [],
   "functions": {
     "api/**/*.js": {
       "maxDuration": 30
