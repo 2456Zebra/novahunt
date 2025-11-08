@@ -6,20 +6,17 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).end('Method Not Allowed');
-  }
+  if (req.method !== 'POST') return res.status(405).end();
 
   const { plan } = req.body;
 
-  const priceId = plan === 'annual'
-    ? process.env.STRIPE_PRICE_ANNUAL
-    : process.env.STRIPE_PRICE_MONTHLY;
+  const prices = {
+    monthly: process.env.STRIPE_PRICE_MONTHLY,
+    annual: process.env.STRIPE_PRICE_ANNUAL,
+  };
 
-  if (!priceId) {
-    return res.status(400).json({ error: 'Invalid plan' });
-  }
+  const priceId = prices[plan];
+  if (!priceId) return res.status(400).json({ error: 'Invalid plan' });
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -32,7 +29,6 @@ export default async function handler(req, res) {
 
     res.status(200).json({ url: session.url });
   } catch (err) {
-    console.error('Stripe error:', err);
-    res.status(500).json({ error: 'Checkout failed' });
+    res.status(500).json({ error: err.message });
   }
 }
