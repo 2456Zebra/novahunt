@@ -1,4 +1,4 @@
-// next.config.js — tells Vercel it's Next.js
+// next.config.js — Config for Next.js build
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
