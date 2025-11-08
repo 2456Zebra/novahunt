@@ -1,4 +1,4 @@
-// pages/_app.js — Wraps all pages for stable navigation
-export default function MyApp({ Component, pageProps }) {
+// pages/_app.js
+export default function App({ Component, pageProps }) {
   return <Component {...pageProps} />;
 }
