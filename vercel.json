@@ -1,9 +1,10 @@
 {
-  "build": {
-    "env": {
-      "NEXT_BUILD_DEBUG": "true"
+  "builds": [
+    {
+      "src": "pages/api/**/*.js",
+      "use": "@vercel/node"
     }
-  },
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
   ]
