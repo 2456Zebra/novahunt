@@ -9,11 +9,9 @@ export default async function handler(req, res) {
   let results = [];
   let total = 0;
 
-  console.log('HUNTER_KEY?', !!process.env.HUNTER_API_KEY);
-
   if (process.env.HUNTER_API_KEY) {
     try {
-      const url = `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${process.env.HUNTER_API_KEY}&limit=100`;
+      const url = `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${process.env.HUNTER_API_KEY}&limit=10`;
       console.log('Hunter URL:', url);
 
       const hRes = await fetch(url);
