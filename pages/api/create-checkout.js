@@ -9,7 +9,6 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { plan } = req.body;
-
   const prices = {
     monthly: process.env.STRIPE_PRICE_MONTHLY,
     annual: process.env.STRIPE_PRICE_ANNUAL,
@@ -26,7 +25,6 @@ export default async function handler(req, res) {
       success_url: `${req.headers.origin}/?success=true`,
       cancel_url: `${req.headers.origin}/upgrade`,
     });
-
     res.status(200).json({ url: session.url });
   } catch (err) {
     res.status(500).json({ error: err.message });
