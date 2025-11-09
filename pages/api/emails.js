@@ -32,10 +32,10 @@ export default async function handler(req, res) {
 
   if (results.length === 0) {
     results = [
-      { email: `info@${domain}`, position: 'General', score: 80 },
-      { email: `support@${domain}`, position: 'Support', score: 90 },
-      { email: `hello@${domain}`, position: 'Contact', score: 70 }
-    ].map(r => ({ ...r, first_name: '', last_name: '' }));
+      { email: `info@${domain}`, first_name: '', last_name: '', position: 'General', score: 80 },
+      { email: `support@${domain}`, first_name: '', last_name: '', position: 'Support', score: 90 },
+      { email: `hello@${domain}`, first_name: '', last_name: '', position: 'Contact', score: 70 }
+    ];
     total = 3;
   }
 
