@@ -6,7 +6,7 @@ export default function Upgrade() {
   const redirectToCheckout = async (plan) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/create-checkout', {
+      const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan }),
