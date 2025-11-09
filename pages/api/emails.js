@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  if (req.method !== 'POST') return res.status(405).end();
 
   const { domain } = req.body;
   if (!domain) return res.status(400).json({ error: 'Domain required' });
@@ -32,12 +32,12 @@ export default async function handler(req, res) {
 
   if (results.length === 0) {
     results = [
-      { email: `info@${domain}`, first_name: '', last_name: '', position: 'General', score: 80 },
-      { email: `support@${domain}`, first_name: '', last_name: '', position: 'Support', score: 90 },
-      { email: `hello@${domain}`, first_name: '', last_name: '', position: 'Contact', score: 70 }
-    ];
+      { email: `info@${domain}`, position: 'General', score: 80 },
+      { email: `support@${domain}`, position: 'Support', score: 90 },
+      { email: `hello@${domain}`, position: 'Contact', score: 70 }
+    ].map(r => ({ ...r, first_name: '', last_name: '' }));
     total = 3;
   }
 
-  res.status(200).json({ results, total, message: `${total} email${total === 1 ? '' : 's'} found!` });
+  res.status(200).json({ results, total });
 }
