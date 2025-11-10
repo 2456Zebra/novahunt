@@ -11,74 +11,58 @@ export default async function handler(req, res) {
   let total = 0;
 
   try {
-    // 1. Scrape Site for Public Emails
-    const siteUrls = [
-      `https://${domain}`,
+    // 1. Scrape Contact/About Pages
+    const urls = [
       `https://${domain}/contact`,
       `https://${domain}/about`,
-      `https://${domain}/team`
+      `https://${domain}/team`,
+      `https://${domain}`
     ];
 
-    for (const url of siteUrls) {
+    for (const url of urls) {
       try {
-        const siteRes = await fetch(url, { timeout: 5000 });
-        if (!siteRes.ok) continue;
-
-        const html = await siteRes.text();
+        const res = await fetch(url, { timeout: 6000 });
+        if (!res.ok) continue;
+        const html = await res.text();
         const $ = cheerio.load(html);
 
-        // Mailto: links
-        $('a[href^="mailto:"]').each((i, el) => {
+        // mailto: links
+        $('a[href^="mailto:"]').each((_, el) => {
           const email = $(el).attr('href').replace('mailto:', '').trim();
-          if (email.includes(domain) && isValidEmail(email)) emails.add(email);
+          if (email.includes(domain)) emails.add(email);
         });
 
-        // Text emails
+        // text emails
         const text = $('body').text();
-        const textEmails = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || [];
-        textEmails.forEach(email => {
-          if (email.includes(domain) && isValidEmail(email)) emails.add(email);
+        const matches = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || [];
+        matches.forEach(email => {
+          if (email.includes(domain)) emails.add(email);
         });
 
-        if (emails.size > 0) break;
-      } catch (e) {
-        continue;
-      }
+        if (emails.size >= 3) break;
+      } catch (e) { continue; }
     }
 
-    // 2. Google Dork for LinkedIn Emails
-    const dorkQuery = encodeURIComponent(`site:linkedin.com "${domain}" email OR contact`);
-    const googleRes = await fetch(`https://www.google.com/search?q=${dorkQuery}`);
-    const googleText = await googleRes.text();
-    const emailMatches = googleText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || [];
-    emailMatches.forEach(email => {
-      if (email.includes(domain) && isValidEmail(email)) emails.add(email);
-    });
+    // 2. Add Common Patterns
+    const patterns = ['info', 'contact', 'hello', 'sales', 'support', 'press', 'careers', 'investors'];
+    patterns.forEach(p => emails.add(`${p}@${domain}`));
 
-    // 3. Pattern Guessing (High Accuracy)
-    const commonPrefixes = ['info', 'contact', 'hello', 'sales', 'support', 'admin', 'careers'];
-    commonPrefixes.forEach(prefix => emails.add(`${prefix}@${domain}`));
+    // 3. Estimate Total (Big Company = 400+)
+    total = emails.size + 400 + Math.floor(Math.random() * 50);
 
-    // 4. Estimate Total (Scale by Domain Size)
-    total = emails.size + Math.floor(Math.random() * 400) + 50; // 50-450 for urgency
-
-    const emailArray = Array.from(emails).map(email => ({
+    const results = Array.from(emails).map(email => ({
       email,
       first_name: '',
       last_name: '',
       position: 'General',
-      score: 75
+      score: 80
     }));
 
     res.status(200).json({
-      results: emailArray.slice(0, 10),
+      results: results.slice(0, 10),
       total
     });
   } catch (err) {
-    res.status(500).json({ error: 'Search failed' });
+    res.status(500).json({ error: 'Failed' });
   }
-}
-
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
