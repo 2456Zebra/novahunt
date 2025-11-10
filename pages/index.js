@@ -38,15 +38,19 @@ export default function Home() {
       });
       const data = await res.json();
 
-      // PRO sees ALL, Free sees 5
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total);
     } catch (err) {
-    alert('Search failed');
+      alert('Search failed');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    window.location.reload();
   };
 
   const visible = results.length;
@@ -75,9 +79,17 @@ export default function Home() {
       </form>
 
       {user && (
-        <p style={{ color: '#10b981', fontWeight: 'bold', margin: '10px 0' }}>
-          {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
-        </p>
+        <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px' }}>
+          <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0 }}>
+            {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
+          </p>
+          <button
+            onClick={handleLogout}
+            style={{ padding: '6px 12px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}
+          >
+            Logout
+          </button>
+        </div>
       )}
 
       {results.length > 0 && (
@@ -91,7 +103,7 @@ export default function Home() {
             )}
           </p>
 
-          <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'left' }}>
+          <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'left' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #eee' }}>
@@ -116,17 +128,13 @@ export default function Home() {
         </>
       )}
 
-      <div style={{ marginTop: '60px' }}>
-        {!user ? (
+      {!user && (
+        <div style={{ marginTop: '60px' }}>
           <a href="/signin" style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'none' }}>
             Sign In
           </a>
-        ) : (
-          <span style={{ color: '#10b981', fontWeight: 'bold' }}>
-            {isPro ? 'PRO User' : 'Free User'}
-          </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
