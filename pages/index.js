@@ -8,7 +8,6 @@ export default function Home() {
   const [isPro, setIsPro] = useState(false);
   const [user, setUser] = useState(null);
 
-  // Check PRO status on load
   useEffect(() => {
     fetch('/api/user/status')
       .then(r => r.json())
@@ -73,45 +72,4 @@ export default function Home() {
         <button
           type="submit"
           disabled={loading}
-          style={{
-            padding: '12px 24px',
-            marginLeft: '8px',
-            background: '#2563eb',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          {loading ? 'Searching...' : 'Search'}
-        </button>
-      </form>
-
-      {results.length > 0 && (
-        <>
-          <p style={{ margin: '20px 0' }}>
-            Displaying <strong>{visible}</strong> of <strong>{total}</strong> emails.
-            {!isPro && hidden > 0 && (
-              <a href="/upgrade" style={{ color: '#dc2626', fontWeight: 'bold', marginLeft: '8px' }}>
-                Upgrade to see all {hidden}
-              </a>
-            )}
-          </p>
-
-          <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #eee' }}>
-                  <th style={{ textAlign: 'left', padding: '12px' }}>Email</th>
-                  <th style={{ textAlign: 'left', padding: '12px' }}>Name</th>
-                  <th style={{ textAlign: 'left', padding: '12px' }}>Title</th>
-                  <th style={{ textAlign: 'left', padding: '12px' }}>Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((r, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '12px' }}>{r.email}</td>
-                    <td style={{ padding: '12px' }}>{r.first_name} {r.last_name}</td>
-                    <td style={{ padding: '12px' }}>{r.position || '—'}</td>
+         
