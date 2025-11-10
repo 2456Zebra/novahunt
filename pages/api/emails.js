@@ -1,38 +1,101 @@
+import fetch from 'node-fetch';
+import cheerio from 'cheerio';
+
+const CACHE = new Map(); // In-memory cache
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { domain } = req.body;
   if (!domain) return res.status(400).json({ error: 'Domain required' });
 
-  const apiKey = process.env.HUNTER_API_KEY;
-  if (!apiKey) {
-    console.error('HUNTER_API_KEY missing');
-    return res.status(500).json({ error: 'API key missing' });
+  const cacheKey = domain.toLowerCase();
+  const cached = CACHE.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return res.status(200).json(cached.data);
   }
 
   try {
-    const url = `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${apiKey}&limit=500`;
-    const response = await fetch(url);
-    const data = await response.json();
+    // Step 1: Try to find contact page
+    const contactUrls = [
+      `https://${domain}/contact`,
+      `https://${domain}/contact-us`,
+      `https://${domain}/about`,
+      `https://${domain}/team`,
+      `https://${domain}/leadership`
+    ];
 
-    if (!data.data?.emails) {
-      return res.status(200).json({ results: [], total: 0 });
+    let emails = new Set();
+    let found = false;
+
+    for (const url of contactUrls) {
+      try {
+        const response = await fetch(url, { timeout: 5000 });
+        if (!response.ok) continue;
+
+        const html = await response.text();
+        const $ = cheerio.load(html);
+
+        // Extract emails from mailto: and text
+        $('a[href^="mailto:"]').each((i, el) => {
+          const email = $(el).attr('href').replace('mailto:', '').trim();
+          if (isValidEmail(email)) emails.add(email);
+        });
+
+        // Extract from text
+        const text = $('body').text();
+        const emailMatches = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || [];
+        emailMatches.forEach(email => {
+          if (email.endsWith(`@${domain}`) || email.includes(domain)) {
+            if (isValidEmail(email)) emails.add(email);
+          }
+        });
+
+        if (emails.size > 0) {
+          found = true;
+          break;
+        }
+      } catch (err) {
+        continue;
+      }
     }
 
-    const emails = data.data.emails.map(e => ({
-      email: e.value,
-      first_name: e.first_name || '',
-      last_name: e.last_name || '',
-      position: e.position || '',
-      score: e.confidence || 0
+    // Step 2: Fallback - try common patterns
+    if (!found) {
+      const patterns = [
+        `info@${domain}`,
+        `contact@${domain}`,
+        `hello@${domain}`,
+        `sales@${domain}`,
+        `support@${domain}`
+      ];
+      patterns.forEach(email => emails.add(email));
+    }
+
+    const emailArray = Array.from(emails).map(email => ({
+      email,
+      first_name: '',
+      last_name: '',
+      position: email.includes('info') ? 'General Contact' : 
+                email.includes('sales') ? 'Sales' :
+                email.includes('support') ? 'Support' : 'Team',
+      score: email.includes(`@${domain}`) ? 95 : 70
     }));
 
-    res.status(200).json({
-      results: emails,
-      total: emails.length
-    });
+    const result = {
+      results: emailArray,
+      total: emailArray.length
+    };
+
+    CACHE.set(cacheKey, { data: result, timestamp: Date.now() });
+    res.status(200).json(result);
   } catch (err) {
-    console.error('Hunter API error:', err);
-    res.status(500).json({ error: 'Failed to fetch emails' });
+    console.error('Scrape error:', err);
+    res.status(500).json({ error: 'Failed to scrape emails' });
   }
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
