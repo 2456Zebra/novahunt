@@ -10,7 +10,7 @@ export default function Home() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user !== null) return; // Prevent loop
+    if (user !== null) return;
     fetch('/api/user/status')
       .then(r => r.json())
       .then(data => {
@@ -36,7 +36,7 @@ export default function Home() {
       const res = await fetch('/api/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: domain.trim() }),
+        body: JSON.stringify({ domain: domain.trim().toLowerCase() }),
       });
 
       const data = await res.json();
@@ -67,7 +67,7 @@ export default function Home() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fff', padding: '40px 20px', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
       <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>NovaHunt Emails</h1>
-      <p style={{ fontSize: '18px', color: '#666', marginBottom: '32px' }}>Find business emails fast.</p>
+      <p style={{ fontSize: '18px', color: '#666', marginBottom: '32px' }}>Find business emails fast — 100% free.</p>
 
       <form onSubmit={handleSearch} style={{ marginBottom: '40px' }}>
         <input
@@ -128,7 +128,7 @@ export default function Home() {
                   <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
                     <td style={{ padding: '12px' }}>{r.email}</td>
                     <td style={{ padding: '12px' }}>{r.first_name} {r.last_name}</td>
-                    <td style={{ padding: '12px' }}>{r.position || 'Unknown'}</td>
+                    <td style={{ padding: '12px' }}>{r.position}</td>
                     <td style={{ padding: '12px' }}>{r.score}%</td>
                   </tr>
                 ))}
