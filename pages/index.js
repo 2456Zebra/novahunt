@@ -7,9 +7,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [user, setUser] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user) return;
+    if (user !== null) return; // Prevent loop
     fetch('/api/user/status')
       .then(r => r.json())
       .then(data => {
@@ -24,25 +25,32 @@ export default function Home() {
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!domain) return;
+    if (!domain.trim()) return;
 
     setLoading(true);
     setResults([]);
     setTotal(0);
+    setError('');
 
     try {
       const res = await fetch('/api/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain }),
+        body: JSON.stringify({ domain: domain.trim() }),
       });
+
       const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Search failed');
+        return;
+      }
 
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
-      setTotal(data.total);
+      setTotal(data.total || 0);
     } catch (err) {
-      alert('Search failed');
+      setError('Network error. Try again.');
     } finally {
       setLoading(false);
     }
@@ -77,6 +85,8 @@ export default function Home() {
           {loading ? 'Searching...' : 'Search'}
         </button>
       </form>
+
+      {error && <p style={{ color: '#dc2626', fontWeight: 'bold' }}>{error}</p>}
 
       {user && (
         <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px' }}>
