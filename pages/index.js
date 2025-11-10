@@ -5,6 +5,7 @@ export default function Home() {
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [isPro, setIsPro] = useState(false);
   const [user, setUser] = useState(null);
 
@@ -22,11 +23,28 @@ export default function Home() {
       });
   }, [user]);
 
+  useEffect(() => {
+    if (!loading) return;
+
+    const timer = setInterval(() => {
+      setProgress(p => {
+        if (p >= 100) {
+          clearInterval(timer);
+          return 100;
+        }
+        return p + 10;
+      });
+    }, 500);
+
+    return () => clearInterval(timer);
+  }, [loading]);
+
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!domain.trim()) return;
 
     setLoading(true);
+    setProgress(0);
     setResults([]);
     setTotal(0);
 
@@ -46,11 +64,6 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    window.location.reload();
   };
 
   const visible = results.length;
@@ -78,26 +91,28 @@ export default function Home() {
         </button>
       </form>
 
+      {loading && (
+        <div style={{ margin: '20px 0' }}>
+          <div style={{ width: '300px', margin: '0 auto' }}>
+            <div style={{ height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px' }}>
+              <div style={{ height: '4px', backgroundColor: '#2563eb', width: `${progress}%`, borderRadius: '2px', transition: 'width 0.5s ease' }}></div>
+            </div>
+          </div>
+          <p style={{ marginTop: '8px' }}>{Math.round(progress)}% Complete</p>
+        </div>
+      )}
+
       {user && (
-        <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
-          <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0, fontSize: '16px' }}>
+        <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px' }}>
+          <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0 }}>
             {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
           </p>
           <button
-            onClick={handleLogout}
-            style={{
-              padding: '4px 8px',
-              backgroundColor: '#ef4444',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              opacity: 0.8
+            onClick={() => {
+              document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+              window.location.reload();
             }}
-            onMouseOver={e => e.target.style.opacity = 1}
-            onMouseOut={e => e.target.style.opacity = 0.8}
+            style={{ padding: '4px 8px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
           >
             logout
           </button>
