@@ -26,7 +26,7 @@ export default function Home() {
   useEffect(() => {
     if (!loading) return;
     const timer = setInterval(() => {
-      setProgress(p => (p >= 100 ? 100 : p + 15));
+      setProgress(p => (p >= 100 ? 100 : p + 20));
     }, 300);
     return () => clearInterval(timer);
   }, [loading]);
