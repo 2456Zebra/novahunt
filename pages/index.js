@@ -38,7 +38,6 @@ export default function Home() {
       });
       const data = await res.json();
 
-      // FIX: isPro check BEFORE slice
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
@@ -80,15 +79,27 @@ export default function Home() {
       </form>
 
       {user && (
-        <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px' }}>
-          <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0 }}>
+        <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
+          <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0, fontSize: '16px' }}>
             {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
           </p>
           <button
             onClick={handleLogout}
-            style={{ padding: '6px 12px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}
+            style={{
+              padding: '4px 8px',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              opacity: 0.8
+            }}
+            onMouseOver={e => e.target.style.opacity = 1}
+            onMouseOut={e => e.target.style.opacity = 0.8}
           >
-            Logout
+            logout
           </button>
         </div>
       )}
@@ -104,7 +115,7 @@ export default function Home() {
             )}
           </p>
 
-          <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'left' }}>
+          <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'left' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #eee' }}>
