@@ -38,12 +38,12 @@ export default function Home() {
       });
       const data = await res.json();
 
-      // PRO sees ALL emails
+      // PRO sees ALL, Free sees 5
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
-      setTotal(data.total || 0);
+      setTotal(data.total);
     } catch (err) {
-      alert('Search failed');
+    alert('Search failed');
     } finally {
       setLoading(false);
     }
