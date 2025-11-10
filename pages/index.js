@@ -38,7 +38,7 @@ export default function Home() {
       });
       const data = await res.json();
 
-      // FIX: isPro must be checked BEFORE slicing
+      // PRO sees ALL emails
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
