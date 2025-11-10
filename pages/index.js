@@ -1,11 +1,10 @@
 import { useState } from 'react';
 
-export default function Home() {
+export default function Home({ isPro }) {
   const [domain, setDomain] = useState('');
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -14,7 +13,6 @@ export default function Home() {
     setLoading(true);
     setResults([]);
     setTotal(0);
-    setMessage('');
 
     try {
       const res = await fetch('/api/emails', {
@@ -23,18 +21,18 @@ export default function Home() {
         body: JSON.stringify({ domain }),
       });
       const data = await res.json();
-      setResults((data.results || []).slice(0, 5)); // Show 5 free
-      setTotal(data.total || data.results?.length || 0);
-      setMessage(data.message || '');
+      const displayResults = isPro ? data.results : (data.results || []).slice(0, 5);
+      setResults(displayResults);
+      setTotal(data.total || 0);
     } catch (err) {
-      setMessage('Error: Try again.');
+      alert('Search failed. Try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const visible = results.length;
-  const hidden = Math.max(0, total - visible);
+  const hidden = total - visible;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fff', padding: '40px 20px', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
@@ -58,17 +56,16 @@ export default function Home() {
         </button>
       </form>
 
-      {message && <p style={{ color: '#10b981', fontWeight: 'bold' }}>{message}</p>}
-
-      {visible > 0 && (
+      {results.length > 0 && (
         <>
           <p style={{ fontSize: '16px', color: '#444', margin: '20px 0' }}>
             Displaying <strong>{visible}</strong> of <strong>{total}</strong> emails.{' '}
-            {hidden > 0 && (
+            {!isPro && hidden > 0 && (
               <a href="/upgrade" style={{ color: '#dc2626', fontWeight: 'bold' }}>
                 Upgrade to reveal all {hidden} →
               </a>
             )}
+            {isPro && <span style={{ color: '#10b981', fontWeight: 'bold' }}> (PRO - Unlimited)</span>}
           </p>
 
           <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'left' }}>
