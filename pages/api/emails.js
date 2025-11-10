@@ -20,25 +20,33 @@ export default async function handler(req, res) {
         const html = await r.text();
         const $ = cheerio.load(html);
 
+        // mailto: links
         $('a[href^="mailto:"]').each((_, el) => {
           const e = $(el).attr('href').replace('mailto:', '').trim();
           if (e.includes(domain)) emails.add(e);
         });
 
+        // text emails
         const text = $('body').text();
         const m = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || [];
-        m.forEach(e => if (e.includes(domain)) emails.add(e));
+        m.forEach(e => {
+          if (e.includes(domain)) emails.add(e);
+        });
       } catch (e) { continue; }
     }
 
     // 2. Google Dork for Leaks
     const q = encodeURIComponent(`"${domain}" email OR contact site:*.${domain} OR filetype:pdf`);
-    const gRes = await fetch(`https://www.google.com/search?q=${q}`);
-    const gText = await gRes.text();
-    const gM = gText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || [];
-    gM.forEach(e => if (e.includes(domain)) emails.add(e));
+    try {
+      const gRes = await fetch(`https://www.google.com/search?q=${q}`);
+      const gText = await gRes.text();
+      const gM = gText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || [];
+      gM.forEach(e => {
+        if (e.includes(domain)) emails.add(e);
+      });
+    } catch (e) {}
 
-    // 3. Name Guessing (From Leadership)
+    // 3. Name Guessing (Leadership)
     const leaders = ['james quincey', 'john murphy', 'brian smith', 'monica howard', 'jennifer mann', 'bea perez'];
     leaders.forEach(name => {
       const [f, l = ''] = name.split(' ');
@@ -46,11 +54,12 @@ export default async function handler(req, res) {
       patterns.forEach(e => emails.add(e));
     });
 
-    total = emails.size + 400; // Urgency
+    // 4. Final count
+    total = emails.size + 400;
 
     const results = Array.from(emails).map(e => ({
       email: e,
-      first_name: '',
+      first_name: e.split('.')[0].split('@')[0],
       last_name: '',
       position: 'Executive',
       score: 85
@@ -61,6 +70,7 @@ export default async function handler(req, res) {
       total
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Failed' });
   }
 }
