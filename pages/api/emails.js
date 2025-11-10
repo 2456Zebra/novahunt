@@ -8,22 +8,23 @@ export default async function handler(req, res) {
   if (!domain) return res.status(400).json({ error: 'Domain required' });
 
   const emails = new Set();
-  const people = []; // { email, first, last, title }
+  const people = [];
   let total = 0;
 
   try {
-    // 1. Scrape Site for Emails + Names/Titles
+    // 1. Scrape Leadership/Contact Pages
     const urls = [
       `https://${domain}/contact`,
       `https://${domain}/about`,
       `https://${domain}/team`,
       `https://${domain}/leadership`,
+      `https://${domain}/executive-team`,
       `https://${domain}`
     ];
 
     for (const url of urls) {
       try {
-        const r = await fetch(url, { timeout: 6000 });
+        const r = await fetch(url, { timeout: 5000 });
         if (!r.ok) continue;
         const html = await r.text();
         const $ = cheerio.load(html);
@@ -41,10 +42,10 @@ export default async function handler(req, res) {
         });
 
         // Extract Names + Titles
-        $('h1, h2, h3, h4, p, div').each((_, el) => {
+        $('h1, h2, h3, h4, p, div, span').each((_, el) => {
           const txt = $(el).text().trim();
           const nameMatch = txt.match(/([A-Z][a-z]+)\s+([A-Z][a-z]+)/);
-          const titleMatch = txt.match(/(CEO|CFO|President|VP|Director|Manager)/i);
+          const titleMatch = txt.match(/(CEO|CFO|President|VP|Director|Manager|Head|Chief|Lead)/i);
 
           if (nameMatch && titleMatch) {
             const [_, first, last] = nameMatch;
@@ -57,11 +58,11 @@ export default async function handler(req, res) {
     }
 
     // 2. Add General Emails
-    ['info', 'contact', 'press', 'sales', 'support'].forEach(p => {
+    ['info', 'contact', 'press', 'sales', 'support', 'media', 'careers'].forEach(p => {
       emails.add(`${p}@${domain}`);
     });
 
-    // 3. Combine
+    // 3. Combine & Dedupe
     const allEmails = [...new Set([...emails, ...people.map(p => p.email)])];
     total = allEmails.length + 400;
 
@@ -77,7 +78,7 @@ export default async function handler(req, res) {
     });
 
     res.status(200).json({
-      results: results.slice(0, 100), // PRO gets all
+      results,
       total
     });
   } catch (err) {
