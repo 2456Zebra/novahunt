@@ -25,17 +25,9 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading) return;
-
     const timer = setInterval(() => {
-      setProgress(p => {
-        if (p >= 100) {
-          clearInterval(timer);
-          return 100;
-        }
-        return p + 10;
-      });
-    }, 500);
-
+      setProgress(p => (p >= 100 ? 100 : p + 15));
+    }, 300);
     return () => clearInterval(timer);
   }, [loading]);
 
@@ -56,6 +48,7 @@ export default function Home() {
       });
       const data = await res.json();
 
+      // PRO sees ALL, Free sees 5
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
@@ -94,17 +87,17 @@ export default function Home() {
       {loading && (
         <div style={{ margin: '20px 0' }}>
           <div style={{ width: '300px', margin: '0 auto' }}>
-            <div style={{ height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px' }}>
-              <div style={{ height: '4px', backgroundColor: '#2563eb', width: `${progress}%`, borderRadius: '2px', transition: 'width 0.5s ease' }}></div>
+            <div style={{ height: '6px', backgroundColor: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ height: '6px', backgroundColor: '#2563eb', width: `${progress}%`, transition: 'width 0.3s ease' }}></div>
             </div>
           </div>
-          <p style={{ marginTop: '8px' }}>{Math.round(progress)}% Complete</p>
+          <p style={{ marginTop: '8px', fontSize: '14px', color: '#666' }}>{Math.round(progress)}% Complete</p>
         </div>
       )}
 
       {user && (
-        <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px' }}>
-          <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0 }}>
+        <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
+          <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0, fontSize: '16px' }}>
             {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
           </p>
           <button
@@ -112,7 +105,7 @@ export default function Home() {
               document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
               window.location.reload();
             }}
-            style={{ padding: '4px 8px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+            style={{ padding: '4px 8px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
           >
             logout
           </button>
@@ -130,7 +123,7 @@ export default function Home() {
             )}
           </p>
 
-          <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'left' }}>
+          <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'left' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #eee' }}>
@@ -145,7 +138,7 @@ export default function Home() {
                   <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
                     <td style={{ padding: '12px' }}>{r.email}</td>
                     <td style={{ padding: '12px' }}>{r.first_name} {r.last_name}</td>
-                    <td style={{ padding: '12px' }}>{r.position || 'Unknown'}</td>
+                    <td style={{ padding: '12px' }}>{r.position}</td>
                     <td style={{ padding: '12px' }}>{r.score}%</td>
                   </tr>
                 ))}
