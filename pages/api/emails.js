@@ -52,11 +52,7 @@ export default async function handler(req, res) {
     ];
     leaders.forEach(name => {
       const [f, l = ''] = name.split(' ');
-      const patterns = [
-        `${f}.${l}@ford.com`,
-        `${f}@ford.com`,
-        `${f[0]}${l}@ford.com`
-      ];
+      const patterns = [`${f}.${l}@ford.com`, `${f}@ford.com`, `${f[0]}${l}@ford.com`];
       patterns.forEach(e => emails.add(e));
     });
 
