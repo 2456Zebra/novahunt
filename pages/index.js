@@ -9,7 +9,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    if (user) return; // Stop if already loaded
+    if (user) return;
     fetch('/api/user/status')
       .then(r => r.json())
       .then(data => {
@@ -20,7 +20,7 @@ export default function Home() {
         setIsPro(false);
         setUser(null);
       });
-  }, [user]);  // Dependency on user stops loop
+  }, [user]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -38,6 +38,7 @@ export default function Home() {
       });
       const data = await res.json();
 
+      // FIX: isPro must be checked BEFORE slicing
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
@@ -82,7 +83,7 @@ export default function Home() {
       {results.length > 0 && (
         <>
           <p style={{ fontSize: '16px', color: '#444', margin: '20px 0' }}>
-            Displaying <strong>{visible}</strong> of <strong>{total}</strong> emails.{' '}
+            Displaying <strong>{visible}</strong> of <strong>{total}</strong> emails.
             {!isPro && hidden > 0 && (
               <a href="/upgrade" style={{ color: '#dc2626', fontWeight: 'bold' }}>
                 Upgrade to reveal all {hidden} →
