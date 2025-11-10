@@ -5,7 +5,10 @@ export default async function handler(req, res) {
   if (!domain) return res.status(400).json({ error: 'Domain required' });
 
   const apiKey = process.env.HUNTER_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'API key missing' });
+  if (!apiKey) {
+    console.error('HUNTER_API_KEY missing');
+    return res.status(500).json({ error: 'API key missing' });
+  }
 
   try {
     const url = `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${apiKey}&limit=500`;
