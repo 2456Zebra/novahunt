@@ -19,6 +19,7 @@ export default async function handler(req, res) {
       `https://${domain}/team`,
       `https://${domain}/leadership`,
       `https://${domain}/executive-team`,
+      `https://${domain}/press-center`,
       `https://${domain}`
     ];
 
@@ -41,15 +42,15 @@ export default async function handler(req, res) {
           if (e.includes(domain)) emails.add(e);
         });
 
-        // Extract Names + Titles
-        $('h1, h2, h3, h4, p, div, span').each((_, el) => {
+        // Extract Names + Titles (Improved Regex)
+        $('h1, h2, h3, h4, h5, p, div, span').each((_, el) => {
           const txt = $(el).text().trim();
-          const nameMatch = txt.match(/([A-Z][a-z]+)\s+([A-Z][a-z]+)/);
-          const titleMatch = txt.match(/(CEO|CFO|President|VP|Director|Manager|Head|Chief|Lead)/i);
-
-          if (nameMatch && titleMatch) {
-            const [_, first, last] = nameMatch;
-            const title = titleMatch[0];
+          const nameMatch = txt.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s*[,–—-]?\s*(CEO|CFO|President|VP|Director|Manager|Head|Chief|Lead|Executive)/i);
+          if (nameMatch) {
+            const fullName = nameMatch[1].trim();
+            const title = nameMatch[2];
+            const [first, ...lastParts] = fullName.split(' ');
+            const last = lastParts.join(' ');
             const emailGuess = `${first.toLowerCase()}.${last.toLowerCase()}@${domain}`;
             people.push({ email: emailGuess, first, last, title });
           }
@@ -58,7 +59,7 @@ export default async function handler(req, res) {
     }
 
     // 2. Add General Emails
-    ['info', 'contact', 'press', 'sales', 'support', 'media', 'careers'].forEach(p => {
+    ['info', 'contact', 'press', 'sales', 'support', 'media', 'careers', 'investor', 'legal', 'hr'].forEach(p => {
       emails.add(`${p}@${domain}`);
     });
 
