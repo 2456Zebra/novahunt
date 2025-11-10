@@ -7,10 +7,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [user, setUser] = useState(null);
-  const [statusChecked, setStatusChecked] = useState(false); // Prevent loop
 
   useEffect(() => {
-    if (statusChecked) return;
+    if (user) return;
     fetch('/api/user/status')
       .then(r => r.json())
       .then(data => {
@@ -20,9 +19,8 @@ export default function Home() {
       .catch(() => {
         setIsPro(false);
         setUser(null);
-      })
-      .finally(() => setStatusChecked(true));
-  }, [statusChecked]);
+      });
+  }, [user]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -50,13 +48,13 @@ export default function Home() {
     }
   };
 
-  const visible = results.length;
-  const hidden = total - visible;
-
   const handleLogout = () => {
     document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     window.location.reload();
   };
+
+  const visible = results.length;
+  const hidden = total - visible;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fff', padding: '40px 20px', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
