@@ -72,4 +72,36 @@ export default function Home() {
         <button
           type="submit"
           disabled={loading}
-         
+          style={{
+            padding: '12px 24px',
+            marginLeft: '8px',
+            background: '#2563eb',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            cursor: 'pointer'
+          }}
+        >
+          {loading ? 'Searching...' : 'Search'}
+        </button>
+      </form>
+
+      {results.length > 0 && (
+        <>
+          <p style={{ margin: '20px 0' }}>
+            Displaying <strong>{visible}</strong> of <strong>{total}</strong> emails.
+            {!isPro && hidden > 0 && (
+              <a href="/upgrade" style={{ color: '#dc2626', fontWeight: 'bold', marginLeft: '8px' }}>
+                Upgrade to see all {hidden}
+              </a>
+            )}
+          </p>
+
+          <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #eee' }}>
+                  <th style={{ textAlign: 'left', padding: '12px' }}>Email</th>
+                  <th style={{ textAlign: 'left', padding: '12px' }}>Name</th>
+                  <th style={{ textAlign: '
