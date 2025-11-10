@@ -9,7 +9,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    if (user) return;
+    if (user !== null) return;
     fetch('/api/user/status')
       .then(r => r.json())
       .then(data => {
@@ -24,7 +24,7 @@ export default function Home() {
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!domain) return;
+    if (!domain.trim()) return;
 
     setLoading(true);
     setResults([]);
@@ -34,10 +34,11 @@ export default function Home() {
       const res = await fetch('/api/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain }),
+        body: JSON.stringify({ domain: domain.trim() }),
       });
       const data = await res.json();
 
+      // FIX: isPro check BEFORE slice
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
