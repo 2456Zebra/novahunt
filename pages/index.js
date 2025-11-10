@@ -7,10 +7,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [user, setUser] = useState(null);
-  const [error, setError] = useState('');
+  const [statusChecked, setStatusChecked] = useState(false); // Prevent loop
 
   useEffect(() => {
-    if (user !== null) return;
+    if (statusChecked) return;
     fetch('/api/user/status')
       .then(r => r.json())
       .then(data => {
@@ -20,54 +20,48 @@ export default function Home() {
       .catch(() => {
         setIsPro(false);
         setUser(null);
-      });
-  }, [user]);
+      })
+      .finally(() => setStatusChecked(true));
+  }, [statusChecked]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!domain.trim()) return;
+    if (!domain) return;
 
     setLoading(true);
     setResults([]);
     setTotal(0);
-    setError('');
 
     try {
       const res = await fetch('/api/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: domain.trim().toLowerCase() }),
+        body: JSON.stringify({ domain }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Search failed');
-        return;
-      }
 
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
     } catch (err) {
-      setError('Network error. Try again.');
+      alert('Search failed');
     } finally {
       setLoading(false);
     }
   };
+
+  const visible = results.length;
+  const hidden = total - visible;
 
   const handleLogout = () => {
     document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     window.location.reload();
   };
 
-  const visible = results.length;
-  const hidden = total - visible;
-
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fff', padding: '40px 20px', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
       <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>NovaHunt Emails</h1>
-      <p style={{ fontSize: '18px', color: '#666', marginBottom: '32px' }}>Find business emails fast — 100% free.</p>
+      <p style={{ fontSize: '18px', color: '#666', marginBottom: '32px' }}>Find business emails fast.</p>
 
       <form onSubmit={handleSearch} style={{ marginBottom: '40px' }}>
         <input
@@ -86,8 +80,6 @@ export default function Home() {
         </button>
       </form>
 
-      {error && <p style={{ color: '#dc2626', fontWeight: 'bold' }}>{error}</p>}
-
       {user && (
         <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px' }}>
           <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0 }}>
@@ -95,7 +87,7 @@ export default function Home() {
           </p>
           <button
             onClick={handleLogout}
-            style={{ padding: '6px 12px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}
+            style={{ padding: '6px 12px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}
           >
             Logout
           </button>
@@ -113,7 +105,7 @@ export default function Home() {
             )}
           </p>
 
-          <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'left' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'left' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #eee' }}>
@@ -128,7 +120,7 @@ export default function Home() {
                   <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
                     <td style={{ padding: '12px' }}>{r.email}</td>
                     <td style={{ padding: '12px' }}>{r.first_name} {r.last_name}</td>
-                    <td style={{ padding: '12px' }}>{r.position}</td>
+                    <td style={{ padding: '12px' }}>{r.position || 'Unknown'}</td>
                     <td style={{ padding: '12px' }}>{r.score}%</td>
                   </tr>
                 ))}
