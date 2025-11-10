@@ -104,4 +104,34 @@ export default function Home() {
                 <tr style={{ borderBottom: '2px solid #eee' }}>
                   <th style={{ textAlign: 'left', padding: '12px' }}>Email</th>
                   <th style={{ textAlign: 'left', padding: '12px' }}>Name</th>
-                  <th style={{ textAlign: '
+                  <th style={{ textAlign: 'left', padding: '12px' }}>Title</th>
+                  <th style={{ textAlign: 'left', padding: '12px' }}>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '12px' }}>{r.email}</td>
+                    <td style={{ padding: '12px' }}>{r.first_name} {r.last_name}</td>
+                    <td style={{ padding: '12px' }}>{r.position || '—'}</td>
+                    <td style={{ padding: '12px' }}>{r.score}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      <div style={{ marginTop: '60px' }}>
+        {!user ? (
+          <a href="/signin" style={{ color: '#2563eb', fontWeight: 'bold' }}>Sign In</a>
+        ) : (
+          <span style={{ color: '#10b981', fontWeight: 'bold' }}>
+            {isPro ? 'PRO User' : 'Free User'}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
