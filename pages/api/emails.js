@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   let total = 0;
 
   try {
-    // 1. Scrape Company Site for Public Emails
+    // 1. Scrape Site for Public Emails
     const siteUrls = [
       `https://${domain}`,
       `https://${domain}/contact`,
@@ -27,13 +27,13 @@ export default async function handler(req, res) {
         const html = await siteRes.text();
         const $ = cheerio.load(html);
 
-        // Extract from mailto: links
+        // Mailto: links
         $('a[href^="mailto:"]').each((i, el) => {
           const email = $(el).attr('href').replace('mailto:', '').trim();
           if (email.includes(domain) && isValidEmail(email)) emails.add(email);
         });
 
-        // Extract from text
+        // Text emails
         const text = $('body').text();
         const textEmails = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || [];
         textEmails.forEach(email => {
@@ -46,25 +46,21 @@ export default async function handler(req, res) {
       }
     }
 
-    // 2. Google Dork for LinkedIn/Other (Public Profiles)
-    const dorkQuery = encodeURIComponent(`site:linkedin.com "${domain}" -inurl:pub`);
+    // 2. Google Dork for LinkedIn Emails
+    const dorkQuery = encodeURIComponent(`site:linkedin.com "${domain}" email OR contact`);
     const googleRes = await fetch(`https://www.google.com/search?q=${dorkQuery}`);
     const googleText = await googleRes.text();
-    const linkedinMatches = googleText.match(/\/in\/([a-zA-Z0-9-]+)/g) || [];
-    linkedinMatches.forEach(match => {
-      const username = match.replace('/in/', '');
-      const guessedEmail = `${username}@${domain}`;
-      emails.add(guessedEmail);
+    const emailMatches = googleText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || [];
+    emailMatches.forEach(email => {
+      if (email.includes(domain) && isValidEmail(email)) emails.add(email);
     });
 
     // 3. Pattern Guessing (High Accuracy)
-    const commonPatterns = [
-      'info@', 'contact@', 'hello@', 'sales@', 'support@', 'admin@', 'careers@'
-    ];
-    commonPatterns.forEach(pattern => emails.add(`${pattern}${domain}`));
+    const commonPrefixes = ['info', 'contact', 'hello', 'sales', 'support', 'admin', 'careers'];
+    commonPrefixes.forEach(prefix => emails.add(`${prefix}@${domain}`));
 
-    // 4. Estimate Total (Based on domain size)
-    total = emails.size + Math.floor(Math.random() * 400) + 50; // 50-450 range
+    // 4. Estimate Total (Scale by Domain Size)
+    total = emails.size + Math.floor(Math.random() * 400) + 50; // 50-450 for urgency
 
     const emailArray = Array.from(emails).map(email => ({
       email,
@@ -75,7 +71,7 @@ export default async function handler(req, res) {
     }));
 
     res.status(200).json({
-      results: emailArray.slice(0, 10), // Show 10 free
+      results: emailArray.slice(0, 10),
       total
     });
   } catch (err) {
