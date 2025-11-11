@@ -48,7 +48,6 @@ export default function Home() {
       });
       const data = await res.json();
 
-      // PRO sees ALL, Free sees 5
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
@@ -62,11 +61,6 @@ export default function Home() {
   const visible = results.length;
   const hidden = total - visible;
 
-  const handleLogout = () => {
-    document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    window.location.reload();
-  };
-
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fff', padding: '40px 20px', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
       <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>NovaHunt Emails</h1>
@@ -75,7 +69,7 @@ export default function Home() {
       <form onSubmit={handleSearch} style={{ marginBottom: '40px' }}>
         <input
           type="text"
-          placeholder="Enter domain (e.g. coca-cola.com)"
+          placeholder="Enter domain (e.g. molsoncoors.com)"
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
           style={{ padding: '12px 16px', width: '300px', maxWidth: '100%', border: '1px solid #ccc', borderRadius: '8px', fontSize: '16px' }}
