@@ -7,19 +7,18 @@ export default async function handler(req, res) {
   const { domain } = req.body;
   if (!domain) return res.status(400).json({ error: 'Domain required' });
 
-  let emails = new Set();
-  let people = [];
+  const emails = new Set();
+  const people = [];
   let total = 0;
 
   try {
-    // 1. Expanded Scrape URLs (More Specific)
     const urls = [
       `https://${domain}/contact`,
-      `https://${domain}/about-us`,
+      `https://${domain}/about`,
+      `https://${domain}/team`,
       `https://${domain}/leadership`,
       `https://${domain}/executive-team`,
-      `https://${domain}/investor-relations`,
-      `https://${domain}/press-room`,
+      `https://${domain}/press-center`,
       `https://${domain}`
     ];
 
@@ -30,7 +29,6 @@ export default async function handler(req, res) {
         const html = await r.text();
         const $ = cheerio.load(html);
 
-        // Extract emails
         $('a[href^="mailto:"]').each((_, el) => {
           const e = $(el).attr('href').replace('mailto:', '').split('?')[0].trim();
           if (e.includes(domain)) emails.add(e);
@@ -42,10 +40,9 @@ export default async function handler(req, res) {
           if (e.includes(domain)) emails.add(e);
         });
 
-        // Extract Names + Titles (Better Regex for Executives)
-        $('h1, h2, h3, p, .profile, .bio').each((_, el) => {
+        $('h1, h2, h3, h4, p, div, span').each((_, el) => {
           const txt = $(el).text().trim();
-          const nameMatch = txt.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*?)\s*(CEO|CFO|President|VP|Director|Manager|Head|Chief|Lead|Executive)/i);
+          const nameMatch = txt.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s*[,–—-]?\s*(CEO|CFO|President|VP|Director|Manager|Head|Chief|Lead|Executive)/i);
           if (nameMatch) {
             const fullName = nameMatch[1].trim();
             const title = nameMatch[2];
@@ -58,12 +55,10 @@ export default async function handler(req, res) {
       } catch (e) { continue; }
     }
 
-    // 2. Add General Emails
-    ['info', 'contact', 'press', 'sales', 'support', 'media', 'careers', 'investor', 'legal'].forEach(p => {
+    ['info', 'contact', 'press', 'sales', 'support', 'media', 'careers', 'investor', 'legal', 'hr'].forEach(p => {
       emails.add(`${p}@${domain}`);
     });
 
-    // 3. Combine & Dedupe
     const allEmails = [...new Set([...emails, ...people.map(p => p.email)])];
     total = allEmails.length + 400;
 
