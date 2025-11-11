@@ -10,14 +10,13 @@ export default async function handler(req, res) {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'price_1...', // REPLACE WITH YOUR PRICE ID
+          price: process.env.STRIPE_PRICE_ID, // Set in Vercel env
           quantity: 1,
         },
       ],
       mode: 'subscription',
-      success_url: `${req.headers.origin}/?success=true`,
+      success_url: `${req.headers.origin}/?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin}/upgrade`,
-      metadata: { plan: 'pro' }
     });
 
     res.status(200).json({ id: session.id });
