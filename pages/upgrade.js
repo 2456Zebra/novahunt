@@ -5,7 +5,6 @@ export default function Upgrade() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load Stripe.js
     const script = document.createElement('script');
     script.src = 'https://js.stripe.com/v3/';
     script.onload = () => setLoading(false);
@@ -15,7 +14,7 @@ export default function Upgrade() {
   const handleCheckout = async () => {
     if (loading) return;
 
-    const stripe = window.Stripe('pk_live_51...'); // REPLACE WITH YOUR LIVE PK
+    const stripe = window.Stripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
     const res = await fetch('/api/create-checkout', {
       method: 'POST',
