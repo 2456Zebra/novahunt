@@ -104,7 +104,7 @@ export default function Home() {
         <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
           <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0, fontSize: '16px' }}>
             {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
-          </p>
+          </button>
           <button
             onClick={() => {
               document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
