@@ -10,24 +10,17 @@ export default function Home() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    if (user !== null) return;
     fetch('/api/user/status')
       .then(r => r.json())
       .then(data => {
         setIsPro(data.isPro);
         setUser(data.user);
-      })
-      .catch(() => {
-        setIsPro(false);
-        setUser(null);
       });
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     if (!loading) return;
-    const timer = setInterval(() => {
-      setProgress(p => (p >= 100 ? 100 : p + 20));
-    }, 300);
+    const timer = setInterval(() => setProgress(p => Math.min(100, p + 20)), 400);
     return () => clearInterval(timer);
   }, [loading]);
 
@@ -48,7 +41,6 @@ export default function Home() {
       });
       const data = await res.json();
 
-      // PRO sees ALL, Free sees 5
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
@@ -61,11 +53,6 @@ export default function Home() {
 
   const visible = results.length;
   const hidden = total - visible;
-
-  const handleLogout = () => {
-    document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    window.location.reload();
-  };
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fff', padding: '40px 20px', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
@@ -100,7 +87,7 @@ export default function Home() {
         </div>
       )}
 
-      {user && (
+      {user ? (
         <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
           <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0, fontSize: '16px' }}>
             {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
@@ -114,6 +101,12 @@ export default function Home() {
           >
             logout
           </button>
+        </div>
+      ) : (
+        <div style={{ marginTop: '60px' }}>
+          <a href="/signin" style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'none' }}>
+            Sign In
+          </a>
         </div>
       )}
 
@@ -151,14 +144,6 @@ export default function Home() {
             </table>
           </div>
         </>
-      )}
-
-      {!user && (
-        <div style={{ marginTop: '60px' }}>
-          <a href="/signin" style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'none' }}>
-            Sign In
-          </a>
-        </div>
       )}
     </div>
   );
