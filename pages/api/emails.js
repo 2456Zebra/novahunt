@@ -30,7 +30,7 @@ export default async function handler(req, res) {
         const html = await r.text();
         const $ = cheerio.load(html);
 
-        // Emails from mailto/text
+        // Extract emails
         $('a[href^="mailto:"]').each((_, el) => {
           const e = $(el).attr('href').replace('mailto:', '').split('?')[0].trim();
           if (e.includes(domain)) emails.add(e);
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
           if (e.includes(domain)) emails.add(e);
         });
 
-        // Names + Titles (Better Regex for Executives)
+        // Extract Names + Titles (Better Regex for Executives)
         $('h1, h2, h3, p, .profile, .bio').each((_, el) => {
           const txt = $(el).text().trim();
           const nameMatch = txt.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*?)\s*(CEO|CFO|President|VP|Director|Manager|Head|Chief|Lead|Executive)/i);
@@ -58,21 +58,12 @@ export default async function handler(req, res) {
       } catch (e) { continue; }
     }
 
-    // 2. Google Dork (Specific to Domain)
-    const q = encodeURIComponent(`"${domain}" email OR "contact us" site:${domain} OR site:linkedin.com "${domain}" executive`);
-    try {
-      const gRes = await fetch(`https://www.google.com/search?q=${q}&num=30`);
-      const gHtml = await gRes.text();
-      const gM = gHtml.match(/\b[A-Za-z0-9._%+-]+@${domain}\b/g) || [];
-      gM.forEach(e => emails.add(e));
-    } catch (e) {}
-
-    // 3. Add General Emails
+    // 2. Add General Emails
     ['info', 'contact', 'press', 'sales', 'support', 'media', 'careers', 'investor', 'legal'].forEach(p => {
       emails.add(`${p}@${domain}`);
     });
 
-    // 4. Combine
+    // 3. Combine & Dedupe
     const allEmails = [...new Set([...emails, ...people.map(p => p.email)])];
     total = allEmails.length + 400;
 
@@ -92,6 +83,7 @@ export default async function handler(req, res) {
       total
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Search failed' });
   }
 }
