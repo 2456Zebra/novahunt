@@ -1,3 +1,4 @@
+// pages/index.js
 import { useState, useEffect } from 'react';
 
 export default function Home() {
@@ -9,8 +10,9 @@ export default function Home() {
   const [isPro, setIsPro] = useState(false);
   const [user, setUser] = useState(null);
 
+  // === USER STATUS + STRIPE SUCCESS HANDLER ===
   useEffect(() => {
-    if (user !== null) return;
+    // 1. Check user status
     fetch('/api/user/status')
       .then(r => r.json())
       .then(data => {
@@ -21,16 +23,34 @@ export default function Home() {
         setIsPro(false);
         setUser(null);
       });
-  }, [user]);
 
+    // 2. Handle Stripe success redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success')) {
+      const sessionId = urlParams.get('session_id');
+      if (sessionId) {
+        const customerId = sessionId.split('_')[1];
+        if (customerId) {
+          document.cookie = `userId=${customerId}; Path=/; Max-Age=${60*60*24*30}; Secure; SameSite=Lax`;
+          // Clean URL
+          window.history.replaceState({}, '', '/');
+          // Reload to refresh PRO status
+          window.location.reload();
+        }
+      }
+    }
+  }, []);
+
+  // === PROGRESS BAR ===
   useEffect(() => {
     if (!loading) return;
     const timer = setInterval(() => {
-      setProgress(p => (p >= 100 ? 100 : p + 20));
-    }, 300);
+      setProgress(p => (p >= 100 ? 100 : p + 25));
+    }, 400);
     return () => clearInterval(timer);
   }, [loading]);
 
+  // === SEARCH HANDLER ===
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!domain.trim()) return;
@@ -96,7 +116,7 @@ export default function Home() {
 
       {user && (
         <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
-          <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0, fontSize: '16px' }}>
+          <p style={{ color: 'green', fontWeight: 'bold', margin: 0, fontSize: '16px' }}>
             {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
           </p>
           <button
@@ -125,7 +145,7 @@ export default function Home() {
           <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'left' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid #eee' }}>
+                <tr style={{ borderBottom: '2px '2px solid #eee' }}>
                   <th style={{ padding: '12px', textAlign: 'left' }}>Email</th>
                   <th style={{ padding: '12px', textAlign: 'left' }}>Name</th>
                   <th style={{ padding: '12px', textAlign: 'left' }}>Title</th>
