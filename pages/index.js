@@ -48,7 +48,6 @@ export default function Home() {
       });
       const data = await res.json();
 
-      // PRO sees ALL, Free sees 5
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
@@ -61,11 +60,6 @@ export default function Home() {
 
   const visible = results.length;
   const hidden = total - visible;
-
-  const handleLogout = () => {
-    document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    window.location.reload();
-  };
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fff', padding: '40px 20px', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
@@ -104,7 +98,7 @@ export default function Home() {
         <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
           <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0, fontSize: '16px' }}>
             {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
-          </button>
+          </p>
           <button
             onClick={() => {
               document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
