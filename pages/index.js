@@ -62,6 +62,11 @@ export default function Home() {
   const visible = results.length;
   const hidden = total - visible;
 
+  const handleLogout = () => {
+    document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    window.location.reload();
+  };
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fff', padding: '40px 20px', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
       <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>NovaHunt Emails</h1>
