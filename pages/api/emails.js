@@ -1,26 +1,18 @@
 import fetch from 'node-fetch';
 import cheerio from 'cheerio';
 
-// In-memory cache (resets on deploy, perfect for Vercel)
-const cache = new Map();
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { domain } = req.body;
   if (!domain) return res.status(400).json({ error: 'Domain required' });
 
-  const cacheKey = domain.toLowerCase();
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < 1000 * 60 * 60) { // 1 hour
-    return res.status(200).json(cached.data);
-  }
-
-  let emails = new Set();
-  let people = [];
+  const emails = new Set();
+  const people = [];
   let total = 0;
 
   try {
+    // Expanded Scrape (More Pages)
     const urls = [
       `https://${domain}/contact`,
       `https://${domain}/about`,
@@ -29,6 +21,7 @@ export default async function handler(req, res) {
       `https://${domain}/executive-team`,
       `https://${domain}/investor-relations`,
       `https://${domain}/press`,
+      `https://${domain}/media`,
       `https://${domain}`
     ];
 
@@ -53,8 +46,8 @@ export default async function handler(req, res) {
           if (e.includes(domain)) emails.add(e);
         });
 
-        // Names + Titles
-        $('h1, h2, h3, h4, p, .bio, .profile').each((_, el) => {
+        // Names + Titles (Advanced Regex)
+        $('h1, h2, h3, h4, p, .bio, .profile, .team-member').each((_, el) => {
           const txt = $(el).text().trim();
           const match = txt.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s*[,–—]?\s*(CEO|CFO|CMO|President|VP|Director|Manager|Head|Chief|Lead|Executive)/i);
           if (match) {
@@ -67,9 +60,10 @@ export default async function handler(req, res) {
       } catch (e) { continue; }
     }
 
-    // Fallbacks
-    ['info', 'contact', 'press', 'sales', 'support'].forEach(p => emails.add(`${p}@${domain}`));
+    // General Emails
+    ['info', 'contact', 'press', 'sales', 'support', 'media', 'careers'].forEach(p => emails.add(`${p}@${domain}`));
 
+    // Combine
     const allEmails = [...new Set([...emails, ...people.map(p => p.email)])];
     total = allEmails.length + 400;
 
@@ -84,12 +78,8 @@ export default async function handler(req, res) {
       };
     });
 
-    const output = { results, total };
-    cache.set(cacheKey, { data: output, timestamp: Date.now() });
-
-    res.status(200).json(output);
+    res.status(200).json({ results, total });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Search failed' });
   }
 }
