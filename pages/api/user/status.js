@@ -1,22 +1,11 @@
+// pages/api/user/status.js
 export default function handler(req, res) {
-  // Read cookie from request headers
-  const cookies = req.headers.cookie || '';
-  const userIdMatch = cookies.match(/userId=([^;]+)/);
-  const userId = userIdMatch ? userIdMatch[1] : null;
+  const cookie = req.headers.cookie || '';
+  const match = cookie.match(/userId=([^;]+)/);
+  const customerId = match ? match[1] : null;
 
-  if (!userId) {
-    return res.status(200).json({ isPro: false, user: null });
-  }
+  const isPro = global.proUsers?.has(customerId) || false;
+  const user = isPro ? global.proUsers.get(customerId) : null;
 
-  // Simulate PRO user (test@novahunt.ai or pro_123)
-  const isPro = userId === 'pro_123';
-
-  res.status(200).json({
-    isPro,
-    user: {
-      id: userId,
-      email: isPro ? 'test@novahunt.ai' : 'user@example.com',
-      subscription: isPro ? 'pro' : 'free'
-    }
-  });
+  res.status(200).json({ isPro, user });
 }
