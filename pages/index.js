@@ -1,4 +1,3 @@
-// pages/index.js
 import { useState, useEffect } from 'react';
 
 export default function Home() {
@@ -10,9 +9,8 @@ export default function Home() {
   const [isPro, setIsPro] = useState(false);
   const [user, setUser] = useState(null);
 
-  // === USER STATUS + STRIPE SUCCESS HANDLER ===
   useEffect(() => {
-    // 1. Check user status
+    if (user !== null) return;
     fetch('/api/user/status')
       .then(r => r.json())
       .then(data => {
@@ -23,32 +21,16 @@ export default function Home() {
         setIsPro(false);
         setUser(null);
       });
+  }, [user]);
 
-    // 2. Handle Stripe success redirect
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('success')) {
-      const sessionId = urlParams.get('session_id');
-      if (sessionId) {
-        const customerId = sessionId.split('_')[1];
-        if (customerId) {
-          document.cookie = `userId=${customerId}; Path=/; Max-Age=${60*60*24*30}; Secure; SameSite=Lax`;
-          window.history.replaceState({}, '', '/');
-          window.location.reload();
-        }
-      }
-    }
-  }, []);
-
-  // === PROGRESS BAR ===
   useEffect(() => {
     if (!loading) return;
     const timer = setInterval(() => {
-      setProgress(p => (p >= 100 ? 100 : p + 25));
-    }, 400);
+      setProgress(p => (p >= 100 ? 100 : p + 20));
+    }, 300);
     return () => clearInterval(timer);
   }, [loading]);
 
-  // === SEARCH HANDLER ===
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!domain.trim()) return;
@@ -66,6 +48,7 @@ export default function Home() {
       });
       const data = await res.json();
 
+      // PRO sees ALL, Free sees 5
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
@@ -79,6 +62,11 @@ export default function Home() {
   const visible = results.length;
   const hidden = total - visible;
 
+  const handleLogout = () => {
+    document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    window.location.reload();
+  };
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fff', padding: '40px 20px', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
       <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>NovaHunt Emails</h1>
@@ -87,7 +75,7 @@ export default function Home() {
       <form onSubmit={handleSearch} style={{ marginBottom: '40px' }}>
         <input
           type="text"
-          placeholder="Enter domain (e.g. molsoncoors.com)"
+          placeholder="Enter domain (e.g. coca-cola.com)"
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
           style={{ padding: '12px 16px', width: '300px', maxWidth: '100%', border: '1px solid #ccc', borderRadius: '8px', fontSize: '16px' }}
