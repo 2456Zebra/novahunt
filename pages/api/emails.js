@@ -1,7 +1,7 @@
 // pages/api/emails.js
 import * as cheerio from "cheerio";
 
-const CACHE_TTL = 1000 * 60 * 60;
+const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 const cache = new Map();
 const SEARCH_PATHS = [
   "/", "/contact", "/contact-us", "/about", "/about-us", "/team",
@@ -90,74 +90,4 @@ async function checkMX(domain) {
     const r = await fetch(`https://dns.google/resolve?name=${domain}&type=MX`);
     if (!r.ok) return { ok: false, raw: null };
     const j = await r.json();
-    return { ok: !!j.Answer, raw: j };
-  } catch {
-    return { ok: false, raw: null };
-  }
-}
-
-function clamp(n, a=35, b=100){ return Math.max(a, Math.min(b, Math.round(n))); }
-
-function titleWeight(title = "") {
-  const s = (title || "").toUpperCase();
-  if (s.includes("CEO") || s.includes("CHIEF") || s.includes("PRESIDENT")) return 100;
-  if (s.includes("CFO") || s.includes("COO") || s.includes("CTO") || s.includes("CMO")) return 95;
-  if (s.includes("VP") || s.includes("VICE")) return 85;
-  if (s.includes("DIRECTOR")) return 80;
-  if (s.includes("MANAGER")) return 70;
-  return 60;
-}
-
-function scoreEmail({ email, personMatch, explicitFound, mxOk }) {
-  let score = 50;
-  if (explicitFound && personMatch) score = 98;
-  else if (explicitFound) score = 92;
-  else if (personMatch && mxOk) score = 90 + Math.min(6, Math.round((titleWeight(personMatch.title || "") - 50)/10));
-  else if (personMatch) score = 75 + Math.round((titleWeight(personMatch.title || "") - 50)/10));
-  else if (GENERIC_LOCALPARTS.includes(email.split("@")[0])) score = 65;
-  else if (mxOk) score = 72;
-  else score = 45;
-  if (!mxOk) score = Math.max(35, score - 15);
-  if (/[0-9]/.test(email.split("@")[0])) score = Math.max(35, score - 5);
-  return clamp(score, 35, 100);
-}
-
-export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  const { domain } = req.body || {};
-  if (!domain || typeof domain !== "string") return res.status(400).json({ error: "Domain required" });
-
-  const clean = normalizeDomain(domain);
-  const cacheKey = `emails:${clean}`;
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) {
-    return res.json(cached.data);
-  }
-
-  try {
-    const mx = await checkMX(clean);
-    const mxOk = mx.ok;
-
-    const discoveredPeople = [];
-    const discoveredEmails = new Set();
-
-    const base = `https://${clean}`;
-    for (const p of SEARCH_PATHS) {
-      if (discoveredPeople.length >= 12) break;
-      const url = base + p;
-      const html = await fetchText(url, 6000);
-      if (!html) continue;
-
-      extractEmailsFromHtml(html, clean).forEach(e => discoveredEmails.add(e));
-      const people = extractPeopleFromHtml(html);
-      for (const person of people) {
-        if (!discoveredPeople.find(dp => (dp.first + dp.last).toLowerCase() === (person.first + person.last).toLowerCase())) {
-          person.source = url;
-          discoveredPeople.push(person);
-        }
-      }
-    }
-
-    if (discoveredPeople.length === 0) {
-      try {
-        const q = encodeURIComponent(`site:${clean} (CEO OR CFO OR "Chief" OR President OR "Vice President" OR Director
+    return { ok: !!j.Answer,
