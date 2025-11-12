@@ -1,4 +1,3 @@
-'use client';
 import { useState, useEffect } from 'react';
 
 export default function Home() {
@@ -6,7 +5,6 @@ export default function Home() {
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [isPro, setIsPro] = useState(false);
   const [user, setUser] = useState(null);
 
@@ -16,21 +14,18 @@ export default function Home() {
       .then(data => {
         setIsPro(data.isPro);
         setUser(data.user);
+      })
+      .catch(() => {
+        setIsPro(false);
+        setUser(null);
       });
   }, []);
-
-  useEffect(() => {
-    if (!loading) return;
-    const timer = setInterval(() => setProgress(p => Math.min(100, p + 20)), 400);
-    return () => clearInterval(timer);
-  }, [loading]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!domain.trim()) return;
 
     setLoading(true);
-    setProgress(0);
     setResults([]);
     setTotal(0);
 
@@ -39,7 +34,7 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain: domain.trim() }),
-        cache: 'no-store' // Disable cache to avoid stale errors
+        cache: 'no-store'
       });
       const data = await res.json();
 
@@ -51,8 +46,8 @@ export default function Home() {
       setResults(displayResults);
       setTotal(data.total || 0);
     } catch (err) {
-      console.error('Fetch error:', err); // Log full error
-      alert('Search failed: ' + err.message); // Show specific error
+      console.error('Search error:', err);
+      alert('Search failed: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -82,17 +77,6 @@ export default function Home() {
           {loading ? 'Searching...' : 'Search'}
         </button>
       </form>
-
-      {loading && (
-        <div style={{ margin: '20px 0' }}>
-          <div style={{ width: '300px', margin: '0 auto' }}>
-            <div style={{ height: '6px', backgroundColor: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' }}>
-              <div style={{ height: '6px', backgroundColor: '#2563eb', width: `${progress}%`, transition: 'width 0.3s ease' }}></div>
-            </div>
-          </div>
-          <p style={{ marginTop: '8px', fontSize: '14px', color: '#666' }}>{Math.round(progress)}% Complete</p>
-        </div>
-      )}
 
       {user ? (
         <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
