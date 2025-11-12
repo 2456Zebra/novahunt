@@ -1,0 +1,8 @@
+{
+  "domain": "coca-cola.com",
+  "people": [
+    {"first": "James", "last": "Quincey", "title": "CEO"},
+    {"first": "John", "last": "Murphy", "title": "President & CFO"}
+  ],
+  "emails": ["press@coca-cola.com", "info@coca-cola.com"]
+}
