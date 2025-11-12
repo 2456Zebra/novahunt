@@ -1,3 +1,4 @@
+'use client';
 import { useState, useEffect } from 'react';
 
 export default function Home() {
@@ -38,22 +39,23 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain: domain.trim() }),
+        cache: 'no-store' // Disable cache to avoid stale errors
       });
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'API failed');
+      }
 
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
     } catch (err) {
-      alert('Search failed');
+      console.error('Fetch error:', err); // Log full error
+      alert('Search failed: ' + err.message); // Show specific error
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    window.location.reload(true);
   };
 
   const visible = results.length;
@@ -98,7 +100,10 @@ export default function Home() {
             {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
           </p>
           <button
-            onClick={handleLogout}
+            onClick={() => {
+              document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+              window.location.reload();
+            }}
             style={{ padding: '4px 8px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
           >
             logout
