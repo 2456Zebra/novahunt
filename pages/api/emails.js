@@ -104,4 +104,132 @@ function titleWeight(title = "") {
   if (s.includes("CFO") || s.includes("COO") || s.includes("CTO") || s.includes("CMO")) return 95;
   if (s.includes("VP") || s.includes("VICE")) return 85;
   if (s.includes("DIRECTOR")) return 80;
-  if (
+  if (s.includes("MANAGER")) return 70;
+  return 60;
+}
+
+function scoreEmail({ email, personMatch, explicitFound, mxOk }) {
+  let score = 50;
+  if (explicitFound && personMatch) score = 98;
+  else if (explicitFound) score = 92;
+  else if (personMatch && mxOk) score = 90 + Math.min(6, Math.round((titleWeight(personMatch.title || "") - 50)/10));
+  else if (personMatch) score = 75 + Math.round((titleWeight(personMatch.title || "") - 50)/10));
+  else if (GENERIC_LOCALPARTS.includes(email.split("@")[0])) score = 65;
+  else if (mxOk) score = 72;
+  else score = 45;
+  if (!mxOk) score = Math.max(35, score - 15);
+  if (/[0-9]/.test(email.split("@")[0])) score = Math.max(35, score - 5);
+  return clamp(score, 35, 100);
+}
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  const { domain } = req.body || {};
+  if (!domain || typeof domain !== "string") return res.status(400).json({ error: "Domain required" });
+
+  const clean = normalizeDomain(domain);
+  const cacheKey = `emails:${clean}`;
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    return res.json(cached.data);
+  }
+
+  try {
+    const mx = await checkMX(clean);
+    const mxOk = mx.ok;
+
+    const discoveredPeople = [];
+    const discoveredEmails = new Set();
+
+    const base = `https://${clean}`;
+    for (const p of SEARCH_PATHS) {
+      if (discoveredPeople.length >= 12) break;
+      const url = base + p;
+      const html = await fetchText(url, 6000);
+      if (!html) continue;
+
+      extractEmailsFromHtml(html, clean).forEach(e => discoveredEmails.add(e));
+      const people = extractPeopleFromHtml(html);
+      for (const person of people) {
+        if (!discoveredPeople.find(dp => (dp.first + dp.last).toLowerCase() === (person.first + person.last).toLowerCase())) {
+          person.source = url;
+          discoveredPeople.push(person);
+        }
+      }
+    }
+
+    if (discoveredPeople.length === 0) {
+      try {
+        const q = encodeURIComponent(`site:${clean} (CEO OR CFO OR "Chief" OR President OR "Vice President" OR Director OR Manager)`);
+        const proxyUrl = `https://r.jina.ai/http://www.bing.com/search?q=${q}`;
+        const html = await fetchText(proxyUrl, 6000);
+        if (html) {
+          const $ = cheerio.load(html);
+          $("li.b_algo").each((_, el) => {
+            const title = $(el).find("h2").text() || "";
+            const snippet = $(el).find(".b_caption p").text() || "";
+            const match = (title + " " + snippet).match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+){0,3})\s*(?:,|-|–|—)?\s*(CEO|CFO|President|Director|Manager|Head|Lead|Founder)?/i);
+            if (match) {
+              const parts = match[1].split(/\s+/);
+              const first = parts.shift();
+              const last = parts.join(" ");
+              const title = match[2] || "";
+              if (first && last) {
+                const key = (first+last).toLowerCase();
+                if (!discoveredPeople.find(dp => (dp.first+dp.last).toLowerCase() === key)) {
+                  discoveredPeople.push({ first, last, title, source: "search-snippet" });
+                }
+              }
+            }
+          });
+        }
+      } catch (e) {}
+    }
+
+    GENERIC_LOCALPARTS.forEach(lp => discoveredEmails.add(`${lp}@${clean}`));
+    for (const p of discoveredPeople.slice(0, 40)) {
+      const patterns = generatePatterns(p.first, p.last, clean);
+      patterns.forEach(e => discoveredEmails.add(e));
+    }
+
+    const results = [];
+    const seen = new Set();
+
+    function findPersonForEmail(email) {
+      const e = email.toLowerCase();
+      for (const p of discoveredPeople) {
+        const f = (p.first || "").toLowerCase();
+        const l = (p.last || "").toLowerCase();
+        if (!f) continue;
+        if (e.includes(`${f}.${l}`) || e.includes(`${f}${l}`) || e.includes(`${f[0]}${l}`) || e.includes(`${f}@`)) return p;
+      }
+      return null;
+    }
+
+    for (const email of discoveredEmails) {
+      const low = email.toLowerCase();
+      if (seen.has(low)) continue;
+      seen.add(low);
+
+      const person = findPersonForEmail(low);
+      const s = scoreEmail({ email: low, personMatch: person, explicitFound: false, mxOk });
+      results.push({
+        email: low,
+        first_name: person?.first || "",
+        last_name: person?.last || "",
+        position: person?.title || (GENERIC_LOCALPARTS.includes(low.split("@")[0]) ? "General" : "Unknown"),
+        score: s,
+        source: person?.source || "pattern"
+      });
+    }
+
+    results.sort((a, b) => b.score - a.score);
+    const output = { total: results.length, results };
+    cache.set(cacheKey, { data: output, ts: Date.now() });
+
+    return res.json(output);
+  } catch (err) {
+    console.error("emails handler fatal:", err);
+    return res.status(500).json({ error: "Search failed" });
+  }
+}
