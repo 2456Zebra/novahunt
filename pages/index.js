@@ -19,7 +19,8 @@ function ConfidencePill({ score }) {
         background: bg,
         fontWeight: 700,
         minWidth: 56,
-        textAlign: "center"
+        textAlign: "center",
+        fontSize: 14
       }}
     >
       {pct}%
@@ -97,35 +98,42 @@ export default function Home() {
   }
 
   return (
-    <div style={{ fontFamily: "Inter, Arial, sans-serif", padding: 28 }}>
-      <h1 style={{ fontSize: 28, marginBottom: 6 }}>NovaHunt Emails</h1>
-      <p style={{ color: "#6b7280", marginTop: 0 }}>
-        Find business emails fast. Honest confidence scores (35–100%).
+    <div style={{ fontFamily: "Inter, Arial, sans-serif", maxWidth: 1000, margin: "0 auto", padding: 32 }}>
+      <h1 style={{ fontSize: 32, marginBottom: 8, fontWeight: 800, color: "#1f2937" }}>
+        NovaHunt Emails
+      </h1>
+      <p style={{ color: "#6b7280", marginTop: 0, fontSize: 16 }}>
+        Find business emails fast. Confidence scores <strong>60–100%</strong>.
       </p>
 
-      <form onSubmit={handleSearch} style={{ marginTop: 18 }}>
+      <form onSubmit={handleSearch} style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
         <input
           value={domain}
           onChange={e => setDomain(e.target.value)}
           placeholder="Enter domain (e.g. coca-cola.com)"
           style={{
-            padding: 12,
+            padding: "12px 16px",
             fontSize: 16,
-            width: 360,
+            width: 380,
             maxWidth: "100%",
             borderRadius: 8,
-            border: "1px solid #e5e7eb"
+            border: "1px solid #d1d5db",
+            outline: "none",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
           }}
         />
         <button
+          type="submit"
           disabled={loading}
           style={{
-            marginLeft: 10,
-            padding: "10px 16px",
+            padding: "12px 24px",
             borderRadius: 8,
-            background: "#2563eb",
+            background: loading ? "#93c5fd" : "#2563eb",
             color: "white",
-            fontWeight: 700
+            fontWeight: 700,
+            border: "none",
+            cursor: loading ? "not-allowed" : "pointer",
+            minWidth: 120
           }}
         >
           {loading ? "Searching…" : "Search"}
@@ -133,13 +141,14 @@ export default function Home() {
       </form>
 
       {loading && (
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: 24 }}>
           <div
             style={{
               height: 12,
-              background: "#e6e6e6",
+              background: "#e5e7eb",
               borderRadius: 8,
-              overflow: "hidden"
+              overflow: "hidden",
+              boxShadow: "inset 0 1px 3px rgba(0,0,0,0.1)"
             }}
           >
             <div
@@ -151,16 +160,16 @@ export default function Home() {
               }}
             />
           </div>
-          <p style={{ color: "#6b7280", marginTop: 8 }}>
-            Searching public pages and generating pattern guesses… {Math.round(progress)}%
+          <p style={{ color: "#6b7280", marginTop: 8, fontSize: 14 }}>
+            Searching public pages and generating patterns… {Math.round(progress)}%
           </p>
         </div>
       )}
 
       {!loading && results.length > 0 && (
-        <div style={{ marginTop: 22 }}>
-          <p style={{ margin: 0, color: "#374151" }}>
-            Displaying <strong>{results.length}</strong> of <strong>{total}</strong> emails.
+        <div style={{ marginTop: 32 }}>
+          <p style={{ margin: 0, color: "#374151", fontSize: 16 }}>
+            Showing <strong>{results.length}</strong> of <strong>{total}</strong> emails.
             {!isPro && total > results.length && (
               <span
                 onClick={() => setShowUpgrade(true)}
@@ -168,57 +177,58 @@ export default function Home() {
                   marginLeft: 10,
                   color: "#dc2626",
                   cursor: "pointer",
-                  textDecoration: "underline"
+                  textDecoration: "underline",
+                  fontWeight: 600
                 }}
               >
-                Upgrade to see all {total - results.length} →
+                Upgrade to see all {total - results.length}
               </span>
             )}
           </p>
 
-          <div style={{ marginTop: 12, maxWidth: 980 }}>
+          <div style={{ marginTop: 16, overflowX: "auto" }}>
             <table
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                marginTop: 8
+                background: "white",
+                borderRadius: 12,
+                overflow: "hidden",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.08)"
               }}
             >
               <thead>
-                <tr
-                  style={{
-                    textAlign: "left",
-                    borderBottom: "2px solid #e6e6e6"
-                  }}
-                >
-                  <th style={{ padding: 12 }}>Email</th>
-                  <th style={{ padding: 12 }}>Name</th>
-                  <th style={{ padding: 12 }}>Title</th>
-                  <th style={{ padding: 12 }}>Score</th>
-                  <th style={{ padding: 12 }}>Source</th>
-                  <th style={{ padding: 12 }}>Action</th>
+                <tr style={{ background: "#f8fafc", textAlign: "left" }}>
+                  <th style={{ padding: "14px 16px", fontWeight: 600, color: "#374151" }}>Email</th>
+                  <th style={{ padding: "14px 16px", fontWeight: 600, color: "#374151" }}>Name</th>
+                  <th style={{ padding: "14px 16px", fontWeight: 600, color: "#374151" }}>Title</th>
+                  <th style={{ padding: "14px 16px", fontWeight: 600, color: "#374151" }}>Score</th>
+                  <th style={{ padding: "14px 16px", fontWeight: 600, color: "#374151" }}>Source</th>
+                  <th style={{ padding: "14px 16px", fontWeight: 600, color: "#374151" }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((r, i) => (
                   <tr
                     key={i}
-                    style={{ borderBottom: "1px solid #f3f4f6" }}
+                    style={{
+                      borderBottom: i === results.length - 1 ? "none" : "1px solid #e5e7eb"
+                    }}
                   >
-                    <td style={{ padding: 12, fontFamily: "monospace" }}>
+                    <td style={{ padding: "14px 16px", fontFamily: "monospace", fontSize: 14 }}>
                       {r.email}
                     </td>
-                    <td style={{ padding: 12 }}>
+                    <td style={{ padding: "14px 16px" }}>
                       {r.first_name} {r.last_name}
                     </td>
-                    <td style={{ padding: 12 }}>{r.position}</td>
-                    <td style={{ padding: 12 }}>
+                    <td style={{ padding: "14px 16px" }}>{r.position}</td>
+                    <td style={{ padding: "14px 16px" }}>
                       <ConfidencePill score={r.score} />
                     </td>
-                    <td style={{ padding: 12, color: "#6b7280" }}>
+                    <td style={{ padding: "14px 16px", color: "#6b7280", fontSize: 14 }}>
                       {r.source || "pattern"}
                     </td>
-                    <td style={{ padding: 12 }}>
+                    <td style={{ padding: "14px 16px" }}>
                       <button
                         onClick={async () => {
                           try {
@@ -233,13 +243,14 @@ export default function Home() {
                           }
                         }}
                         style={{
-                          padding: "6px 10px",
+                          padding: "8px 12px",
                           background: "#10b981",
                           color: "white",
                           borderRadius: 6,
-                          fontSize: 12,
+                          fontSize: 13,
                           border: "none",
-                          cursor: "pointer"
+                          cursor: "pointer",
+                          fontWeight: 600
                         }}
                       >
                         Verify
@@ -254,8 +265,8 @@ export default function Home() {
       )}
 
       {!loading && results.length === 0 && (
-        <p style={{ marginTop: 18, color: "#6b7280" }}>
-          Enter a domain and click Search to find emails.
+        <p style={{ marginTop: 32, color: "#6b7280", fontSize: 16, textAlign: "center" }}>
+          Enter a domain and click <strong>Search</strong> to find emails.
         </p>
       )}
 
