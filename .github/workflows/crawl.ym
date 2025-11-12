@@ -1,0 +1,29 @@
+name: NovaHunt Crawl
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'  # Weekly Sundays at 03:00 UTC
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - run: npm ci
+
+      - run: node scripts/crawler.js
+
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "actions@github.com"
+          git add data/ || true
+          git commit -m "chore(crawl): update data snapshots" || echo "no changes"
+          git push origin HEAD:main
