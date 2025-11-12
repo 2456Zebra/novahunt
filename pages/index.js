@@ -211,7 +211,7 @@ export default function Home() {
                     <th style={{ padding: "16px 18px", fontWeight: 600, color: "#1e293b", fontSize: 15 }}>Title</th>
                     <th style={{ padding: "16px 18px", fontWeight: 600, color: "#1e293b", fontSize: 15 }}>Score</th>
                     <th style={{ padding: "16px 18px", fontWeight: 600, color: "#1e293b", fontSize: 15 }}>Source</th>
-                    <th style={{ padding: "16px 18px", fontWeight: 600, color: "#1e293b", fontSize: 15 }}>Action</-"th>
+                    <th style={{ padding: "16px 18px", fontWeight: 600, color: "#1e293b", fontSize: 15 }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
