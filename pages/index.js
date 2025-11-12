@@ -87,20 +87,4 @@ export default function Home() {
   return (
     <div style={{ fontFamily: "Inter, Arial, sans-serif", padding: 28 }}>
       <h1 style={{ fontSize: 28, marginBottom: 6 }}>NovaHunt Emails</h1>
-      <p style={{ color: "#6b7280", marginTop: 0 }}>Find business emails fast. Honest confidence scores (35–100%).</p>
-
-      <form onSubmit={handleSearch} style={{ marginTop: 18 }}>
-        <input
-          value={domain}
-          onChange={(e) => setDomain(e.target.value)}
-          placeholder="Enter domain (e.g. coca-cola.com)"
-          style={{
-            padding: 12, fontSize: 16, width: 360, maxWidth: "100%",
-            borderRadius: 8, border: "1px solid #e5e7eb"
-          }}
-        />
-        <button
-          disabled={loading}
-          style={{
-            marginLeft: 10, padding: "10px 16px", borderRadius: 8,
-            background: "#2563eb", color: "white", fontWeight: 
+      <p style
