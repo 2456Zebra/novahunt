@@ -1,139 +1,106 @@
-import { useState, useEffect } from 'react';
+// pages/index.js
+import { useEffect, useState } from "react";
+
+function ConfidencePill({ score }) {
+  const pct = Number(score);
+  let bg = "#9ca3af";
+  if (pct >= 90) bg = "#10b981";
+  else if (pct >= 75) bg = "#f59e0b";
+  else if (pct >= 60) bg = "#f97316";
+  else bg = "#6b7280";
+  return (
+    <span style={{
+      display: "inline-block", padding: "6px 8px", borderRadius: 8, color: "white",
+      background: bg, fontWeight: 700, minWidth: 56, textAlign: "center"
+    }}>{pct}%</span>
+  );
+}
 
 export default function Home() {
-  const [domain, setDomain] = useState('');
+  const [domain, setDomain] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    fetch('/api/user/status')
+    fetch("/api/user/status")
       .then(r => r.json())
-      .then(data => {
-        setIsPro(data.isPro);
-        setUser(data.user);
-      })
-      .catch(() => setIsPro(false));
+      .then(j => setIsPro(!!j.isPro))
+      .catch(() => {});
   }, []);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!domain.trim()) return;
+  function startProgress() {
+    setProgress(6);
+    const phases = [600, 900, 1200, 1600];
+    let i = 0;
+    const t = setInterval(() => {
+      setProgress(p => {
+        const next = Math.min(95, p + (3 + Math.random() * 10));
+        if (next >= 95) {
+          clearInterval(t);
+          return next;
+        }
+        return next;
+      });
+      i++;
+      if (i > 30) clearInterval(t);
+    }, phases[i % phases.length]);
+    return t;
+  }
 
-    setLoading(true);
+  async function handleSearch(e) {
+    e?.preventDefault();
+    if (!domain.trim()) return;
     setResults([]);
     setTotal(0);
+    setLoading(true);
+    setProgress(0);
+    const timer = startProgress();
 
     try {
-      const res = await fetch('/api/emails', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ domain: domain.trim() }),
-        cache: 'no-store'
+        cache: "no-store"
       });
+      setProgress(96);
       const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || 'API failed');
-
-      // PRO SHOWS ALL — NO SLICE
-      const displayResults = isPro ? data.results : data.results.slice(0, 5);
-      setResults(displayResults);
-      setTotal(data.total || 0);
+      if (!res.ok) throw new Error(data.error || "API failed");
+      setResults(isPro ? data.results : data.results.slice(0, 5));
+      setTotal(data.total || data.results.length);
+      setProgress(100);
+      clearInterval(timer);
+      setTimeout(() => setProgress(0), 500);
     } catch (err) {
-      console.error('Search error:', err);
-      alert('Search failed: ' + err.message);
+      console.error("Search error:", err);
+      alert("Search failed: " + (err.message || "unknown"));
+      setProgress(0);
+      clearInterval(timer);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    window.location.reload();
-  };
-
-  const visible = results.length;
-  const hidden = total - visible;
+  }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fff', padding: '40px 20px', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
-      <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>NovaHunt Emails</h1>
-      <p style={{ fontSize: '18px', color: '#666', marginBottom: '32px' }}>Find business emails fast.</p>
+    <div style={{ fontFamily: "Inter, Arial, sans-serif", padding: 28 }}>
+      <h1 style={{ fontSize: 28, marginBottom: 6 }}>NovaHunt Emails</h1>
+      <p style={{ color: "#6b7280", marginTop: 0 }}>Find business emails fast. Honest confidence scores (35–100%).</p>
 
-      <form onSubmit={handleSearch} style={{ marginBottom: '40px' }}>
+      <form onSubmit={handleSearch} style={{ marginTop: 18 }}>
         <input
-          type="text"
-          placeholder="Enter domain (e.g. coca-cola.com)"
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
-          style={{ padding: '12px 16px', width: '300px', maxWidth: '100%', border: '1px solid #ccc', borderRadius: '8px', fontSize: '16px' }}
+          placeholder="Enter domain (e.g. coca-cola.com)"
+          style={{
+            padding: 12, fontSize: 16, width: 360, maxWidth: "100%",
+            borderRadius: 8, border: "1px solid #e5e7eb"
+          }}
         />
         <button
-          type="submit"
           disabled={loading}
-          style={{ padding: '12px 24px', marginLeft: '8px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-        >
-          {loading ? 'Searching...' : 'Search'}
-        </button>
-      </form>
-
-      {user ? (
-        <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
-          <p style={{ color: '#10b981', fontWeight: 'bold', margin: 0, fontSize: '16px' }}>
-            {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
-          </p>
-          <button
-            onClick={handleLogout}
-            style={{ padding: '4px 8px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
-          >
-            logout
-          </button>
-        </div>
-      ) : (
-        <div style={{ marginTop: '60px' }}>
-          <a href="/signin" style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'none' }}>
-            Sign In
-          </a>
-        </div>
-      )}
-
-      {results.length > 0 && (
-        <>
-          <p style={{ fontSize: '16px', color: '#444', margin: '20px 0' }}>
-            Displaying <strong>{visible}</strong> of <strong>{total}</strong> emails.
-            {!isPro && hidden > 0 && (
-              <a href="/upgrade" style={{ color: '#dc2626', fontWeight: 'bold' }}>
-                Upgrade to reveal all {hidden} →
-              </a>
-            )}
-          </p>
-
-          <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'left' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #eee' }}>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Email</th>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Name</th>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Title</th>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((r, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '12px' }}>{r.email}</td>
-                    <td style={{ padding: '12px' }}>{r.first_name} {r.last_name}</td>
-                    <td style={{ padding: '12px' }}>{r.position}</td>
-                    <td style={{ padding: '12px' }}>{r.score}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+          style={{
+            marginLeft: 10, padding: "10px 16px", borderRadius: 8,
+            background: "#2563eb", color: "white", fontWeight: 
