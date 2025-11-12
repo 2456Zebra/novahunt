@@ -15,10 +15,7 @@ export default function Home() {
         setIsPro(data.isPro);
         setUser(data.user);
       })
-      .catch(() => {
-        setIsPro(false);
-        setUser(null);
-      });
+      .catch(() => setIsPro(false));
   }, []);
 
   const handleSearch = async (e) => {
@@ -38,10 +35,9 @@ export default function Home() {
       });
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || 'API failed');
-      }
+      if (!res.ok) throw new Error(data.error || 'API failed');
 
+      // PRO shows ALL — no slice
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
@@ -51,6 +47,11 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    window.location.reload();
   };
 
   const visible = results.length;
@@ -84,10 +85,7 @@ export default function Home() {
             {isPro ? 'PRO User - Unlimited Access' : 'Free User'}
           </p>
           <button
-            onClick={() => {
-              document.cookie = 'userId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-              window.location.reload();
-            }}
+            onClick={handleLogout}
             style={{ padding: '4px 8px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
           >
             logout
