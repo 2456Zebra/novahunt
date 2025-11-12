@@ -15,10 +15,7 @@ export default function Home() {
         setIsPro(data.isPro);
         setUser(data.user);
       })
-      .catch(() => {
-        setIsPro(false);
-        setUser(null);
-      });
+      .catch(() => setIsPro(false));
   }, []);
 
   const handleSearch = async (e) => {
@@ -40,6 +37,7 @@ export default function Home() {
 
       if (!res.ok) throw new Error(data.error || 'API failed');
 
+      // PRO SHOWS ALL — NO SLICE
       const displayResults = isPro ? data.results : data.results.slice(0, 5);
       setResults(displayResults);
       setTotal(data.total || 0);
