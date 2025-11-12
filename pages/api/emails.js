@@ -90,4 +90,6 @@ async function checkMX(domain) {
     const r = await fetch(`https://dns.google/resolve?name=${domain}&type=MX`);
     if (!r.ok) return { ok: false, raw: null };
     const j = await r.json();
-    return { ok: !!j.Answer,
+    return { ok: !!j.Answer, raw: j };
+  } catch {
+    return {
