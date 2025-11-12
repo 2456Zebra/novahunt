@@ -112,8 +112,14 @@ function scoreEmail({ email, personMatch, explicitFound, mxOk }) {
   let score = 50;
   if (explicitFound && personMatch) score = 98;
   else if (explicitFound) score = 92;
-  else if (personMatch && mxOk) score = 90 + Math.min(6, Math.round((titleWeight(personMatch.title || "") - 50)/10));
-  else if (personMatch) score = 75 + Math.round((titleWeight(personMatch.title || "") - 50)/10));
+  else if (personMatch && mxOk) {
+    const weight = titleWeight(personMatch.title || "");
+    score = 90 + Math.min(6, Math.round((weight - 50) / 10));
+  }
+  else if (personMatch) {
+    const weight = titleWeight(personMatch.title || "");
+    score = 75 + Math.round((weight - 50) / 10);
+  }
   else if (GENERIC_LOCALPARTS.includes(email.split("@")[0])) score = 65;
   else if (mxOk) score = 72;
   else score = 45;
