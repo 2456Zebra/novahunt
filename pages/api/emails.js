@@ -1,74 +1,163 @@
 // pages/api/emails.js
-import fetch from 'node-fetch';
+import * as cheerio from "cheerio";
+
+const CACHE_TTL = 1000 * 60 * 60;
+const cache = new Map();
+const SEARCH_PATHS = [
+  "/", "/contact", "/contact-us", "/about", "/about-us", "/team",
+  "/leadership", "/people", "/executive-team", "/management", "/press",
+  "/news", "/investors", "/who-we-are", "/company/leadership"
+];
+const GENERIC_LOCALPARTS = ["info","contact","press","sales","support","hello","team","media","careers"];
+
+function normalizeDomain(d) {
+  return d.replace(/^https?:\/\//i, "").replace(/^www\./i, "").trim().toLowerCase();
+}
+
+async function fetchText(url, timeoutMs = 9000) {
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: controller.signal });
+    clearTimeout(id);
+    if (!r.ok) return null;
+    return await r.text();
+  } catch {
+    return null;
+  }
+}
+
+function extractEmailsFromHtml(html, domain) {
+  if (!html) return [];
+  const rx = new RegExp(`[A-Za-z0-9._%+\\-]+@${domain.replace(/\./g,"\\.")}`, "gi");
+  const m = html.match(rx) || [];
+  return Array.from(new Set(m.map(x => x.toLowerCase())));
+}
+
+function extractPeopleFromHtml(html) {
+  if (!html) return [];
+  const $ = cheerio.load(html);
+  const blocks = [];
+  $("h1,h2,h3,h4,li,p,span,td,th,div").each((_, el) => {
+    const t = $(el).text().trim();
+    if (t && t.length > 3 && t.length < 400) blocks.push(t);
+  });
+
+  const people = [];
+  const nameTitleRegex = /([A-Z][a-z]+(?:[ \-'][A-Z][a-z]+){0,4})\s*(?:[,\-–—\|:])?\s*(?:(CEO|CFO|COO|CTO|CMO|President|Chairman|Vice President|VP|Director|Manager|Head|Lead|Executive|Founder|Co-Founder|Managing Director|President & CEO|Chief))/i;
+
+  for (const b of blocks) {
+    const m = b.match(nameTitleRegex);
+    if (m) {
+      const full = m[1].trim();
+      const parts = full.split(/\s+/);
+      const first = parts.shift();
+      const last = parts.join(" ");
+      const title = (m[2] || "").trim();
+      if (first && first.length > 1 && first.length < 32) {
+        people.push({ first, last, title, snippet: b });
+      }
+    }
+  }
+
+  const seen = new Set();
+  return people.filter(p => {
+    const k = (p.first + "|" + p.last).toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function generatePatterns(first, last, domain) {
+  const f = (first || "").toLowerCase().replace(/\s+/g,'');
+  const l = (last || "").toLowerCase().replace(/\s+/g,'');
+  const set = new Set();
+  if (f && l) {
+    set.add(`${f}.${l}@${domain}`);
+    set.add(`${f}${l}@${domain}`);
+    set.add(`${f}_${l}@${domain}`);
+    set.add(`${f}-${l}@${domain}`);
+    set.add(`${f[0]}${l}@${domain}`);
+    set.add(`${f}${l[0] || ""}@${domain}`);
+  }
+  if (f) set.add(`${f}@${domain}`);
+  return Array.from(set);
+}
+
+async function checkMX(domain) {
+  try {
+    const r = await fetch(`https://dns.google/resolve?name=${domain}&type=MX`);
+    if (!r.ok) return { ok: false, raw: null };
+    const j = await r.json();
+    return { ok: !!j.Answer, raw: j };
+  } catch {
+    return { ok: false, raw: null };
+  }
+}
+
+function clamp(n, a=35, b=100){ return Math.max(a, Math.min(b, Math.round(n))); }
+
+function titleWeight(title = "") {
+  const s = (title || "").toUpperCase();
+  if (s.includes("CEO") || s.includes("CHIEF") || s.includes("PRESIDENT")) return 100;
+  if (s.includes("CFO") || s.includes("COO") || s.includes("CTO") || s.includes("CMO")) return 95;
+  if (s.includes("VP") || s.includes("VICE")) return 85;
+  if (s.includes("DIRECTOR")) return 80;
+  if (s.includes("MANAGER")) return 70;
+  return 60;
+}
+
+function scoreEmail({ email, personMatch, explicitFound, mxOk }) {
+  let score = 50;
+  if (explicitFound && personMatch) score = 98;
+  else if (explicitFound) score = 92;
+  else if (personMatch && mxOk) score = 90 + Math.min(6, Math.round((titleWeight(personMatch.title || "") - 50)/10));
+  else if (personMatch) score = 75 + Math.round((titleWeight(personMatch.title || "") - 50)/10));
+  else if (GENERIC_LOCALPARTS.includes(email.split("@")[0])) score = 65;
+  else if (mxOk) score = 72;
+  else score = 45;
+  if (!mxOk) score = Math.max(35, score - 15);
+  if (/[0-9]/.test(email.split("@")[0])) score = Math.max(35, score - 5);
+  return clamp(score, 35, 100);
+}
 
 export default async function handler(req, res) {
-  // Only allow POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  const { domain } = req.body || {};
+  if (!domain || typeof domain !== "string") return res.status(400).json({ error: "Domain required" });
+
+  const clean = normalizeDomain(domain);
+  const cacheKey = `emails:${clean}`;
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    return res.json(cached.data);
   }
-
-  const { domain } = req.body;
-  if (!domain || typeof domain !== 'string') {
-    return res.status(400).json({ error: 'Valid domain required' });
-  }
-
-  const cleanDomain = domain.toLowerCase()
-    .replace(/^https?:\/\//, '')
-    .replace(/^www\./, '')
-    .trim();
-
-  const baseUrl = `https://${cleanDomain}`;
-  const paths = ['/', '/contact', '/about', '/team', '/leadership', '/people'];
-  const found = new Set();
 
   try {
-    for (const path of paths) {
-      const url = baseUrl + path;
-      let html = '';
+    const mx = await checkMX(clean);
+    const mxOk = mx.ok;
 
-      try {
-        const r = await fetch(url, { 
-          timeout: 5000,
-          headers: { 'User-Agent': 'Mozilla/5.0' }
-        });
-        if (!r.ok) continue;
-        html = await r.text();
-      } catch (e) {
-        continue;
-      }
+    const discoveredPeople = [];
+    const discoveredEmails = new Set();
 
-      // Extract emails
-      const matches = html.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || [];
-      for (const email of matches) {
-        if (email.toLowerCase().includes(cleanDomain)) {
-          found.add(email.toLowerCase());
+    const base = `https://${clean}`;
+    for (const p of SEARCH_PATHS) {
+      if (discoveredPeople.length >= 12) break;
+      const url = base + p;
+      const html = await fetchText(url, 6000);
+      if (!html) continue;
+
+      extractEmailsFromHtml(html, clean).forEach(e => discoveredEmails.add(e));
+      const people = extractPeopleFromHtml(html);
+      for (const person of people) {
+        if (!discoveredPeople.find(dp => (dp.first + dp.last).toLowerCase() === (person.first + person.last).toLowerCase())) {
+          person.source = url;
+          discoveredPeople.push(person);
         }
       }
     }
 
-    // Fallback generics if nothing found
-    if (found.size === 0) {
-      ['info', 'contact', 'press', 'sales', 'support'].forEach(p => {
-        found.add(`${p}@${cleanDomain}`);
-      });
-    }
-
-    // Build results
-    const results = [...found].map(email => ({
-      email,
-      first_name: '',
-      last_name: '',
-      position: 'General',
-      score: 70 + Math.floor(Math.random() * 20) // 70–90%
-    }));
-
-    const total = results.length;
-
-    // Always return valid JSON
-    res.status(200).json({ results, total });
-
-  } catch (err) {
-    console.error('Email API error:', err);
-    res.status(500).json({ error: 'Search failed' });
-  }
-}
+    if (discoveredPeople.length === 0) {
+      try {
+        const q = encodeURIComponent(`site:${clean} (CEO OR CFO OR "Chief" OR President OR "Vice President" OR Director
