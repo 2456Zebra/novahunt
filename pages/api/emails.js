@@ -1,6 +1,6 @@
 // pages/api/emails.js
-// Legal, free enrichment: site scrape + search-snippet enrichment + pattern guessing + MX check
-// NOTE: Does NOT scrape LinkedIn or bypass any TOS.
+// LEGAL, FREE, HUNTER-GRADE ENRICHMENT
+// NO LINKEDIN SCRAPING | NO TOS VIOLATIONS
 
 import * as cheerio from "cheerio";
 
@@ -53,10 +53,13 @@ function extractPeopleFromHtml(html) {
     const m = b.match(nameTitleRegex);
     if (m) {
       const full = m[1].trim();
+      // STRONGER FILTER — NO JUNK
+      if (!/^[A-Z][a-z]+(?:\s[A-Z][a-z]+){0,3}$/.test(full)) continue;
       const parts = full.split(/\s+/);
       const first = parts.shift();
       const last = parts.join(" ");
       const title = (m[2] || "").trim();
+      if (!title || title.length < 2) continue;
       if (first && first.length > 1 && first.length < 32) {
         people.push({ first, last, title, snippet: b });
       }
@@ -167,6 +170,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // FALLBACK: Bing search snippets via Jina.ai
     if (discoveredPeople.length === 0) {
       try {
         const q = encodeURIComponent(`site:${clean} (CEO OR CFO OR "Chief" OR President OR "Vice President" OR Director OR Manager)`);
@@ -198,12 +202,16 @@ export default async function handler(req, res) {
       }
     }
 
+    // Add generic fallbacks
     GENERIC_LOCALPARTS.forEach(lp => discoveredEmails.add(`${lp}@${clean}`));
+
+    // Generate patterns from real people
     for (const p of discoveredPeople.slice(0, 40)) {
       const patterns = generatePatterns(p.first, p.last, clean);
       patterns.forEach(e => discoveredEmails.add(e));
     }
 
+    // Build results
     const results = [];
     const seen = new Set();
 
@@ -230,8 +238,7 @@ export default async function handler(req, res) {
         first_name: person?.first || "",
         last_name: person?.last || "",
         position: person?.title || (GENERIC_LOCALPARTS.includes(low.split("@")[0]) ? "General" : "Unknown"),
-        score: s,
-        source: person?.source || "pattern"
+        score: s
       });
     }
 
