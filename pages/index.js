@@ -73,18 +73,4 @@ export default function Home() {
       setTotal(data.total || data.results.length);
       setProgress(100);
       clearInterval(timer);
-      setTimeout(() => setProgress(0), 500);
-    } catch (err) {
-      console.error("Search error:", err);
-      alert("Search failed: " + (err.message || "unknown"));
-      setProgress(0);
-      clearInterval(timer);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div style={{ fontFamily: "Inter, Arial, sans-serif", padding: 28 }}>
-      <h1 style={{ fontSize: 28, marginBottom: 6 }}>NovaHunt Emails</h1>
-      <p style
+      setTimeout(()
