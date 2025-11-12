@@ -92,4 +92,16 @@ async function checkMX(domain) {
     const j = await r.json();
     return { ok: !!j.Answer, raw: j };
   } catch {
-    return {
+    return { ok: false, raw: null };
+  }
+}
+
+function clamp(n, a=35, b=100){ return Math.max(a, Math.min(b, Math.round(n))); }
+
+function titleWeight(title = "") {
+  const s = (title || "").toUpperCase();
+  if (s.includes("CEO") || s.includes("CHIEF") || s.includes("PRESIDENT")) return 100;
+  if (s.includes("CFO") || s.includes("COO") || s.includes("CTO") || s.includes("CMO")) return 95;
+  if (s.includes("VP") || s.includes("VICE")) return 85;
+  if (s.includes("DIRECTOR")) return 80;
+  if (
