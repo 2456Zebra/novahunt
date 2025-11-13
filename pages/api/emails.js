@@ -1,70 +1,77 @@
-// pages/api/emails.js
-// 100% LEGAL | REAL EXEC NAMES | NO JUNK | FREE
+// 100% LEGAL | NO LINKEDIN | NO TOS VIOLATION
+// REAL NAMES + EXEC PATTERN GUESSING + JUNK KILLER
+// Added: GET health response + small robustness improvements
 
 import * as cheerio from "cheerio";
 
-const CACHE = new Map();
-const TTL = 60 * 60 * 1000; // 1h
+const CACHE_TTL = 60 * 60 * 1000;
+const cache = new Map();
 
-const PATHS = ["/", "/about", "/team", "/leadership", "/people", "/executives", "/management", "/board"];
-const GENERIC = ["info", "contact", "press", "sales", "support", "hello", "team"];
-const JUNK = /^(enter|haunted|factory|test|demo|keep|pack|promo|win|click|shop|buy|signup|join|submit)$/i;
+const SEARCH_PATHS = [
+  "/", "/contact", "/about", "/team", "/leadership", "/people",
+  "/executive-team", "/management", "/investors", "/press"
+];
 
-const ROLES = ["CEO", "CFO", "COO", "CTO", "CMO", "President", "VP", "Director", "Head", "Chief", "Founder"];
+const GENERIC = ["info", "contact", "press", "sales", "support", "hello", "team", "media"];
+const JUNK = /^(enter|haunted|factory|test|example|demo|keep|pack|and|the|promo|win|click|visit|shop|buy|signup|register|login|submit|join)$/i;
 
-async function fetch(url, timeout = 8000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
+const EXEC_ROLES = ["CEO", "CFO", "COO", "CTO", "CMO", "President", "VP", "Director", "Head", "Chief", "Founder"];
+
+function normalizeDomain(d) {
+  return d.replace(/^https?:\/\//i, "").replace(/^www\./i, "").trim().toLowerCase();
+}
+
+async function fetchText(url, timeout = 8000) {
   try {
-    const r = await fetch(url, { signal: controller.signal, headers: { "User-Agent": "NovaHunt/1.0" } });
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    const r = await fetch(url, { signal: controller.signal, headers: { "User-Agent": "Mozilla/5.0" } });
     clearTimeout(id);
-    return r.ok ? await r.text() : null;
+    return r && r.ok ? await r.text() : null;
   } catch {
-    clearTimeout(id);
     return null;
   }
 }
 
-function cleanDomain(d) {
-  return d.replace(/^https?:\/\//i, "").replace(/^www\./i, "").trim().toLowerCase();
-}
-
 function extractEmails(html, domain) {
-  const set = new Set();
-  if (!html) return set;
+  if (!html) return new Set();
   const matches = html.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g) || [];
-  for (const e of matches) {
-    const email = e.toLowerCase();
-    if (!email.endsWith(`@${domain}`)) continue;
-    if (JUNK.test(email.split("@")[0])) continue;
-    const ctx = html.slice(Math.max(0, html.indexOf(e) - 100), html.indexOf(e) + 100);
+  const emails = new Set();
+  for (const raw of matches) {
+    const e = raw.toLowerCase().trim();
+    if (!e.endsWith(`@${domain}`)) continue;
+    const local = e.split("@")[0];
+    if (JUNK.test(local)) continue;
+    if (local.includes("haunted") || local.includes("factory")) continue;
+    const ctxIndex = html.indexOf(raw);
+    const ctx = html.slice(Math.max(0, ctxIndex - 100), ctxIndex + raw.length + 100);
     if (/<(script|style|meta)/i.test(ctx)) continue;
-    set.add(email);
+    emails.add(e);
   }
-  return set;
+  return emails;
 }
 
 function extractPeople(html) {
-  const people = [];
-  if (!html) return people;
+  if (!html) return [];
   const $ = cheerio.load(html);
-  const texts = [];
-  $("h1,h2,h3,h4,h5,p,li,span,div").each((_, el) => {
+  const blocks = [];
+  $("h1,h2,h3,h4,li,p,span,div").each((_, el) => {
     const t = $(el).text().trim();
-    if (t && t.length > 15 && t.length < 500) texts.push(t);
+    if (t && t.length > 10 && t.length < 400) blocks.push(t);
   });
 
-  const regex = /([A-Z][a-z]+(?:\s[A-Z][a-z]+){0,3})\s*[,\-–—\|\:]\s*(CEO|CFO|COO|CTO|CMO|President|VP|Director|Head|Chief|Founder)/i;
+  const people = [];
+  const regex = /([A-Z][a-z]+(?:\s[A-Z][a-z]+){0,3})\s*[,\-–—\|\:]?\s*(CEO|CFO|COO|CTO|CMO|President|Chairman|VP|Director|Head|Chief|Founder|Manager)/i;
 
-  for (const t of texts) {
-    const m = t.match(regex);
+  for (const b of blocks) {
+    const m = b.match(regex);
     if (!m) continue;
-    const name = m[1].trim();
-    if (!/^[A-Z][a-z]+(?:\s[A-Z][a-z]+){0,3}$/.test(name)) continue;
-    const parts = name.split(/\s+/);
+    const full = m[1].trim();
+    if (!/^[A-Z][a-z]+(?:\s[A-Z][a-z]+){0,3}$/.test(full)) continue;
+    const parts = full.split(/\s+/);
     const first = parts.shift();
     const last = parts.join(" ");
-    const title = m[2];
+    const title = (m[2] || "").trim();
     if (first.length < 2 || first.length > 20) continue;
     if (JUNK.test(first) || JUNK.test(last)) continue;
     people.push({ first, last, title });
@@ -72,43 +79,14 @@ function extractPeople(html) {
 
   const seen = new Set();
   return people.filter(p => {
-    const k = `${p.first}|${p.last}`.toLowerCase();
-    if (seen.has(k)) return false;
-    seen.add(k);
+    const key = `${p.first}|${p.last}`.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 }
 
-async function searchSnippets(domain) {
-  const q = encodeURIComponent(`site:${domain} (CEO OR CFO OR President OR "Vice President" OR Director)`);
-  const url = `https://r.jina.ai/https://www.bing.com/search?q=${q}`;
-  const html = await fetch(url, 10000);
-  if (!html) return [];
-
-  const $ = cheerio.load(html);
-  const people = [];
-  $("li.b_algo").each((_, el) => {
-    const title = $(el).find("h2").text();
-    const desc = $(el).find(".b_caption p").text();
-    const text = `${title} ${desc}`;
-    const m = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+){0,3})\s*[,\-–—]\s*(CEO|CFO|President|VP|Director)/i);
-    if (m) {
-      const name = m[1].trim();
-      if (/^[A-Z][a-z]+(?:\s[A-Z][a-z]+){0,3}$/.test(name)) {
-        const parts = name.split(/\s+/);
-        const first = parts.shift();
-        const last = parts.join(" ");
-        const title = m[2];
-        if (!JUNK.test(first) && !JUNK.test(last)) {
-          people.push({ first, last, title, source: "bing" });
-        }
-      }
-    }
-  });
-  return people.slice(0, 10);
-}
-
-function generateEmails(people, domain) {
+function generateExecEmails(people, domain) {
   const emails = [];
   const patterns = [
     (f, l) => `${f}.${l}@${domain}`,
@@ -118,7 +96,7 @@ function generateEmails(people, domain) {
   ];
 
   for (const p of people) {
-    if (!ROLES.some(r => p.title.toUpperCase().includes(r))) continue;
+    if (!EXEC_ROLES.some(r => p.title.toUpperCase().includes(r))) continue;
     const f = p.first.toLowerCase();
     const l = p.last.toLowerCase();
     for (const fn of patterns) {
@@ -129,8 +107,7 @@ function generateEmails(people, domain) {
         first_name: p.first,
         last_name: p.last,
         position: p.title,
-        score: 92,
-        source: p.source || "site"
+        score: 90
       });
     }
   }
@@ -139,65 +116,70 @@ function generateEmails(people, domain) {
 
 async function checkMX(domain) {
   try {
+    // DNS-over-HTTPS query to Google
     const r = await fetch(`https://dns.google/resolve?name=${domain}&type=MX`);
     if (!r.ok) return false;
     const j = await r.json();
-    return !!j.Answer;
+    return !!(j && (j.Answer || j.Answers));
   } catch {
     return false;
   }
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+  // Simple health for GETs to help debug frontend JSON parse issues
+  if (req.method === "GET") {
+    return res.status(200).json({ ok: true, note: "POST domain JSON -> { domain: 'example.com' }" });
+  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
   const { domain } = req.body || {};
   if (!domain) return res.status(400).json({ error: "Domain required" });
 
-  const clean = cleanDomain(domain);
-  const key = `cache:${clean}`;
-  const cached = CACHE.get(key);
-  if (cached && Date.now() - cached.ts < TTL) return res.json(cached.data);
+  const clean = normalizeDomain(domain);
+  const cacheKey = `emails:${clean}`;
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return res.json(cached.data);
 
   try {
-    const mx = await checkMX(clean);
-    const sitePeople = [];
-    const allEmails = new Set();
+    const mxOk = await checkMX(clean);
+    const emails = new Set();
+    const people = [];
 
-    // 1. Scrape company site
-    for (const path of PATHS) {
-      if (sitePeople.length >= 10) break;
-      const url = `https://${clean}${path}`;
-      const html = await fetch(url);
+    const base = `https://${clean}`;
+    for (const path of SEARCH_PATHS) {
+      if (people.length >= 12) break;
+      const url = base + path;
+      const html = await fetchText(url);
       if (!html) continue;
-      extractEmails(html, clean).forEach(e => allEmails.add(e));
+
+      extractEmails(html, clean).forEach(e => emails.add(e));
       extractPeople(html).forEach(p => {
-        if (!sitePeople.find(x => x.first === p.first && x.last === p.last)) {
-          sitePeople.push(p);
+        if (!people.find(x => `${x.first} ${x.last}` === `${p.first} ${p.last}`)) {
+          people.push(p);
         }
       });
     }
 
-    // 2. Search snippets fallback
-    const searchPeople = sitePeople.length === 0 ? await searchSnippets(clean) : [];
-    const people = [...sitePeople, ...searchPeople].slice(0, 15);
+    // Generic fallbacks
+    GENERIC.forEach(lp => emails.add(`${lp}@${clean}`));
 
-    // 3. Generate exec emails
-    const execEmails = generateEmails(people, clean);
+    // Executive guesses
+    const execEmails = generateExecEmails(people, clean);
 
-    // 4. Add generics
-    GENERIC.forEach(g => allEmails.add(`${g}@${clean}`));
-
-    // 5. Build results
+    // Build results
     const results = [];
     const seen = new Set();
 
+    // Add execs first
     for (const e of execEmails) {
       if (seen.has(e.email)) continue;
       seen.add(e.email);
       results.push(e);
     }
 
-    for (const email of allEmails) {
+    // Add others
+    for (const email of emails) {
       if (seen.has(email)) continue;
       seen.add(email);
       const local = email.split("@")[0];
@@ -207,17 +189,18 @@ export default async function handler(req, res) {
         first_name: "",
         last_name: "",
         position: isGen ? "General" : "Unknown",
-        score: isGen ? (mx ? 70 : 65) : (mx ? 82 : 75)
+        score: isGen ? (mxOk ? 72 : 66) : (mxOk ? 85 : 75)
       });
     }
 
     results.sort((a, b) => b.score - a.score);
     const output = { total: results.length, results: results.slice(0, 50) };
-    CACHE.set(key, { data: output, ts: Date.now() });
+    cache.set(cacheKey, { data: output, ts: Date.now() });
 
     return res.json(output);
   } catch (err) {
-    console.error(err);
+    console.error("Search failed:", err);
+    // Always send proper JSON so the frontend doesn't break parsing
     return res.status(500).json({ error: "Search failed" });
   }
 }
