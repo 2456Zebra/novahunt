@@ -1,5 +1,6 @@
 // pages/api/emails.js
 // 100% HUNTER.IO — REAL EMAILS, NAMES, TITLES, CONFIDENCE
+// NO SCRAPING. NO JINA. NO FAVICON.IO
 
 import fetch from 'node-fetch';
 
@@ -10,19 +11,22 @@ export default async function handler(req, res) {
   if (!domain) return res.status(400).json({ error: 'Domain required' });
 
   const API_KEY = process.env.HUNTER_API_KEY;
-  if (!API_KEY) return res.status(500).json({ error: 'API key missing' });
+  if (!API_KEY) {
+    return res.status(500).json({ error: 'HUNTER_API_KEY missing in Vercel' });
+  }
 
-  const url = `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${API_KEY}&limit=50`;
+  const url = `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${API_KEY}&limit=100`;
 
   try {
     const r = await fetch(url);
     const data = await r.json();
 
     if (data.errors) {
-      if (data.errors[0].id === 'rate_limit_exceeded') {
-        return res.json({ total: 0, results: [], message: "Free tier limit reached" });
+      const err = data.errors[0];
+      if (err.id === 'rate_limit_exceeded') {
+        return res.json({ total: 0, results: [], message: "Free tier limit reached. Upgrade Hunter." });
       }
-      return res.json({ total: 0, results: [], error: data.errors[0].details });
+      return res.json({ total: 0, results: [], error: err.details });
     }
 
     const emails = data.data.emails || [];
@@ -39,7 +43,7 @@ export default async function handler(req, res) {
 
     res.json({ results, total });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Search failed" });
+    console.error("Hunter API error:", err);
+    res.status(500).json({ error: "Search failed. Check Hunter API key." });
   }
 }
