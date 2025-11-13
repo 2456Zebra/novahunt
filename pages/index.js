@@ -1,4 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+function readProCookie() {
+  if (typeof document === "undefined") return false;
+  return document.cookie.split(";").some(c => c.trim().startsWith("nova_pro="));
+}
 
 export default function Home() {
   const [q, setQ] = useState("");
@@ -6,6 +11,11 @@ export default function Home() {
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
+  const [isPro, setIsPro] = useState(false);
+
+  useEffect(() => {
+    setIsPro(readProCookie());
+  }, []);
 
   async function safeFetchJson(url, opts) {
     try {
@@ -49,18 +59,19 @@ export default function Home() {
     if (e.key === "Enter") doSearch(q.trim());
   }
 
+  // determine rows to display based on PRO
+  const displayRows = isPro ? results : results.slice(0, 5);
+
   return (
-    <div
-      style={{
-        fontFamily: "Inter, Arial, sans-serif",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        paddingTop: 40,
-        minHeight: "100vh",
-        background: "#f8fafc",
-      }}
-    >
+    <div style={{
+      fontFamily: "Inter, Arial, sans-serif",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      paddingTop: 40,
+      minHeight: "100vh",
+      background: "#f8fafc"
+    }}>
       <header style={{ width: "100%", maxWidth: 900, textAlign: "center" }}>
         <h1 style={{ margin: 0, fontSize: 36, color: "#0f172a" }}>NovaHunt Emails</h1>
         <p style={{ color: "#6b7280", marginTop: 8 }}>
@@ -86,7 +97,7 @@ export default function Home() {
                 padding: "10px 12px",
                 borderRadius: 8,
                 border: "1px solid #e6edf3",
-                background: "#fff",
+                background: "#fff"
               }}
             />
             <button
@@ -99,7 +110,7 @@ export default function Home() {
                 background: "#fff",
                 cursor: "pointer",
                 fontWeight: 600,
-                fontSize: 14,
+                fontSize: 14
               }}
             >
               {loading ? "Searching…" : "Search"}
@@ -111,20 +122,17 @@ export default function Home() {
           <div style={{ textAlign: "center", width: "100%", maxWidth: 720 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
               <small style={{ color: "#6b7280" }}>
-                {total > 0 ? `Showing ${Math.min(results.length, total)} of ${total} emails.` : "Showing sample results."}
+                {total > 0 ? `Showing ${Math.min(displayRows.length, total)} of ${total} emails.` : "Showing sample results."}
                 {" "}&nbsp;
               </small>
-              <a
-                href="/signin?upgrade=1"
-                style={{
-                  background: "#ef4444",
-                  color: "#fff",
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  textDecoration: "none",
-                  fontWeight: 700,
-                }}
-              >
+              <a href="/signin?upgrade=1" style={{
+                background: "#ef4444",
+                color: "#fff",
+                padding: "6px 10px",
+                borderRadius: 6,
+                textDecoration: "none",
+                fontWeight: 700
+              }}>
                 Upgrade
               </a>
             </div>
@@ -143,21 +151,19 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(results.length === 0
+                    {(displayRows.length === 0
                       ? [
                           { email: "info@coca-cola.com", first_name: "", last_name: "", position: "General", score: 65 },
                           { email: "contact@coca-cola.com", first_name: "", last_name: "", position: "General", score: 65 },
-                          { email: "press@coca-cola.com", first_name: "", last_name: "", position: "General", score: 65 },
+                          { email: "press@coca-cola.com", first_name: "", last_name: "", position: "General", score: 65 }
                         ]
-                      : results
+                      : displayRows
                     ).map((r, i) => {
-                      // front-end clamp: ensure UI shows between 80 and 100
                       const backendScore = Number(r.score || 0);
                       const displayScore = Math.min(100, Math.max(80, backendScore));
                       const pct = `${displayScore}%`;
-                      // color thresholds tuned for 80-100
-                      let color = "#f59e0b"; // orange default
-                      if (displayScore >= 95) color = "#16a34a"; // green
+                      let color = "#f59e0b";
+                      if (displayScore >= 95) color = "#16a34a";
                       else if (displayScore >= 90) color = "#22c55e";
                       else if (displayScore >= 85) color = "#84cc16";
                       return (
@@ -173,6 +179,12 @@ export default function Home() {
                     })}
                   </tbody>
                 </table>
+
+                {!isPro && results.length > displayRows.length && (
+                  <div style={{ marginTop: 10, color: "#6b7280", fontSize: 13 }}>
+                    Upgrade to reveal all results.
+                  </div>
+                )}
               </div>
             </div>
           </div>
