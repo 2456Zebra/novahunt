@@ -4,7 +4,10 @@ import Router from "next/router";
 function setProCookie() {
   // 30 days
   const maxAge = 30 * 24 * 60 * 60;
-  document.cookie = `nova_pro=1; path=/; max-age=${maxAge}; Secure; SameSite=Lax`;
+  // In local dev (http) cookies with Secure will not be set. Add Secure only on https.
+  const secure = (typeof location !== "undefined" && location.protocol === "https:") ? "; Secure" : "";
+  // Use SameSite=Lax and path=/ so front-end can read it
+  document.cookie = `nova_pro=1; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
 }
 
 export default function SignIn() {
@@ -13,7 +16,6 @@ export default function SignIn() {
   const [showUpgradeConfirm, setShowUpgradeConfirm] = useState(false);
 
   useEffect(() => {
-    // detect ?upgrade=1 query param to show upgrade CTA
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("upgrade") === "1") setShowUpgradeConfirm(true);
@@ -26,7 +28,7 @@ export default function SignIn() {
       await new Promise((r) => setTimeout(r, 900));
       setProCookie();
       setDone(true);
-      // redirect back to home and include flag
+      // redirect back to home and include upgraded flag
       setTimeout(() => {
         Router.push("/?upgraded=1");
       }, 700);
@@ -65,7 +67,7 @@ export default function SignIn() {
           ) : (
             <>
               <div style={{ marginBottom: 12, color: "#111827" }}>
-                Confirm upgrade to reveal full results (simulated).
+                Confirm upgrade to reveal full results.
               </div>
               <button
                 onClick={confirmUpgrade}
@@ -80,7 +82,7 @@ export default function SignIn() {
                   cursor: "pointer"
                 }}
               >
-                {upgrading ? "Processing…" : "Confirm Upgrade — $100/day"}
+                {upgrading ? "Processing…" : "Confirm Upgrade — $9.99/month"}
               </button>
             </>
           )}
