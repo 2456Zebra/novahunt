@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 
 /**
- * Client-only search widget (improved with masking + reveal).
- * - Masks email addresses by default.
- * - Shows verification status, date, source link.
- * - "Reveal" button calls /api/hunter-verify to attempt a verification (server-side).
+ * Client-only contact search widget.
+ * - Calls neutral server endpoints /api/search-contacts and /api/verify-contact
+ * - Masks emails by default, shows name and title, and has per-email Reveal button.
+ * - Shows a human-friendly Trust score instead of raw numeric confidence only.
  *
- * Note: revealing unverified emails will call Hunter's verification API and may use credits.
+ * Designed for non-technical users (models/actors/sellers).
  */
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
@@ -16,8 +16,8 @@ export default function SearchClient() {
   const [error, setError] = useState('');
   const [results, setResults] = useState(null);
   const [showAll, setShowAll] = useState(false);
-  const [revealed, setRevealed] = useState({}); // emailValue -> revealedFullEmail or error state
-  const [verifying, setVerifying] = useState({}); // emailValue -> boolean
+  const [revealed, setRevealed] = useState({});
+  const [verifying, setVerifying] = useState({});
 
   function maskEmail(email) {
     if (!email || typeof email !== 'string') return email;
@@ -30,32 +30,56 @@ export default function SearchClient() {
     return `${first}${stars}${last}@${domain}`;
   }
 
+  // Compute a simple Trust score using available info
+  function computeTrustScore(em) {
+    // 0-100 integer
+    let score = 0;
+    // Verified gets big boost
+    if (em?.verification?.status === 'valid') score += 60;
+    // Confidence field (0-100) if present
+    if (typeof em?.confidence === 'number') score += Math.round(Math.min(40, em.confidence * 0.4));
+    else if (typeof em?.score === 'number') score += Math.round(Math.min(40, em.score * 0.4));
+    // Sources count adds small boost
+    const sources = Array.isArray(em?.sources) ? em.sources.length : 0;
+    score += Math.min(20, sources * 4);
+    // recency: if last_seen_on within last 180 days, small boost
+    try {
+      const lastSeen = em?.sources?.[0]?.last_seen_on;
+      if (lastSeen) {
+        const days = Math.floor((Date.now() - new Date(lastSeen).getTime()) / (1000 * 3600 * 24));
+        if (days <= 30) score += 10;
+        else if (days <= 180) score += 6;
+        else if (days <= 365) score += 2;
+      }
+    } catch (e) {}
+    return Math.min(100, Math.round(score));
+  }
+
   async function handleReveal(em) {
-    const key = em?.value || em?.email;
+    const key = (em?.value || em?.email || '').toLowerCase();
     if (!key) return;
-    // If server-side metadata already shows verified, reveal locally
+
+    // If already verified in payload, reveal directly
     if (em?.verification?.status === 'valid' && em?.value) {
       setRevealed((r) => ({ ...r, [key]: { ok: true, email: em.value } }));
       return;
     }
 
-    // Otherwise call verify API
     setVerifying((v) => ({ ...v, [key]: true }));
     try {
-      const res = await fetch('/api/hunter-verify', {
+      const res = await fetch('/api/verify-contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: em?.value || em?.email }),
       });
+
       if (!res.ok) {
         const txt = await res.text();
-        setRevealed((r) => ({ ...r, [key]: { ok: false, error: `verify failed: ${res.status} ${txt}` } }));
+        setRevealed((r) => ({ ...r, [key]: { ok: false, error: `Verification failed: ${res.status} ${txt}` } }));
       } else {
         const payload = await res.json();
-        // payload should hold verification result; reveal if valid
-        const status = payload?.data?.data?.result || payload?.result || payload?.status || payload?.data?.status;
+        const verified = payload?.data?.data?.status === 'valid' || payload?.data?.status === 'valid' || payload?.status === 'valid';
         const full = em?.value || em?.email || payload?.data?.data?.email || payload?.email;
-        const verified = payload?.data?.data?.status === 'valid' || payload?.data?.status === 'valid' || status === 'valid';
         if (verified && full) {
           setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, payload } }));
         } else {
@@ -76,13 +100,13 @@ export default function SearchClient() {
 
     const trimmed = (domain || '').trim();
     if (!trimmed) {
-      setError('Please enter a domain (e.g. example.com)');
+      setError('Please enter a website (e.g. coca-cola.com)');
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch('/api/hunter-search', {
+      const res = await fetch('/api/search-contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain: trimmed }),
@@ -90,14 +114,13 @@ export default function SearchClient() {
 
       if (!res.ok) {
         const txt = await res.text();
-        setError(`API error: ${res.status} ${txt}`);
+        setError(`Search error: ${res.status} ${txt}`);
         setLoading(false);
         return;
       }
 
       const payload = await res.json();
 
-      // Hunter payload path
       const emails =
         (payload && payload.data && payload.data.data && payload.data.data.emails) ||
         (payload && payload.data && payload.data.emails) ||
@@ -106,7 +129,7 @@ export default function SearchClient() {
 
       const meta = payload?.data?.meta || null;
 
-      // Dedupe
+      // Dedupe and normalize
       const deduped = [];
       const seen = new Set();
       for (const e of emails) {
@@ -116,18 +139,16 @@ export default function SearchClient() {
         deduped.push(e);
       }
 
-      // Partition high-quality vs others
+      // Partition highQuality by our trust threshold
       const highQuality = deduped.filter((e) => {
-        const verified = e?.verification?.status === 'valid';
-        const hasSources = Array.isArray(e?.sources) && e.sources.length > 0;
-        const conf = typeof e?.confidence === 'number' ? e.confidence : (typeof e?.score === 'number' ? e.score : 0);
-        return verified && hasSources && conf >= 60;
+        const trust = computeTrustScore(e);
+        return trust >= 60;
       });
 
       const lowQuality = deduped.filter((e) => !highQuality.includes(e));
 
       setResults({ raw: payload, meta, highQuality, lowQuality, all: [...highQuality, ...lowQuality] });
-      setRevealed({}); // clear previous reveals
+      setRevealed({});
     } catch (err) {
       setError(err?.message || 'Unknown error');
     } finally {
@@ -138,65 +159,64 @@ export default function SearchClient() {
   const renderEmailRow = (em, i) => {
     const emailVal = em?.value || em?.email || '(no email)';
     const masked = maskEmail(emailVal);
-    const type = em?.type || em?.source || '-';
-    const conf = em?.confidence ?? em?.score ?? '-';
-    const verificationStatus = em?.verification?.status || 'unknown';
-    const verificationDate = em?.verification?.date || null;
+    const name = [em?.first_name, em?.last_name].filter(Boolean).join(' ').trim() || em?.linkedin || '';
+    const title = em?.position || em?.position_raw || 'Contact';
+    const trust = computeTrustScore(em);
     const primarySource = Array.isArray(em?.sources) && em.sources.length > 0 ? em.sources[0] : null;
-    const key = emailVal || `${type}-${i}`;
-
+    const key = (emailVal || `${title}-${i}`).toLowerCase();
     const revealState = revealed[key];
 
     return (
-      <tr key={i}>
+      <tr key={key || i}>
         <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontFamily: 'monospace' }}>
-              {revealState?.ok ? revealState.email : masked}
-            </span>
+            <strong style={{ marginBottom: 6 }}>{name || 'Name not provided'}</strong>
+            <span style={{ fontFamily: 'monospace' }}>{revealState?.ok ? revealState.email : masked}</span>
 
             <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
-              {verificationStatus === 'valid' ? (
-                <span style={{ color: '#059669', fontSize: 12, fontWeight: 600 }}>Verified</span>
-              ) : (
-                <span style={{ color: '#b45309', fontSize: 12 }}>Unverified</span>
-              )}
-              {verificationDate && <span style={{ fontSize: 12, color: '#6b7280' }}>({verificationDate})</span>}
+              <span style={{ fontSize: 12, color: trust >= 80 ? '#059669' : trust >= 50 ? '#b45309' : '#6b7280', fontWeight: 600 }}>
+                Trust: {trust}%
+              </span>
               {primarySource && (
                 <a href={primarySource.uri} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#2563eb' }}>
                   source
                 </a>
               )}
 
-              {/* Reveal button / status */}
               {!revealState?.ok && (
                 <button
                   onClick={() => handleReveal(em)}
                   disabled={verifying[key]}
                   style={{ marginLeft: 8, fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
                 >
-                  {verifying[key] ? 'Verifying…' : 'Reveal'}
+                  {verifying[key] ? 'Checking…' : 'Reveal'}
                 </button>
               )}
 
               {revealState && revealState.ok === false && (
-                <span style={{ color: '#ef4444', fontSize: 12 }}>{revealState.error || 'Not verified'}</span>
+                <span style={{ color: '#ef4444', fontSize: 12 }}>{revealState.error || 'Not revealed'}</span>
               )}
             </div>
           </div>
         </td>
-        <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>{type}</td>
-        <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>{conf}</td>
+
+        <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>
+          <div style={{ fontSize: 14 }}>{title}</div>
+        </td>
+
+        <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>
+          <div style={{ fontSize: 13, color: '#374151' }}>{em?.type || '-'}</div>
+        </td>
       </tr>
     );
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '1rem' }}>
+    <div style={{ maxWidth: 940, margin: '0 auto', padding: '1rem' }}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8 }}>
         <input
           type="text"
-          placeholder="Enter domain (e.g. coca-cola.com)"
+          placeholder="Find contacts — enter a website (for example coca-cola.com)"
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
           style={{ flex: 1, padding: '0.6rem', borderRadius: 6, border: '1px solid #ccc' }}
@@ -205,7 +225,7 @@ export default function SearchClient() {
           type="submit"
           style={{
             padding: '0.6rem 1rem',
-            background: '#0070f3',
+            background: '#111827',
             color: 'white',
             border: 'none',
             borderRadius: 6,
@@ -213,14 +233,14 @@ export default function SearchClient() {
           }}
           disabled={loading}
         >
-          {loading ? 'Searching…' : 'Search'}
+          {loading ? 'Looking…' : 'Find Contacts'}
         </button>
       </form>
 
       {loading && (
         <div style={{ marginTop: 12 }}>
           <div style={{ height: 8, background: '#eee', borderRadius: 999 }}>
-            <div style={{ height: 8, width: '60%', background: '#0070f3', borderRadius: 999, transition: 'width .3s' }} />
+            <div style={{ height: 8, width: '50%', background: '#111827', borderRadius: 999, transition: 'width .3s' }} />
           </div>
         </div>
       )}
@@ -229,13 +249,11 @@ export default function SearchClient() {
 
       {results && (
         <div style={{ marginTop: 16 }}>
-          <h3>Results</h3>
+          <h3 style={{ marginTop: 0 }}>Contacts</h3>
 
           <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
             {results.meta ? (
-              <>
-                Showing {results.all.length} of {results.meta.results} total results (API limit {results.meta.limit})
-              </>
+              <>Showing {results.all.length} of {results.meta.results} results</>
             ) : (
               <>Showing {results.all.length} results</>
             )}
@@ -243,10 +261,10 @@ export default function SearchClient() {
 
           <div style={{ marginBottom: 8 }}>
             <label style={{ fontSize: 14, marginRight: 12 }}>
-              <input type="checkbox" checked={showAll} onChange={() => setShowAll(!showAll)} /> Show all (including unverified)
+              <input type="checkbox" checked={showAll} onChange={() => setShowAll(!showAll)} /> Show all (including lower-trust)
             </label>
             <span style={{ color: '#6b7280', fontSize: 13 }}>
-              By default we show verified addresses first (verification & source required). Click Reveal to attempt a verification (may use Hunter credits).
+              We show the best contacts first. Use Reveal to see masked emails.
             </span>
           </div>
 
@@ -254,9 +272,9 @@ export default function SearchClient() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Email</th>
+                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Name & Email</th>
+                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Title</th>
                   <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Type</th>
-                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Confidence</th>
                 </tr>
               </thead>
               <tbody>
@@ -264,7 +282,7 @@ export default function SearchClient() {
               </tbody>
             </table>
           ) : (
-            <p>No high-quality emails found for this domain. Toggle "Show all" to reveal unverified or inferred emails.</p>
+            <p>No high-trust contacts found for this site. Toggle "Show all" to include lower-trust suggestions.</p>
           )}
 
           <details style={{ marginTop: 12 }}>
