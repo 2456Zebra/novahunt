@@ -1,244 +1,166 @@
+// pages/index.js
 import { useEffect, useState } from "react";
 
-function readProCookie() {
-  if (typeof document === "undefined") return false;
-  return document.cookie.split(";").some(c => c.trim().startsWith("nova_pro="));
+function ConfidencePill({ score }) {
+  const pct = Number(score);
+  let bg = "#9ca3af";
+  if (pct >= 95) bg = "#10b981";
+  else if (pct >= 85) bg = "#f59e0b";
+  else if (pct >= 70) bg = "#f97316";
+  return (
+    <span style={{
+      display: "inline-block", padding: "6px 10px", borderRadius: 8, color: "white",
+      background: bg, fontWeight: 700, minWidth: 56, textAlign: "center", fontSize: 13
+    }}>{pct}%</span>
+  );
 }
 
 export default function Home() {
-  const [q, setQ] = useState("");
+  const [domain, setDomain] = useState("");
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
-  const [error, setError] = useState("");
   const [isPro, setIsPro] = useState(false);
-  const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
 
   useEffect(() => {
-    // On mount check cookie and query param
-    setIsPro(readProCookie());
-
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("upgraded") === "1") {
-        // show success and set PRO immediately so user sees full results after redirect
-        setIsPro(true);
-        setShowUpgradeSuccess(true);
-        // hide success after a short moment
-        setTimeout(() => setShowUpgradeSuccess(false), 2200);
-        // remove param from URL without reload
-        const url = new URL(window.location.href);
-        url.searchParams.delete("upgraded");
-        window.history.replaceState({}, "", url.toString());
-      }
-    }
+    fetch("/api/user/status")
+      .then(r => r.json())
+      .then(j => setIsPro(!!j.pro))
+      .catch(() => {});
   }, []);
 
-  async function safeFetchJson(url, opts) {
-    try {
-      const res = await fetch(url, opts);
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(txt || res.statusText || `HTTP ${res.status}`);
-      }
-      const txt = await res.text().catch(() => "");
-      return txt ? JSON.parse(txt) : {};
-    } catch (err) {
-      throw err;
-    }
+  function startProgress() {
+    setProgress(6);
+    const t = setInterval(() => {
+      setProgress(p => {
+        const next = Math.min(95, p + Math.random() * 12);
+        if (next >= 95) clearInterval(t);
+        return next;
+      });
+    }, 800);
+    return t;
   }
 
-  async function doSearch(domain) {
-    if (!domain) return;
-    setError("");
-    setLoading(true);
+  async function handleSearch(e) {
+    e?.preventDefault();
+    if (!domain.trim()) return;
     setResults([]);
     setTotal(0);
+    setLoading(true);
+    setProgress(0);
+    const timer = startProgress();
+
     try {
-      const payload = { domain };
-      const data = await safeFetchJson("/api/emails", {
+      const res = await fetch("/api/emails", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ domain: domain.trim() }),
+        cache: "no-store"
       });
-      const rows = data && data.results ? data.results : [];
-      setResults(rows);
-      setTotal(data.total || rows.length || 444);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setResults(isPro ? data.results : data.results.slice(0, 5));
+      setTotal(data.total || data.results.length);
+      setProgress(100);
+      clearInterval(timer);
+      setTimeout(() => setProgress(0), 500);
     } catch (err) {
-      console.error("Search error", err);
-      setError(err.message || "Search failed");
+      alert("Search failed: " + (err.message || "unknown"));
+      setProgress(0);
+      clearInterval(timer);
     } finally {
       setLoading(false);
     }
   }
 
-  function onKey(e) {
-    if (e.key === "Enter") doSearch(q.trim());
-  }
-
-  // determine rows to display based on PRO (show top 5 as sample)
-  const sampleCount = 3;
-  const displayRows = isPro ? results : results.slice(0, Math.max(sampleCount, Math.min(5, results.length)));
-
-  // message numbers
-  const displayTotal = total || 444; // fallback total if API didn't give a total
-  const displayCount = displayRows.length || sampleCount;
-
   return (
-    <div style={{
-      fontFamily: "Inter, Arial, sans-serif",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      paddingTop: 40,
-      minHeight: "100vh",
-      background: "#f8fafc"
-    }}>
-      <header style={{ width: "100%", maxWidth: 900, textAlign: "center" }}>
-        <h1 style={{ margin: 0, fontSize: 36, color: "#0f172a" }}>NovaHunt Emails</h1>
-        <p style={{ color: "#6b7280", marginTop: 8 }}>
-          Find business emails fast. Confidence scores 85–100%.
-        </p>
-        <div style={{ marginTop: 8 }}>
-          <a href="/signin" style={{ color: "#2563eb", textDecoration: "underline", fontWeight: 600, fontSize: 14 }}>
-            Sign In
-          </a>
+    <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", flexDirection: "column" }}>
+      <header style={{ padding: "16px 32px", background: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#1e293b" }}>NovaHunt</h1>
+        <div>
+          {isPro ? (
+            <span style={{ color: "#10b981", fontWeight: 600 }}>PRO</span>
+          ) : (
+            <a href="/upgrade" style={{ color: "#dc2626", fontWeight: 600, textDecoration: "underline" }}>Upgrade</a>
+          )}
         </div>
       </header>
 
-      <main style={{ width: "100%", maxWidth: 900, marginTop: 24 }}>
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 32 }}>
+        <div style={{ width: "100%", maxWidth: 900, textAlign: "center" }}>
+          <h2 style={{ fontSize: 32, margin: 0, fontWeight: 700, color: "#1e293b" }}>Find Business Emails</h2>
+          <p style={{ color: "#64748b", marginTop: 8, fontSize: 18, marginBottom: 32 }}>
+            Confidence scores <strong>85%–100%</strong>.
+          </p>
+
+          <form onSubmit={handleSearch} style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
             <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={onKey}
-              placeholder="Search company domain (example: coca-cola.com)"
+              value={domain}
+              onChange={e => setDomain(e.target.value)}
+              placeholder="e.g. coca-cola.com"
               style={{
-                width: 360,
-                padding: "10px 12px",
-                borderRadius: 8,
-                border: "1px solid #e6edf3",
-                background: "#fff"
+                padding: "14px 18px", fontSize: 16, width: 420, maxWidth: "100%",
+                borderRadius: 12, border: "1px solid #cbd5e1", outline: "none"
               }}
             />
             <button
-              onClick={() => doSearch(q.trim())}
+              type="submit"
               disabled={loading}
               style={{
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: "1px solid #d1d5db",
-                background: "#fff",
-                cursor: "pointer",
-                fontWeight: 600,
-                fontSize: 14
+                padding: "14px 32px", borderRadius: 12, background: loading ? "#93c5fd" : "#2563eb",
+                color: "white", fontWeight: 700, border: "none", cursor: loading ? "not-allowed" : "pointer"
               }}
             >
               {loading ? "Searching…" : "Search"}
             </button>
-          </div>
-        </div>
+          </form>
 
-        <div style={{ marginTop: 20, color: "#111827", display: "flex", justifyContent: "center" }}>
-          <div style={{ textAlign: "center", width: "100%", maxWidth: 720 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
-              <small style={{ color: "#6b7280" }}>
-                {!isPro && total > 0
-                  ? `Showing sample results ${displayCount} of ${displayTotal}. Upgrade to see all ${displayTotal}.`
-                  : (total > 0 ? `Showing ${Math.min(displayRows.length, total)} of ${total} emails.` : "Showing sample results.")
-                }
-              </small>
-              <a href="/signin?upgrade=1" style={{
-                background: "#ef4444",
-                color: "#fff",
-                padding: "6px 10px",
-                borderRadius: 6,
-                textDecoration: "none",
-                fontWeight: 700
-              }}>
-                Upgrade
-              </a>
+          {loading && (
+            <div style={{ maxWidth: 600, margin: "24px auto 0" }}>
+              <div style={{ height: 8, background: "#e2e8f0", borderRadius: 6, overflow: "hidden" }}>
+                <div style={{ width: `${progress}%`, height: "100%", background: "#2563eb", transition: "width 300ms ease" }} />
+              </div>
             </div>
+          )}
 
-            <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
-              {error && <div style={{ color: "#ef4444", marginBottom: 8 }}>{error}</div>}
+          {!loading && results.length > 0 && (
+            <div style={{ marginTop: 32 }}>
+              <p style={{ textAlign: "center", margin: "0 0 16px", color: "#475569" }}>
+                Showing <strong>{results.length}</strong> of <strong>{total}</strong> emails.
+                {!isPro && total > results.length && (
+                  <a href="/upgrade" style={{ marginLeft: 8, color: "#dc2626", fontWeight: 600 }}>
+                    Upgrade to see all {total}
+                  </a>
+                )}
+              </p>
 
-              <div style={{ width: 420, margin: "0 auto", textAlign: "left" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div style={{ overflowX: "auto", borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", background: "white" }}>
                   <thead>
-                    <tr style={{ color: "#6b7280", fontSize: 12, textTransform: "uppercase" }}>
-                      <th style={{ textAlign: "left", padding: "6px 8px" }}>Email</th>
-                      <th style={{ textAlign: "left", padding: "6px 8px" }}>Name</th>
-                      <th style={{ textAlign: "left", padding: "6px 8px" }}>Title</th>
-                      <th style={{ textAlign: "left", padding: "6px 8px" }}>Score</th>
+                    <tr style={{ background: "#f1f5f9" }}>
+                      <th style={{ padding: "14px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#334155" }}>Email</th>
+                      <th style={{ padding: "14px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#334155" }}>Name</th>
+                      <th style={{ padding: "14px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#334155" }}>Title</th>
+                      <th style={{ padding: "14px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#334155" }}>Score</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(displayRows.length === 0
-                      ? [
-                          { email: "info@coca-cola.com", first_name: "", last_name: "", position: "General", score: 65 },
-                          { email: "contact@coca-cola.com", first_name: "", last_name: "", position: "General", score: 65 },
-                          { email: "press@coca-cola.com", first_name: "", last_name: "", position: "General", score: 65 }
-                        ]
-                      : displayRows
-                    ).map((r, i) => {
-                      const backendScore = Number(r.score || 0);
-                      const displayScore = Math.min(100, Math.max(85, backendScore));
-                      const pct = `${displayScore}%`;
-                      let color = "#f59e0b";
-                      if (displayScore >= 98) color = "#16a34a";
-                      else if (displayScore >= 92) color = "#22c55e";
-                      else if (displayScore >= 88) color = "#84cc16";
-                      return (
-                        <tr key={i} style={{ borderTop: "1px solid #e6edf3" }}>
-                          <td style={{ padding: "8px" }}>{r.email}</td>
-                          <td style={{ padding: "8px" }}>{(r.first_name || "") + (r.last_name ? " " + r.last_name : "")}</td>
-                          <td style={{ padding: "8px" }}>{r.position || "General"}</td>
-                          <td style={{ padding: "8px" }}>
-                            <span style={{ background: color, color: "#fff", padding: "6px 8px", borderRadius: 999 }}>{pct}</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {results.map((r, i) => (
+                      <tr key={i} style={{ borderBottom: i === results.length - 1 ? "none" : "1px solid #e2e8f0" }}>
+                        <td style={{ padding: "14px 16px", fontFamily: "monospace", color: "#1d4ed8" }}>{r.email}</td>
+                        <td style={{ padding: "14px 16px", fontWeight: 500 }}>{r.first_name} {r.last_name}</td>
+                        <td style={{ padding: "14px 16px", color: "#64748b" }}>{r.position}</td>
+                        <td style={{ padding: "14px 16px" }}><ConfidencePill score={r.score} /></td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
-
-                {!isPro && (results.length > displayRows.length) && (
-                  <div style={{ marginTop: 10, color: "#6b7280", fontSize: 13 }}>
-                    Upgrade to reveal all results.
-                  </div>
-                )}
               </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
-
-      {/* Upgrade success modal */}
-      {showUpgradeSuccess && (
-        <div style={{
-          position: "fixed",
-          left: 0, right: 0, top: 0, bottom: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "rgba(15, 23, 42, 0.35)",
-          zIndex: 1200
-        }}>
-          <div style={{
-            background: "#fff",
-            padding: 20,
-            borderRadius: 8,
-            boxShadow: "0 10px 30px rgba(2,6,23,0.2)",
-            minWidth: 300,
-            textAlign: "center"
-          }}>
-            <div style={{ fontWeight: 700, color: "#16a34a", marginBottom: 6 }}>Upgrade Successful</div>
-            <div style={{ color: "#6b7280", marginBottom: 8 }}>You are now a PRO user — full results are available.</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
