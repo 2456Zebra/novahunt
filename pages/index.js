@@ -22,11 +22,12 @@ export default function Home() {
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [isPro, setIsPro] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetch("/api/user/status")
       .then(r => r.json())
-      .then(j => setIsPro(!!j.pro))
+      .then(j => setIsPro(!!j.isPro))
       .catch(() => {});
   }, []);
 
@@ -34,8 +35,11 @@ export default function Home() {
     setProgress(6);
     const t = setInterval(() => {
       setProgress(p => {
-        const next = Math.min(95, p + Math.random() * 12);
-        if (next >= 95) clearInterval(t);
+        const next = Math.min(95, p + (3 + Math.random() * 10));
+        if (next >= 95) {
+          clearInterval(t);
+          return next;
+        }
         return next;
       });
     }, 800);
@@ -43,8 +47,9 @@ export default function Home() {
   }
 
   async function handleSearch(e) {
-    e?.preventDefault();
+    e.preventDefault(); // ALWAYS PREVENT REFRESH
     if (!domain.trim()) return;
+    setError("");
     setResults([]);
     setTotal(0);
     setLoading(true);
@@ -59,14 +64,14 @@ export default function Home() {
         cache: "no-store"
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setResults(isPro ? data.results : data.results.slice(0, 5));
+      if (!res.ok) throw new Error(data.error || "API failed");
+      setResults(isPro ? data.results : data.results.slice(0, 10));
       setTotal(data.total || data.results.length);
       setProgress(100);
       clearInterval(timer);
       setTimeout(() => setProgress(0), 500);
     } catch (err) {
-      alert("Search failed: " + (err.message || "unknown"));
+      setError(err.message || "Search failed");
       setProgress(0);
       clearInterval(timer);
     } finally {
@@ -75,7 +80,11 @@ export default function Home() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: "#f9fafb", display: "flex", flexDirection: "column" }}>
+      <head>
+        <link rel="icon" href="/favicon.ico" />
+      </head>
+
       <header style={{ padding: "16px 32px", background: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#1e293b" }}>NovaHunt</h1>
         <div>
@@ -98,7 +107,7 @@ export default function Home() {
             <input
               value={domain}
               onChange={e => setDomain(e.target.value)}
-              placeholder="e.g. coca-cola.com"
+              placeholder="e.g. fordmodels.com"
               style={{
                 padding: "14px 18px", fontSize: 16, width: 420, maxWidth: "100%",
                 borderRadius: 12, border: "1px solid #cbd5e1", outline: "none"
@@ -116,6 +125,10 @@ export default function Home() {
             </button>
           </form>
 
+          {error && (
+            <p style={{ color: "#dc2626", marginTop: 16, fontWeight: 600 }}>{error}</p>
+          )}
+
           {loading && (
             <div style={{ maxWidth: 600, margin: "24px auto 0" }}>
               <div style={{ height: 8, background: "#e2e8f0", borderRadius: 6, overflow: "hidden" }}>
@@ -130,7 +143,7 @@ export default function Home() {
                 Showing <strong>{results.length}</strong> of <strong>{total}</strong> emails.
                 {!isPro && total > results.length && (
                   <a href="/upgrade" style={{ marginLeft: 8, color: "#dc2626", fontWeight: 600 }}>
-                    Upgrade to see all {total}
+                    Upgrade to reveal all {total}
                   </a>
                 )}
               </p>
