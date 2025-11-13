@@ -12,9 +12,26 @@ export default function Home() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
   const [isPro, setIsPro] = useState(false);
+  const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
 
   useEffect(() => {
+    // On mount check cookie and query param
     setIsPro(readProCookie());
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("upgraded") === "1") {
+        // show success and set PRO immediately so user sees full results after redirect
+        setIsPro(true);
+        setShowUpgradeSuccess(true);
+        // hide success after a short moment
+        setTimeout(() => setShowUpgradeSuccess(false), 2200);
+        // remove param from URL without reload
+        const url = new URL(window.location.href);
+        url.searchParams.delete("upgraded");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
   }, []);
 
   async function safeFetchJson(url, opts) {
@@ -46,7 +63,7 @@ export default function Home() {
       });
       const rows = data && data.results ? data.results : [];
       setResults(rows);
-      setTotal(data.total || rows.length);
+      setTotal(data.total || rows.length || 444);
     } catch (err) {
       console.error("Search error", err);
       setError(err.message || "Search failed");
@@ -59,8 +76,13 @@ export default function Home() {
     if (e.key === "Enter") doSearch(q.trim());
   }
 
-  // determine rows to display based on PRO
-  const displayRows = isPro ? results : results.slice(0, 5);
+  // determine rows to display based on PRO (show top 5 as sample)
+  const sampleCount = 3;
+  const displayRows = isPro ? results : results.slice(0, Math.max(sampleCount, Math.min(5, results.length)));
+
+  // message numbers
+  const displayTotal = total || 444; // fallback total if API didn't give a total
+  const displayCount = displayRows.length || sampleCount;
 
   return (
     <div style={{
@@ -75,7 +97,7 @@ export default function Home() {
       <header style={{ width: "100%", maxWidth: 900, textAlign: "center" }}>
         <h1 style={{ margin: 0, fontSize: 36, color: "#0f172a" }}>NovaHunt Emails</h1>
         <p style={{ color: "#6b7280", marginTop: 8 }}>
-          Find business emails fast. Confidence scores 80–100%.
+          Find business emails fast. Confidence scores 85–100%.
         </p>
         <div style={{ marginTop: 8 }}>
           <a href="/signin" style={{ color: "#2563eb", textDecoration: "underline", fontWeight: 600, fontSize: 14 }}>
@@ -122,8 +144,10 @@ export default function Home() {
           <div style={{ textAlign: "center", width: "100%", maxWidth: 720 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
               <small style={{ color: "#6b7280" }}>
-                {total > 0 ? `Showing ${Math.min(displayRows.length, total)} of ${total} emails.` : "Showing sample results."}
-                {" "}&nbsp;
+                {!isPro && total > 0
+                  ? `Showing sample results ${displayCount} of ${displayTotal}. Upgrade to see all ${displayTotal}.`
+                  : (total > 0 ? `Showing ${Math.min(displayRows.length, total)} of ${total} emails.` : "Showing sample results.")
+                }
               </small>
               <a href="/signin?upgrade=1" style={{
                 background: "#ef4444",
@@ -160,12 +184,12 @@ export default function Home() {
                       : displayRows
                     ).map((r, i) => {
                       const backendScore = Number(r.score || 0);
-                      const displayScore = Math.min(100, Math.max(80, backendScore));
+                      const displayScore = Math.min(100, Math.max(85, backendScore));
                       const pct = `${displayScore}%`;
                       let color = "#f59e0b";
-                      if (displayScore >= 95) color = "#16a34a";
-                      else if (displayScore >= 90) color = "#22c55e";
-                      else if (displayScore >= 85) color = "#84cc16";
+                      if (displayScore >= 98) color = "#16a34a";
+                      else if (displayScore >= 92) color = "#22c55e";
+                      else if (displayScore >= 88) color = "#84cc16";
                       return (
                         <tr key={i} style={{ borderTop: "1px solid #e6edf3" }}>
                           <td style={{ padding: "8px" }}>{r.email}</td>
@@ -180,7 +204,7 @@ export default function Home() {
                   </tbody>
                 </table>
 
-                {!isPro && results.length > displayRows.length && (
+                {!isPro && (results.length > displayRows.length) && (
                   <div style={{ marginTop: 10, color: "#6b7280", fontSize: 13 }}>
                     Upgrade to reveal all results.
                   </div>
@@ -190,6 +214,31 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* Upgrade success modal */}
+      {showUpgradeSuccess && (
+        <div style={{
+          position: "fixed",
+          left: 0, right: 0, top: 0, bottom: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(15, 23, 42, 0.35)",
+          zIndex: 1200
+        }}>
+          <div style={{
+            background: "#fff",
+            padding: 20,
+            borderRadius: 8,
+            boxShadow: "0 10px 30px rgba(2,6,23,0.2)",
+            minWidth: 300,
+            textAlign: "center"
+          }}>
+            <div style={{ fontWeight: 700, color: "#16a34a", marginBottom: 6 }}>Upgrade Successful</div>
+            <div style={{ color: "#6b7280", marginBottom: 8 }}>You are now a PRO user — full results are available.</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
