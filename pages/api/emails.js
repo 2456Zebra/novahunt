@@ -1,7 +1,5 @@
 // pages/api/emails.js
-// FREE HUNTER.IO + FALLBACK
-// 25 FREE SEARCHES → NO COST
-
+// 100% REAL HUNTER.IO — MASKED + REVEALED EMAILS
 import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
@@ -11,45 +9,39 @@ export default async function handler(req, res) {
   if (!domain) return res.status(400).json({ error: 'Domain required' });
 
   const API_KEY = process.env.HUNTER_API_KEY;
-  if (!API_KEY) {
-    return res.status(500).json({ error: 'API key missing' });
-  }
+  if (!API_KEY) return res.status(500).json({ error: 'API key missing' });
 
-  const url = `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${API_KEY}`;
+  const url = `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${API_KEY}&limit=100`;
 
   try {
     const r = await fetch(url);
     const data = await r.json();
 
-    // FREE TIER LIMIT HIT?
-    if (data.errors?.[0]?.id === 'rate_limit_exceeded') {
-      return res.json({
-        total: 3,
-        results: [
-          { email: `info@${domain}`, first_name: "", last_name: "", position: "General", score: 70 },
-          { email: `contact@${domain}`, first_name: "", last_name: "", position: "General", score: 70 },
-          { email: `hello@${domain}`, first_name: "", last_name: "", position: "General", score: 70 }
-        ]
-      });
+    if (data.errors) {
+      if (data.errors[0].id === 'rate_limit_exceeded') {
+        return res.json({ total: 0, results: [], message: "Free tier limit reached" });
+      }
+      return res.json({ total: 0, results: [], error: data.errors[0].details });
     }
 
-    // NO EMAILS FOUND?
-    if (!data.data?.emails || data.data.emails.length === 0) {
-      return res.json({ total: 0, results: [] });
-    }
-
-    // REAL EMAILS FROM HUNTER
-    const results = data.data.emails.map(e => ({
-      email: e.value,
+    const emails = data.data.emails || [];
+    const results = emails.map(e => ({
+      email: e.value.includes('*') ? '********@' + domain : e.value,
       first_name: e.first_name || "",
       last_name: e.last_name || "",
       position: e.position || "Unknown",
-      score: e.confidence || 80
+      score: e.confidence || 80,
+      revealed: !e.value.includes('*')
     }));
 
-    res.json({ results, total: results.length });
+    res.json({
+      total: data.data.total || emails.length,
+      results,
+      message: data.data.total > 10 ? `Upgrade to see all ${data.data.total}` : null
+    });
+
   } catch (err) {
-    console.error("Hunter API error:", err);
+    console.error(err);
     res.status(500).json({ error: "Search failed" });
   }
 }
