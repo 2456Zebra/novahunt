@@ -1,6 +1,7 @@
-// Small helper endpoint the client can call to check whether the signed-in (local) user has an active subscription.
+// Helper endpoint the client can call to check whether the signed-in (local) user has an active subscription.
 // The client should send the local nh_session string as header x-nh-session.
-import { kv } from '@vercel/kv';
+import { getKV } from './_kv-wrapper';
+const kv = getKV();
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
@@ -24,17 +25,17 @@ export default async function handler(req, res) {
 
     const key = `stripe:subscription:${email.toLowerCase()}`;
     try {
+      if (!kv) return res.status(200).json({ subscribed: false });
       const sub = await kv.get(key);
       if (!sub) return res.status(200).json({ subscribed: false });
-      // treat active statuses (trialing, active) as subscribed
       const active = ['active', 'trialing'].includes((sub.status || '').toLowerCase());
       return res.status(200).json({ subscribed: active, subscription: sub });
     } catch (e) {
-      console.warn('KV read error (check-subscription)', e);
+      console.warn('KV read error (check-subscription)', e?.message || e);
       return res.status(200).json({ subscribed: false });
     }
   } catch (err) {
-    console.error('check-subscription error', err);
+    console.error('check-subscription error', err?.message || err);
     return res.status(500).json({ error: err.message || 'Server error' });
   }
 }
