@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 
 /**
- * Client-only contact search widget that can use a mock API for testing without Hunter.
- * Set NEXT_PUBLIC_USE_MOCK=1 in Vercel env vars to use the mock endpoints (/api/search-contacts-mock).
+ * Real-only client search widget.
+ * - Always calls the real server endpoints: /api/search-contacts and /api/verify-contact
+ * - Masks emails by default and reveals only after explicit verification
+ * - Defaults to showing verified results only (verification + source)
  */
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
@@ -15,9 +17,8 @@ export default function SearchClient() {
   const [revealed, setRevealed] = useState({});
   const [verifying, setVerifying] = useState({});
 
-  const useMock = typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_USE_MOCK === '1';
-  const searchUrl = useMock ? '/api/search-contacts-mock' : '/api/search-contacts';
-  const verifyUrl = useMock ? '/api/verify-contact-mock' : '/api/verify-contact';
+  const searchUrl = '/api/search-contacts';
+  const verifyUrl = '/api/verify-contact';
 
   function maskEmail(email) {
     if (!email || typeof email !== 'string') return email;
@@ -47,7 +48,10 @@ export default function SearchClient() {
         setRevealed((r) => ({ ...r, [key]: { ok: false, error: `Verification failed: ${res.status} ${txt}` } }));
       } else {
         const payload = await res.json();
-        const verified = payload?.data?.data?.status === 'valid' || payload?.data?.status === 'valid' || payload?.status === 'valid';
+        const verified =
+          payload?.data?.data?.status === 'valid' ||
+          payload?.data?.status === 'valid' ||
+          payload?.status === 'valid';
         const full = em?.value || em?.email || payload?.data?.data?.email || payload?.email;
         if (verified && full) setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, payload } }));
         else setRevealed((r) => ({ ...r, [key]: { ok: false, error: 'Not verified', payload } }));
@@ -72,10 +76,11 @@ export default function SearchClient() {
 
     setLoading(true);
     try {
+      // ask server for up to 100 results (tweak if you want less)
       const res = await fetch(searchUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: trimmed }),
+        body: JSON.stringify({ domain: trimmed, limit: 100 }),
       });
 
       if (!res.ok) {
@@ -95,6 +100,7 @@ export default function SearchClient() {
 
       const meta = payload?.data?.meta || null;
 
+      // dedupe
       const deduped = [];
       const seen = new Set();
       for (const e of emails) {
@@ -104,13 +110,10 @@ export default function SearchClient() {
         deduped.push(e);
       }
 
-      const highQuality = deduped.filter((e) => {
-        const hasVerified = e?.verification?.status === 'valid';
-        const hasSource = Array.isArray(e?.sources) && e.sources.length > 0;
-        return hasVerified && hasSource;
-      });
+      // Only show verified + with sources by default
+      const verifiedOnly = deduped.filter((e) => e?.verification?.status === 'valid' && Array.isArray(e?.sources) && e.sources.length > 0);
 
-      setResults({ raw: payload, meta, highQuality, lowQuality: deduped.filter((d) => !highQuality.includes(d)), all: deduped });
+      setResults({ raw: payload, meta, verifiedOnly, all: deduped });
       setRevealed({});
     } catch (err) {
       setError(err?.message || 'Unknown error');
@@ -152,7 +155,7 @@ export default function SearchClient() {
                   {verifying[key] ? 'Checking…' : 'Reveal'}
                 </button>
               )}
-              {revealState && revealState.ok === false && <span style={{ color: '#ef4444', fontSize: 12 }}>{revealState.error || 'Not revealed'}</span>}  
+              {revealState && revealState.ok === false && <span style={{ color: '#ef4444', fontSize: 12 }}>{revealState.error || 'Not revealed'}</span>}
             </div>
           </div>
         </td>
@@ -198,7 +201,7 @@ export default function SearchClient() {
           <h3 style={{ marginTop: 0 }}>Contacts</h3>
 
           <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
-            {results.meta ? <>Showing {results.highQuality.length} verified of {results.meta.results} total results</> : <>Showing {results.highQuality.length} verified results</>}  
+            {results.meta ? <>Showing {results.verifiedOnly?.length ?? results.verifiedOnly?.length} verified of {results.meta.results} total results</> : <>Showing {results.verifiedOnly?.length ?? 0} verified results</>}
           </div>
 
           <div style={{ marginBottom: 8 }}>
@@ -216,7 +219,7 @@ export default function SearchClient() {
                 <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Department</th>
               </tr>
             </thead>
-            <tbody>{(showAll ? results.all : results.highQuality).map(renderRow)}</tbody>
+            <tbody>{(showAll ? results.all : results.verifiedOnly).map(renderRow)}</tbody>
           </table>
 
           <details style={{ marginTop: 12 }}>
