@@ -4,7 +4,10 @@ import React, { useState } from 'react';
 
 /**
  * Client-only contact search widget.
- * Neutral wording (no provider mention). Shows Name, Title, Department, Trust, masked email and a Reveal button.
+ * - ALWAYS masks emails by default (never auto-reveal),
+ * - Shows Name, Title, Department, Trust score,
+ * - Reveal button explicitly shows full email only when clicked.
+ * - Neutral wording (no provider mention).
  */
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
@@ -26,6 +29,7 @@ export default function SearchClient() {
     return `${first}${stars}${last}@${host}`;
   }
 
+  // Human-friendly trust score using verification / sources / recency
   function computeTrustScore(em) {
     let score = 0;
     if (em?.verification?.status === 'valid') score += 60;
@@ -45,18 +49,13 @@ export default function SearchClient() {
     return Math.min(100, Math.round(score));
   }
 
+  // Reveal action: always requires explicit click (never auto reveals)
   async function handleReveal(em) {
     const key = (em?.value || em?.email || '').toLowerCase();
     if (!key) return;
 
-    if (em?.verification?.status === 'valid' && em?.value) {
-      setRevealed((r) => ({ ...r, [key]: { ok: true, email: em.value } }));
-      return;
-    }
-
     setVerifying((v) => ({ ...v, [key]: true }));
     try {
-      // POST verify as normal, but server also accepts GET for safety
       const res = await fetch('/api/verify-contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -68,7 +67,10 @@ export default function SearchClient() {
         setRevealed((r) => ({ ...r, [key]: { ok: false, error: `Verification failed: ${res.status} ${txt}` } }));
       } else {
         const payload = await res.json();
-        const verified = payload?.data?.data?.status === 'valid' || payload?.data?.status === 'valid' || payload?.status === 'valid';
+        const verified =
+          payload?.data?.data?.status === 'valid' ||
+          payload?.data?.status === 'valid' ||
+          payload?.status === 'valid';
         const full = em?.value || em?.email || payload?.data?.data?.email || payload?.email;
         if (verified && full) setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, payload } }));
         else setRevealed((r) => ({ ...r, [key]: { ok: false, error: 'Not verified', payload } }));
@@ -87,7 +89,7 @@ export default function SearchClient() {
 
     const trimmed = (domain || '').trim();
     if (!trimmed) {
-      setError('Please enter a website (for example: coca-cola.com)');
+      setError('Enter a website (for example coca-cola.com)');
       return;
     }
 
@@ -107,6 +109,7 @@ export default function SearchClient() {
       }
 
       const payload = await res.json();
+
       const emails =
         (payload && payload.data && payload.data.data && payload.data.data.emails) ||
         (payload && payload.data && payload.data.emails) ||
@@ -139,9 +142,9 @@ export default function SearchClient() {
   const renderRow = (em, i) => {
     const emailVal = em?.value || em?.email || '(no email)';
     const masked = maskEmail(emailVal);
-    const name = [em?.first_name, em?.last_name].filter(Boolean).join(' ').trim() || (em?.linkedin || 'Name not provided');
+    const name = [em?.first_name, em?.last_name].filter(Boolean).join(' ').trim() || em?.linkedin || 'Name not provided';
     const title = em?.position || em?.position_raw || 'Contact';
-    const department = em?.department || em?.type || '-';
+    const department = em?.department || '-';
     const trust = computeTrustScore(em);
     const primarySource = Array.isArray(em?.sources) && em.sources.length > 0 ? em.sources[0] : null;
     const key = (emailVal || `${title}-${i}`).toLowerCase();
@@ -153,6 +156,7 @@ export default function SearchClient() {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <strong style={{ marginBottom: 6 }}>{name}</strong>
             <span style={{ fontFamily: 'monospace' }}>{revealState?.ok ? revealState.email : masked}</span>
+
             <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ fontSize: 12, color: trust >= 80 ? '#059669' : trust >= 50 ? '#b45309' : '#6b7280', fontWeight: 600 }}>
                 Trust: {trust}%
@@ -188,7 +192,7 @@ export default function SearchClient() {
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8 }}>
         <input
           type="text"
-          placeholder="Find contacts — enter a website (for example coca-cola.com)"
+          placeholder="Enter a website (for example coca-cola.com)"
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
           style={{ flex: 1, padding: '0.6rem', borderRadius: 6, border: '1px solid #ccc' }}
@@ -220,7 +224,7 @@ export default function SearchClient() {
             <label style={{ fontSize: 14, marginRight: 12 }}>
               <input type="checkbox" checked={showAll} onChange={() => setShowAll(!showAll)} /> Show all (including lower-trust)
             </label>
-            <span style={{ color: '#6b7280', fontSize: 13 }}>We show the best contacts first. Click Reveal to show a masked email.</span>
+            <span style={{ color: '#6b7280', fontSize: 13 }}>We show the best contacts first. Click Reveal to show a masked email only when you want it.</span>
           </div>
 
           {Array.isArray(showAll ? results.all : results.highQuality) && (showAll ? results.all : results.highQuality).length > 0 ? (
