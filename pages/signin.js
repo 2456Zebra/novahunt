@@ -11,7 +11,7 @@ export default function SignInPage() {
       <main style={{ padding: '2rem', maxWidth: 900, margin: '0 auto' }}>
         <h1>Sign in</h1>
         <p>Sign in to save leads and manage reveals.</p>
-        <SignInModal open={true} initialMode="signin" onClose={() => { /* keep on same page for demo; add redirect after real auth */ }} />
+        <SignInModal open={true} initialMode="signin" onClose={() => { /* placeholder */ }} />
       </main>
     </>
   );
