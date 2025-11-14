@@ -3,11 +3,12 @@
 import React, { useState } from 'react';
 
 /**
- * Strict Hunter-only client:
- * - Always uses /api/search-contacts (server must call Hunter)
- * - Displays exactly the emails returned by Hunter (payload.data.data.emails) in provider order
- * - Masks addresses by default; Reveal simply exposes the exact value Hunter returned (no extra verify calls)
- * - No mock, no inferred addresses added client-side
+ * Strict Hunter-only client with improved UX:
+ * - Uses /api/search-contacts (server must call Hunter)
+ * - Masks addresses by default; Reveal exposes the exact value returned by server
+ * - Shows confidence % if present
+ * - Shows "Showing X of Y. Upgrade to see all." when meta.results exists
+ * - Replaces "provider: Hunter" text with "Powered by AI"
  */
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
@@ -15,6 +16,8 @@ export default function SearchClient() {
   const [error, setError] = useState('');
   const [results, setResults] = useState(null);
   const [revealed, setRevealed] = useState({});
+
+  const PROVIDER_LABEL = 'Powered by AI'; // user requested not to call out Hunter
 
   function maskEmail(email) {
     if (!email || typeof email !== 'string') return email;
@@ -27,12 +30,11 @@ export default function SearchClient() {
     return `${first}${stars}${last}@${host}`;
   }
 
-  // Reveal: show the exact Hunter-provided email value for this row
   function handleReveal(em) {
     const key = (em?.value || em?.email || '').toLowerCase();
     if (!key) return;
     const full = em?.value || em?.email || null;
-    setRevealed((r) => ({ ...r, [key]: { ok: true, email: full } }));
+    setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, userRevealed: true } }));
   }
 
   async function handleSubmit(e) {
@@ -63,14 +65,13 @@ export default function SearchClient() {
 
       const payload = await res.json();
 
-      // Strictly use Hunter's returned emails array (provider order)
       const hunterEmails =
         payload?.data?.data?.emails ??
         payload?.data?.emails ??
         payload?.emails ??
         [];
 
-      // Keep only entries that include a value (exactly what Hunter returned)
+      // keep exactly what the server returned (but do not auto-reveal)
       const filtered = hunterEmails.filter((e) => !!(e?.value || e?.email));
 
       setResults({ raw: payload, all: filtered, meta: payload?.data?.meta ?? null });
@@ -81,10 +82,19 @@ export default function SearchClient() {
     }
   }
 
+  const renderConfidence = (em) => {
+    // Hunter sometimes returns confidence or score fields
+    const c = em?.confidence ?? em?.confidence_score ?? em?.score ?? em?.confidencePercent;
+    if (c == null) return null;
+    // Normalize to 0-100 if necessary
+    const val = typeof c === 'number' ? Math.round(c) : c;
+    return <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>{val}%</span>;
+  };
+
   const renderRow = (em, i) => {
     const emailVal = em?.value || em?.email || '(no email)';
     const key = (emailVal || `${i}`).toLowerCase();
-    const showFull = revealed[key]?.ok === true;
+    const showFull = revealed[key]?.ok === true && revealed[key]?.userRevealed === true;
     const masked = maskEmail(emailVal);
     const name = [em?.first_name, em?.last_name].filter(Boolean).join(' ').trim() || em?.linkedin || 'Name not provided';
     const title = em?.position || em?.position_raw || '-';
@@ -96,7 +106,11 @@ export default function SearchClient() {
       <tr key={key}>
         <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <strong style={{ marginBottom: 6 }}>{name}</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <strong style={{ marginBottom: 6 }}>{name}</strong>
+              {renderConfidence(em)}
+            </div>
+
             <span style={{ fontFamily: 'monospace' }}>{showFull ? revealed[key].email : masked}</span>
 
             <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -145,7 +159,15 @@ export default function SearchClient() {
           <h3 style={{ marginTop: 0 }}>Contacts</h3>
 
           <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
-            {results.meta ? <>Showing {results.all.length} results (provider: Hunter)</> : <>Showing {results.all.length} results</>}
+            {results.meta ? (
+              <>
+                Showing {results.all.length} of {results.meta?.results ?? 'unknown'} results. <span style={{ color: '#6b7280' }}>Upgrade to see all.</span> <span style={{ marginLeft: 8, color: '#6b7280' }}>{PROVIDER_LABEL}</span>
+              </>
+            ) : (
+              <>
+                Showing {results.all.length} results <span style={{ marginLeft: 8, color: '#6b7280' }}>{PROVIDER_LABEL}</span>
+              </>
+            )}
           </div>
 
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -161,7 +183,7 @@ export default function SearchClient() {
 
           <details style={{ marginTop: 12 }}>
             <summary>Raw response (debug)</summary>
-            <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, maxHeight: 300, overflow: 'auto', background: '#f7f7f7', padding: 8 }}>
+            <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, maxHeight: 400, overflow: 'auto', background: '#f7f7f7', padding: 8 }}>
               {JSON.stringify(results.raw, null, 2)}
             </pre>
           </details>
