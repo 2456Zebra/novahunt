@@ -1,6 +1,7 @@
 // Server-side: call Hunter domain-search and return provider payload under { data: ... }.
 // Tries requested limit first; if Hunter returns pagination_error (free plan limited to 10),
 // retries with limit=10 so the user gets results instead of a 502.
+// Filters out inferred/guessed addresses (no sources AND not explicitly verified) so UI shows only higher-trust Hunter records.
 import { kv } from '@vercel/kv';
 
 function makeHunterUrl(domain, limit = 10, offset = '') {
@@ -26,7 +27,6 @@ export default async function handler(req, res) {
     // Normalize limit: make integer and sensible default
     let requestedLimit = parseInt(limit, 10);
     if (isNaN(requestedLimit) || requestedLimit <= 0) requestedLimit = 10;
-    // allow a ceiling but we'll handle pagination error by retrying with 10
     requestedLimit = Math.min(requestedLimit, 100);
 
     const cacheKey = `hunter:search:${domain.toLowerCase()}:${requestedLimit}:${offset}`;
@@ -70,6 +70,21 @@ export default async function handler(req, res) {
           return res.status(502).json({ error: 'Upstream API error', status: fallback.status, body: fallback.body });
         }
         const payload = { data: fallback.json };
+
+        // Filter out inferred/guessed emails: keep those with sources or explicitly verified
+        try {
+          if (payload?.data?.data?.emails && Array.isArray(payload.data.data.emails)) {
+            payload.data.data.emails = payload.data.data.emails.filter((e) => {
+              if (!e) return false;
+              if (Array.isArray(e.sources) && e.sources.length > 0) return true;
+              if (e.verification && e.verification.status === 'valid') return true;
+              return false; // drop inferred/guessed entries
+            });
+          }
+        } catch (e) {
+          console.warn('filter error', e);
+        }
+
         // cache short TTL if KV available
         try {
           if (typeof kv !== 'undefined') {
@@ -88,6 +103,21 @@ export default async function handler(req, res) {
     }
 
     const payload = { data: first.json };
+
+    // Filter out inferred/guessed emails: keep those with sources or explicitly verified
+    try {
+      if (payload?.data?.data?.emails && Array.isArray(payload.data.data.emails)) {
+        payload.data.data.emails = payload.data.data.emails.filter((e) => {
+          if (!e) return false;
+          if (Array.isArray(e.sources) && e.sources.length > 0) return true;
+          if (e.verification && e.verification.status === 'valid') return true;
+          return false;
+        });
+      }
+    } catch (e) {
+      console.warn('filter error', e);
+    }
+
     // cache short TTL if KV available
     try {
       if (typeof kv !== 'undefined') {
