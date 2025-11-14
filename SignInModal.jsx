@@ -3,8 +3,17 @@
 import React, { useState, useEffect } from 'react';
 
 /**
- * SignInModal — stores a local test account in localStorage for testing.
- * After successful sign-in it provides a Back to dashboard button and auto-closes.
+ * SignInModal — stores a local test account in localStorage for testing,
+ * creates a local session on signup/signin, and notifies the app of auth changes.
+ *
+ * Usage:
+ *  <SignInModal open={open} onClose={() => setOpen(false)} />
+ *
+ * Behavior:
+ * - Signup creates nh_accounts and immediately sets nh_session (signed-in).
+ * - Signin validates and sets nh_session.
+ * - Emits window.dispatchEvent(new CustomEvent('nh:auth-change', { detail: { email } }))
+ * - Shows an explicit Back to dashboard button instead of auto-flashing/closing.
  */
 export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
   const [mode, setMode] = useState(initialMode); // signin | signup | forgot
@@ -13,6 +22,7 @@ export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [justSignedIn, setJustSignedIn] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     setMode(initialMode);
@@ -21,56 +31,83 @@ export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
     setEmail('');
     setPassword('');
     setJustSignedIn(false);
+    setProcessing(false);
   }, [initialMode, open]);
 
   if (!open) return null;
+
+  function setSession(email) {
+    const session = { email, created_at: new Date().toISOString() };
+    try {
+      localStorage.setItem('nh_session', JSON.stringify(session));
+      // notify other parts of the app
+      window.dispatchEvent(new CustomEvent('nh:auth-change', { detail: { email } }));
+    } catch (e) {
+      console.warn('Could not set local session', e);
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
-
     if (!email || !password) {
       setError('Email and password required');
       return;
     }
-
+    setProcessing(true);
     try {
       if (mode === 'signup') {
         const accountsJSON = localStorage.getItem('nh_accounts') || '{}';
         const accounts = JSON.parse(accountsJSON);
         if (accounts[email]) {
           setError('An account with this email already exists. Sign in instead.');
+          setProcessing(false);
           return;
         }
         accounts[email] = { password, created_at: new Date().toISOString() };
         localStorage.setItem('nh_accounts', JSON.stringify(accounts));
-        setMessage('Account created locally.');
+        // Immediately create session and mark signed in
+        setSession(email);
+        setMessage('Account created and signed in locally.');
+        setJustSignedIn(true);
+        setProcessing(false);
+        return;
       } else if (mode === 'signin') {
         const accountsJSON = localStorage.getItem('nh_accounts') || '{}';
         const accounts = JSON.parse(accountsJSON);
         const acct = accounts[email];
         if (!acct || acct.password !== password) {
           setError('Invalid email or password.');
+          setProcessing(false);
           return;
         }
+        setSession(email);
         setMessage(`Signed in as ${email}`);
-        // mark signed in and offer a Back to dashboard button
         setJustSignedIn(true);
-        // auto-close after a short delay (so user sees message)
-        setTimeout(() => {
-          setJustSignedIn(false);
-          onClose?.();
-          // optional: navigate to dashboard root
-          try { window.location.href = '/'; } catch (err) {}
-        }, 1000);
+        setProcessing(false);
+        return;
       } else if (mode === 'forgot') {
         setMessage('If this were a production site, a password reset email would be sent. For now, sign up again or contact the owner.');
+        setProcessing(false);
+        return;
       }
     } catch (err) {
       setError(err?.message || 'Unknown error');
+      setProcessing(false);
     }
   };
+
+  // explicit back-to-dashboard action (keeps UX clear)
+  function backToDashboard() {
+    onClose?.();
+    try {
+      // navigate to root or /dashboard depending on your app
+      window.location.href = '/';
+    } catch (err) {
+      // noop
+    }
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
@@ -85,15 +122,18 @@ export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ padding: '0.6rem', border: '1px solid #ccc', borderRadius: '8px' }} />
           {mode !== 'forgot' && <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ padding: '0.6rem', border: '1px solid #ccc', borderRadius: '8px' }} />}
-          <button type="submit" style={{ background: '#111827', color: 'white', padding: '0.6rem', borderRadius: '8px', border: 'none' }}>
-            {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create account' : 'Send Reset Link'}
+          <button type="submit" style={{ background: '#111827', color: 'white', padding: '0.6rem', borderRadius: '8px', border: 'none' }} disabled={processing}>
+            {processing ? (mode === 'signup' ? 'Creating…' : 'Signing in…') : (mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create account' : 'Send Reset Link')}
           </button>
         </form>
 
         {justSignedIn && (
-          <div style={{ marginTop: '1rem' }}>
-            <button onClick={() => { onClose?.(); try { window.location.href = '/'; } catch (err) {} }} style={{ background: '#059669', color: 'white', padding: '0.5rem 0.75rem', borderRadius: '8px', border: 'none' }}>
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+            <button onClick={backToDashboard} style={{ background: '#059669', color: 'white', padding: '0.5rem 0.75rem', borderRadius: '8px', border: 'none' }}>
               Back to dashboard
+            </button>
+            <button onClick={onClose} style={{ background: '#e5e7eb', color: '#111827', padding: '0.5rem 0.75rem', borderRadius: '8px', border: 'none' }}>
+              Stay here
             </button>
           </div>
         )}
