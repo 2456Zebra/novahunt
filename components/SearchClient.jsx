@@ -3,8 +3,14 @@
 import React, { useEffect, useState } from 'react';
 
 /**
- * Client: supports opt-in include_inferred (signed-in only), colored confidence, pattern display.
+ * SearchClient:
+ * - No "Email pattern" shown.
+ * - Shows "Showing X of Y results. Upgrade to see all." with clickable Upgrade link.
+ * - Signed-in users see a checkbox "Include lower-trust results" that requests include_inferred on the server.
+ * - Sends local nh_session in header when include_inferred is requested (server honors only if header present).
+ * - Colored confidence indicator preserved.
  */
+
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,13 +26,27 @@ export default function SearchClient() {
       const s = localStorage.getItem('nh_session');
       if (s) {
         setSignedIn(true);
-        setSessionValue(s); // send this as header when requesting inferred
+        setSessionValue(s);
       } else {
         setSignedIn(false);
         setSessionValue(null);
       }
-    } catch (e) {
-      setSignedIn(false);
+      // listen for session changes
+      function onAuth(e) {
+        const email = e?.detail?.email;
+        if (email) {
+          const s = localStorage.getItem('nh_session');
+          setSignedIn(!!s);
+          setSessionValue(s || null);
+        } else {
+          setSignedIn(false);
+          setSessionValue(null);
+        }
+      }
+      window.addEventListener('nh:auth-change', onAuth);
+      return () => window.removeEventListener('nh:auth-change', onAuth);
+    } catch (err) {
+      // ignore
     }
   }, []);
 
@@ -46,7 +66,7 @@ export default function SearchClient() {
     const n = Number(c);
     if (isNaN(n)) return '#6b7280';
     if (n >= 90) return '#059669'; // green
-    if (n >= 75) return '#16a34a'; // green-strong
+    if (n >= 75) return '#16a34a';
     if (n >= 60) return '#f59e0b'; // amber
     return '#ef4444'; // red
   }
@@ -58,29 +78,18 @@ export default function SearchClient() {
     setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, userRevealed: true } }));
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function performSearch(domainValue, useInferred = false) {
     setError('');
     setResults(null);
-
-    const trimmed = (domain || '').trim();
-    if (!trimmed) {
-      setError('Enter a website (for example coca-cola.com)');
-      return;
-    }
-
     setLoading(true);
     try {
       const headers = { 'Content-Type': 'application/json' };
-      if (includeInferred && sessionValue) {
-        // send local session string to allow server to honor include_inferred
-        headers['x-nh-session'] = sessionValue;
-      }
+      if (useInferred && sessionValue) headers['x-nh-session'] = sessionValue;
 
       const res = await fetch('/api/search-contacts', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ domain: trimmed, limit: 100, include_inferred: includeInferred }),
+        body: JSON.stringify({ domain: domainValue, limit: 100, include_inferred: !!useInferred }),
       });
 
       if (!res.ok) {
@@ -105,7 +114,6 @@ export default function SearchClient() {
         all: filtered,
         meta: payload?.data?.meta ?? null,
         filtered_out: payload?.data?.meta?.filtered_out ?? 0,
-        pattern: payload?.data?.data?.pattern ?? null,
       });
     } catch (err) {
       setError(err?.message || 'Unknown error');
@@ -114,6 +122,27 @@ export default function SearchClient() {
     }
   }
 
+  async function handleSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const trimmed = (domain || '').trim();
+    if (!trimmed) {
+      setError('Enter a website (for example coca-cola.com)');
+      return;
+    }
+    await performSearch(trimmed, includeInferred);
+  }
+
+  // If signed in and includeInferred toggled while results exist, re-run search automatically
+  useEffect(() => {
+    if (results && results.raw && signedIn) {
+      // re-run with new preference
+      (async () => {
+        if (domain && domain.trim()) await performSearch(domain.trim(), includeInferred);
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [includeInferred]);
+
   const renderConfidence = (em) => {
     const c = em?.confidence ?? em?.confidence_score ?? em?.score;
     if (c == null) return null;
@@ -121,7 +150,7 @@ export default function SearchClient() {
     const color = confidenceColor(val);
     return (
       <span style={{ fontSize: 12, color, marginLeft: 8, fontWeight: 600 }}>
-        {val}% 
+        {val}%
       </span>
     );
   };
@@ -172,6 +201,17 @@ export default function SearchClient() {
     );
   };
 
+  // If user tries to enable Include lower-trust while not signed in, open the auth modal
+  function handleIncludeInferredToggle(e) {
+    const wants = e.target.checked;
+    if (wants && !signedIn) {
+      // request auth: header listener in header will open modal
+      window.dispatchEvent(new CustomEvent('nh:open-auth', { detail: { mode: 'signin' } }));
+      return;
+    }
+    setIncludeInferred(wants);
+  }
+
   return (
     <div style={{ maxWidth: 940, margin: '0 auto', padding: '1rem' }}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -186,12 +226,10 @@ export default function SearchClient() {
           {loading ? 'Looking…' : 'Find Contacts'}
         </button>
 
-        {signedIn && (
-          <label style={{ marginLeft: 12, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <input type="checkbox" checked={includeInferred} onChange={(e) => setIncludeInferred(e.target.checked)} />
-            Include inferred addresses (signed-in only)
-          </label>
-        )}
+        <label style={{ marginLeft: 12, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" checked={includeInferred} onChange={handleIncludeInferredToggle} />
+          Include lower-trust results (signed-in only)
+        </label>
       </form>
 
       {loading && <div style={{ marginTop: 12 }}>Loading…</div>}
@@ -204,11 +242,9 @@ export default function SearchClient() {
           <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
             {results.meta ? (
               <>
-                Showing {results.all.length} of {results.meta?.results ?? 'unknown'} results.
-                {typeof results.filtered_out === 'number' && results.filtered_out > 0 && (
-                  <span style={{ marginLeft: 8, color: '#6b7280' }}>{results.filtered_out} low-trust results hidden</span>
-                )}
-                {results.pattern && <span style={{ marginLeft: 8, color: '#9ca3af' }}>Email pattern: {results.pattern}</span>}
+                Showing {results.all.length} of {results.meta?.results ?? 'unknown'} results.{' '}
+                <a href="/upgrade" style={{ color: '#2563eb', marginLeft: 6, textDecoration: 'underline' }}>Upgrade to see all</a>{' '}
+                {results.filtered_out > 0 && <span style={{ marginLeft: 8, color: '#6b7280' }}>{results.filtered_out} low-trust results hidden</span>}
                 <span style={{ marginLeft: 8, color: '#6b7280' }}>Powered by AI</span>
               </>
             ) : (
