@@ -1,17 +1,22 @@
 'use client';
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 /**
- * Lightweight client-only SignIn modal (NO firebase imports).
- * Safe placeholder so builds succeed. Replace later with real Firebase logic.
+ * Lightweight SignIn modal placeholder (no external auth).
+ * Accepts initialMode prop so pages/signin and pages/signup can open the correct tab.
+ * Does NOT auto-close — avoids the quick flash/redirect behavior.
  */
-export default function SignInModal({ open, onClose }) {
-  const [mode, setMode] = useState("signin"); // signin | signup | forgot
+export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
+  const [mode, setMode] = useState(initialMode); // signin | signup | forgot
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode, open]);
 
   if (!open) return null;
 
@@ -20,33 +25,21 @@ export default function SignInModal({ open, onClose }) {
     setError("");
     setMessage("");
 
-    // Placeholder behaviour: don't try to call external auth here.
-    // Replace with real auth when you're ready.
+    // Placeholder behavior: show a friendly message but DO NOT redirect or auto-close.
     if (mode === "signin") {
-      setMessage("Demo sign-in: feature disabled in this build. You will be redirected.");
-      setTimeout(() => {
-        setMessage("");
-        if (typeof onClose === 'function') onClose();
-      }, 1200);
+      setMessage("Demo sign-in: feature disabled in this build.");
     } else if (mode === "signup") {
-      setMessage("Demo sign-up: account creation disabled in this build.");
-      setTimeout(() => {
-        setMessage("");
-        if (typeof onClose === 'function') onClose();
-      }, 1400);
+      setMessage("Demo sign-up: account creation is disabled in this build.");
     } else if (mode === "forgot") {
-      setMessage("Demo reset: please check your real app flow.");
-      setTimeout(() => {
-        setMessage("");
-        setMode("signin");
-      }, 1200);
+      setMessage("Demo reset: please use your account tools.");
     }
   };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
-      <div style={{ background: "white", padding: "2rem", borderRadius: "12px", width: "90%", maxWidth: "420px" }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ background: "white", padding: "2rem", borderRadius: "12px", width: "92%", maxWidth: "420px" }} onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} style={{ position: "absolute", top: "0.5rem", right: "0.5rem", background: "none", border: "none", fontSize: "1.25rem" }}>×</button>
+
         <h2 style={{ marginTop: 0 }}>{mode === "signin" ? "Sign In" : mode === "signup" ? "Create Account" : "Reset Password"}</h2>
 
         {message && <p style={{ color: "green" }}>{message}</p>}
@@ -56,14 +49,14 @@ export default function SignInModal({ open, onClose }) {
           <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ padding: "0.75rem", border: "1px solid #ccc", borderRadius: "8px" }} />
           {mode !== "forgot" && <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ padding: "0.75rem", border: "1px solid #ccc", borderRadius: "8px" }} />}
           <button type="submit" style={{ background: "#111827", color: "white", padding: "0.75rem", borderRadius: "8px", border: "none" }}>
-            {mode === "signin" ? "Sign In" : mode === "signup" ? "Sign Up" : "Send Reset Link"}
+            {mode === "signin" ? "Sign In" : mode === "signup" ? "Create account" : "Send Reset Link"}
           </button>
         </form>
 
         <div style={{ marginTop: "1rem", textAlign: "center", fontSize: "0.9rem" }}>
           {mode === "signin" && (
             <>
-              Forgot password? <a href="#" onClick={() => setMode("forgot")} style={{ color: "#007bff" }}>Reset</a> • <a href="#" onClick={() => setMode("signup")} style={{ color: "#007bff" }}>Sign Up</a>
+              Forgot password? <a href="#" onClick={() => setMode("forgot")} style={{ color: "#007bff" }}>Reset</a> • <a href="#" onClick={() => setMode("signup")} style={{ color: "#007bff" }}>Create account</a>
             </>
           )}
           {mode === "signup" && <a href="#" onClick={() => setMode("signin")} style={{ color: "#007bff" }}>Have an account? Sign in</a>}
