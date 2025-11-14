@@ -3,11 +3,8 @@
 import React, { useState } from 'react';
 
 /**
- * Client-only contact search widget.
- * - ALWAYS masks emails by default (never auto-reveal),
- * - Shows Name, Title, Department, Trust score,
- * - Reveal button explicitly shows full email only after click + verification.
- * - Neutral wording (no provider mention).
+ * Client-only contact search widget that can use a mock API for testing without Hunter.
+ * Set NEXT_PUBLIC_USE_MOCK=1 in Vercel env vars to use the mock endpoints (/api/search-contacts-mock).
  */
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
@@ -17,6 +14,10 @@ export default function SearchClient() {
   const [showAll, setShowAll] = useState(false);
   const [revealed, setRevealed] = useState({});
   const [verifying, setVerifying] = useState({});
+
+  const useMock = typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_USE_MOCK === '1';
+  const searchUrl = useMock ? '/api/search-contacts-mock' : '/api/search-contacts';
+  const verifyUrl = useMock ? '/api/verify-contact-mock' : '/api/verify-contact';
 
   function maskEmail(email) {
     if (!email || typeof email !== 'string') return email;
@@ -29,33 +30,13 @@ export default function SearchClient() {
     return `${first}${stars}${last}@${host}`;
   }
 
-  function computeTrustScore(em) {
-    let score = 0;
-    if (em?.verification?.status === 'valid') score += 60;
-    if (typeof em?.confidence === 'number') score += Math.round(Math.min(40, em.confidence * 0.4));
-    else if (typeof em?.score === 'number') score += Math.round(Math.min(40, em.score * 0.4));
-    const sources = Array.isArray(em?.sources) ? em.sources.length : 0;
-    score += Math.min(20, sources * 4);
-    try {
-      const lastSeen = em?.sources?.[0]?.last_seen_on;
-      if (lastSeen) {
-        const days = Math.floor((Date.now() - new Date(lastSeen).getTime()) / (1000 * 3600 * 24));
-        if (days <= 30) score += 10;
-        else if (days <= 180) score += 6;
-        else if (days <= 365) score += 2;
-      }
-    } catch (e) {}
-    return Math.min(100, Math.round(score));
-  }
-
-  // Reveal action (explicit only) — does NOT auto-reveal verified entries.
   async function handleReveal(em) {
     const key = (em?.value || em?.email || '').toLowerCase();
     if (!key) return;
 
     setVerifying((v) => ({ ...v, [key]: true }));
     try {
-      const res = await fetch('/api/verify-contact', {
+      const res = await fetch(verifyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: em?.value || em?.email }),
@@ -66,10 +47,7 @@ export default function SearchClient() {
         setRevealed((r) => ({ ...r, [key]: { ok: false, error: `Verification failed: ${res.status} ${txt}` } }));
       } else {
         const payload = await res.json();
-        const verified =
-          payload?.data?.data?.status === 'valid' ||
-          payload?.data?.status === 'valid' ||
-          payload?.status === 'valid';
+        const verified = payload?.data?.data?.status === 'valid' || payload?.data?.status === 'valid' || payload?.status === 'valid';
         const full = em?.value || em?.email || payload?.data?.data?.email || payload?.email;
         if (verified && full) setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, payload } }));
         else setRevealed((r) => ({ ...r, [key]: { ok: false, error: 'Not verified', payload } }));
@@ -94,7 +72,7 @@ export default function SearchClient() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/search-contacts', {
+      const res = await fetch(searchUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain: trimmed }),
@@ -126,10 +104,13 @@ export default function SearchClient() {
         deduped.push(e);
       }
 
-      const highQuality = deduped.filter((e) => computeTrustScore(e) >= 60);
-      const lowQuality = deduped.filter((e) => !highQuality.includes(e));
+      const highQuality = deduped.filter((e) => {
+        const hasVerified = e?.verification?.status === 'valid';
+        const hasSource = Array.isArray(e?.sources) && e.sources.length > 0;
+        return hasVerified && hasSource;
+      });
 
-      setResults({ raw: payload, meta, highQuality, lowQuality, all: [...highQuality, ...lowQuality] });
+      setResults({ raw: payload, meta, highQuality, lowQuality: deduped.filter((d) => !highQuality.includes(d)), all: deduped });
       setRevealed({});
     } catch (err) {
       setError(err?.message || 'Unknown error');
@@ -144,12 +125,10 @@ export default function SearchClient() {
     const name = [em?.first_name, em?.last_name].filter(Boolean).join(' ').trim() || em?.linkedin || 'Name not provided';
     const title = em?.position || em?.position_raw || 'Contact';
     const department = em?.department || '-';
-    const trust = computeTrustScore(em);
+    const verification = em?.verification?.status || '-';
     const primarySource = Array.isArray(em?.sources) && em.sources.length > 0 ? em.sources[0] : null;
     const key = (emailVal || `${title}-${i}`).toLowerCase();
     const revealState = revealed[key];
-
-    // IMPORTANT: only show full email if revealState.ok === true (explicit reveal)
     const showFull = revealState?.ok === true;
 
     return (
@@ -160,8 +139,8 @@ export default function SearchClient() {
             <span style={{ fontFamily: 'monospace' }}>{showFull ? revealState.email : masked}</span>
 
             <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: trust >= 80 ? '#059669' : trust >= 50 ? '#b45309' : '#6b7280', fontWeight: 600 }}>
-                Trust: {trust}%
+              <span style={{ fontSize: 12, color: verification === 'valid' ? '#059669' : '#b45309', fontWeight: 600 }}>
+                {verification === 'valid' ? 'Verified' : 'Unverified'}
               </span>
               {primarySource && (
                 <a href={primarySource.uri} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#2563eb' }}>
@@ -173,7 +152,7 @@ export default function SearchClient() {
                   {verifying[key] ? 'Checking…' : 'Reveal'}
                 </button>
               )}
-              {revealState && revealState.ok === false && <span style={{ color: '#ef4444', fontSize: 12 }}>{revealState.error || 'Not revealed'}</span>}
+              {revealState && revealState.ok === false && <span style={{ color: '#ef4444', fontSize: 12 }}>{revealState.error || 'Not revealed'}</span>}  
             </div>
           </div>
         </td>
@@ -219,30 +198,26 @@ export default function SearchClient() {
           <h3 style={{ marginTop: 0 }}>Contacts</h3>
 
           <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
-            {results.meta ? <>Showing {results.all.length} of {results.meta.results} results</> : <>Showing {results.all.length} results</>}
+            {results.meta ? <>Showing {results.highQuality.length} verified of {results.meta.results} total results</> : <>Showing {results.highQuality.length} verified results</>}  
           </div>
 
           <div style={{ marginBottom: 8 }}>
             <label style={{ fontSize: 14, marginRight: 12 }}>
               <input type="checkbox" checked={showAll} onChange={() => setShowAll(!showAll)} /> Show all (including lower-trust)
             </label>
-            <span style={{ color: '#6b7280', fontSize: 13 }}>We show the best contacts first. Click Reveal to show the masked email only when you want it.</span>
+            <span style={{ color: '#6b7280', fontSize: 13 }}>We show verified contacts by default. Toggle to include unverified suggestions.</span>
           </div>
 
-          {Array.isArray(showAll ? results.all : results.highQuality) && (showAll ? results.all : results.highQuality).length > 0 ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Name & Email</th>
-                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Title</th>
-                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Department</th>
-                </tr>
-              </thead>
-              <tbody>{(showAll ? results.all : results.highQuality).map(renderRow)}</tbody>
-            </table>
-          ) : (
-            <p>No high-trust contacts found for this site. Toggle "Show all" to include lower-trust suggestions.</p>
-          )}
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Name & Email</th>
+                <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Title</th>
+                <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Department</th>
+              </tr>
+            </thead>
+            <tbody>{(showAll ? results.all : results.highQuality).map(renderRow)}</tbody>
+          </table>
 
           <details style={{ marginTop: 12 }}>
             <summary>Raw response (debug)</summary>
