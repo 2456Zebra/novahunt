@@ -6,7 +6,7 @@ import React, { useState } from 'react';
  * Client-only contact search widget.
  * - ALWAYS masks emails by default (never auto-reveal),
  * - Shows Name, Title, Department, Trust score,
- * - Reveal button explicitly shows full email only when clicked.
+ * - Reveal button explicitly shows full email only after click + verification.
  * - Neutral wording (no provider mention).
  */
 export default function SearchClient() {
@@ -29,7 +29,6 @@ export default function SearchClient() {
     return `${first}${stars}${last}@${host}`;
   }
 
-  // Human-friendly trust score using verification / sources / recency
   function computeTrustScore(em) {
     let score = 0;
     if (em?.verification?.status === 'valid') score += 60;
@@ -49,7 +48,7 @@ export default function SearchClient() {
     return Math.min(100, Math.round(score));
   }
 
-  // Reveal action: always requires explicit click (never auto reveals)
+  // Reveal action (explicit only) — does NOT auto-reveal verified entries.
   async function handleReveal(em) {
     const key = (em?.value || em?.email || '').toLowerCase();
     if (!key) return;
@@ -150,12 +149,15 @@ export default function SearchClient() {
     const key = (emailVal || `${title}-${i}`).toLowerCase();
     const revealState = revealed[key];
 
+    // IMPORTANT: only show full email if revealState.ok === true (explicit reveal)
+    const showFull = revealState?.ok === true;
+
     return (
       <tr key={key || i}>
         <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <strong style={{ marginBottom: 6 }}>{name}</strong>
-            <span style={{ fontFamily: 'monospace' }}>{revealState?.ok ? revealState.email : masked}</span>
+            <span style={{ fontFamily: 'monospace' }}>{showFull ? revealState.email : masked}</span>
 
             <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ fontSize: 12, color: trust >= 80 ? '#059669' : trust >= 50 ? '#b45309' : '#6b7280', fontWeight: 600 }}>
@@ -166,7 +168,7 @@ export default function SearchClient() {
                   source
                 </a>
               )}
-              {!revealState?.ok && (
+              {!showFull && (
                 <button onClick={() => handleReveal(em)} disabled={verifying[key]} style={{ marginLeft: 8, fontSize: 12, padding: '4px 8px' }}>
                   {verifying[key] ? 'Checking…' : 'Reveal'}
                 </button>
@@ -224,7 +226,7 @@ export default function SearchClient() {
             <label style={{ fontSize: 14, marginRight: 12 }}>
               <input type="checkbox" checked={showAll} onChange={() => setShowAll(!showAll)} /> Show all (including lower-trust)
             </label>
-            <span style={{ color: '#6b7280', fontSize: 13 }}>We show the best contacts first. Click Reveal to show a masked email only when you want it.</span>
+            <span style={{ color: '#6b7280', fontSize: 13 }}>We show the best contacts first. Click Reveal to show the masked email only when you want it.</span>
           </div>
 
           {Array.isArray(showAll ? results.all : results.highQuality) && (showAll ? results.all : results.highQuality).length > 0 ? (
