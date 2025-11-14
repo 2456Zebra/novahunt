@@ -1,7 +1,7 @@
 import dynamic from 'next/dynamic';
 import Head from 'next/head';
 
-// Simple sign-in UI — uses firebase client if you have firebase-config set up.
+// Client-only dynamic import for the modal
 const SignInModal = dynamic(() => import('../SignInModal'), { ssr: false });
 
 export default function SignInPage() {
@@ -11,7 +11,7 @@ export default function SignInPage() {
       <main style={{ padding: '2rem', maxWidth: 900, margin: '0 auto' }}>
         <h1>Sign in</h1>
         <p>Sign in to save leads and manage reveals.</p>
-        <SignInModal open={true} onClose={() => { window.location.href = '/'; }} />
+        <SignInModal open={true} initialMode="signin" onClose={() => { /* keep on same page for demo; add redirect after real auth */ }} />
       </main>
     </>
   );
