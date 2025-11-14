@@ -1,7 +1,8 @@
 // Server-side: call Hunter domain-search and return provider payload under { data: ... }.
 // Supports opt-in include_inferred (body.include_inferred) — honored only when client sends a session header.
 // Saves a raw backup in KV before filtering so you can restore if needed.
-import { kv } from '@vercel/kv';
+import { getKV } from './_kv-wrapper';
+const kv = getKV();
 
 function makeHunterUrl(domain, limit = 10, offset = '') {
   const limitPart = limit ? `&limit=${encodeURIComponent(limit)}` : '';
@@ -23,7 +24,6 @@ export default async function handler(req, res) {
     const key = process.env.HUNTER_API_KEY;
     if (!key) return res.status(500).json({ error: 'HUNTER_API_KEY not configured' });
 
-    // Normalize limit
     let requestedLimit = parseInt(limit, 10);
     if (isNaN(requestedLimit) || requestedLimit <= 0) requestedLimit = 10;
     requestedLimit = Math.min(requestedLimit, 100);
@@ -32,12 +32,12 @@ export default async function handler(req, res) {
 
     // Try KV cache first
     try {
-      if (typeof kv !== 'undefined') {
+      if (kv) {
         const cached = await kv.get(cacheKey);
         if (cached) return res.status(200).json(cached);
       }
     } catch (e) {
-      console.warn('KV read error', e);
+      console.warn('KV read error', e?.message || e);
     }
 
     async function callHunter(limitToUse) {
@@ -53,10 +53,8 @@ export default async function handler(req, res) {
       return { ok: r.ok, status: r.status, body: json, json };
     }
 
-    // Try first
     const first = await callHunter(requestedLimit);
 
-    // fallback for pagination error / free plan
     if (!first.ok && first.body && first.body.errors && Array.isArray(first.body.errors)) {
       const paginationError = first.body.errors.find((err) => err?.id === 'pagination_error' || err?.code === 400);
       if (paginationError) {
@@ -64,22 +62,18 @@ export default async function handler(req, res) {
         if (!fallback.ok) {
           return res.status(502).json({ error: 'Upstream API error', status: fallback.status, body: fallback.body });
         }
-        // proceed with fallback.json
         const payload = { data: fallback.json };
-        // Save raw backup and then filter below
         try {
-          if (typeof kv !== 'undefined') {
-            await kv.set(`${cacheKey}:raw`, payload, { ex: 60 * 60 * 24 }); // 24 hours
+          if (kv) {
+            await kv.set(`${cacheKey}:raw`, payload, { ex: 60 * 60 * 24 });
           }
         } catch (e) {
-          console.warn('KV write raw backup error', e);
+          console.warn('KV write raw backup error', e?.message || e);
         }
 
-        // determine whether to include inferred: allow only when client explicitly requested and provided a session header
         const sessionHeader = req.headers['x-nh-session'];
         const allowInferred = include_inferred === true && !!sessionHeader;
 
-        // filter unless allowed
         try {
           if (!allowInferred && payload?.data?.data?.emails && Array.isArray(payload.data.data.emails)) {
             const originalCount = payload.data.data.emails.length;
@@ -89,21 +83,19 @@ export default async function handler(req, res) {
               if (e.verification && e.verification.status === 'valid') return true;
               return false;
             });
-            // attach info for client about filtering
             payload.data.meta = payload.data.meta || {};
             payload.data.meta.filtered_out = originalCount - payload.data.data.emails.length;
           }
         } catch (err) {
-          console.warn('filter error', err);
+          console.warn('filter error', err?.message || err);
         }
 
-        // cache filtered payload
         try {
-          if (typeof kv !== 'undefined') {
+          if (kv) {
             await kv.set(cacheKey, payload, { ex: 60 * 30 });
           }
         } catch (e) {
-          console.warn('KV write error', e);
+          console.warn('KV write error', e?.message || e);
         }
 
         return res.status(200).json(payload);
@@ -116,20 +108,17 @@ export default async function handler(req, res) {
 
     const payload = { data: first.json };
 
-    // Save a raw copy (before filtering) so we can inspect/recover if needed
     try {
-      if (typeof kv !== 'undefined') {
-        await kv.set(`${cacheKey}:raw`, payload, { ex: 60 * 60 * 24 }); // 24 hours
+      if (kv) {
+        await kv.set(`${cacheKey}:raw`, payload, { ex: 60 * 60 * 24 });
       }
     } catch (e) {
-      console.warn('KV write raw backup error', e);
+      console.warn('KV write raw backup error', e?.message || e);
     }
 
-    // decide whether client is allowed to request inferred entries:
     const sessionHeader = req.headers['x-nh-session'];
     const allowInferred = include_inferred === true && !!sessionHeader;
 
-    // Filter out inferred/guessed emails unless allowed
     try {
       if (!allowInferred && payload?.data?.data?.emails && Array.isArray(payload.data.data.emails)) {
         const originalCount = payload.data.data.emails.length;
@@ -143,21 +132,20 @@ export default async function handler(req, res) {
         payload.data.meta.filtered_out = originalCount - payload.data.data.emails.length;
       }
     } catch (e) {
-      console.warn('filter error', e);
+      console.warn('filter error', e?.message || e);
     }
 
-    // cache filtered payload
     try {
-      if (typeof kv !== 'undefined') {
+      if (kv) {
         await kv.set(cacheKey, payload, { ex: 60 * 30 });
       }
     } catch (e) {
-      console.warn('KV write error', e);
+      console.warn('KV write error', e?.message || e);
     }
 
     return res.status(200).json(payload);
   } catch (err) {
-    console.error('search-contacts error', err);
+    console.error('search-contacts error', err?.message || err);
     return res.status(500).json({ error: err.message || 'Server error' });
   }
 }
