@@ -1,4 +1,11 @@
-// Minimal pages/_app.js — no global imports, no providers, nothing that can cause hook-order or SSR mismatch.
+import Header from '../components/Header';
+import '../styles/globals.css';
+
 export default function MyApp({ Component, pageProps }) {
-  return <Component {...pageProps} />;
+  return (
+    <>
+      <Header />
+      <Component {...pageProps} />
+    </>
+  );
 }
