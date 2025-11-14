@@ -1,6 +1,14 @@
 // Server-side: call Hunter domain-search and return provider payload under { data: ... }.
-// Uses Vercel KV if available for short-term caching to reduce repeated calls.
+// Tries requested limit first; if Hunter returns pagination_error (free plan limited to 10),
+// retries with limit=10 so the user gets results instead of a 502.
 import { kv } from '@vercel/kv';
+
+function makeHunterUrl(domain, limit = 10, offset = '') {
+  const limitPart = limit ? `&limit=${encodeURIComponent(limit)}` : '';
+  const offsetPart = offset ? `&offset=${encodeURIComponent(offset)}` : '';
+  const key = process.env.HUNTER_API_KEY || '';
+  return `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}${limitPart}${offsetPart}&api_key=${encodeURIComponent(key)}`;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -9,13 +17,20 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { domain, limit = 50, offset = '' } = req.body || {};
+    const { domain, limit = 10, offset = '' } = req.body || {};
     if (!domain) return res.status(400).json({ error: 'domain required in POST body' });
 
     const key = process.env.HUNTER_API_KEY;
     if (!key) return res.status(500).json({ error: 'HUNTER_API_KEY not configured' });
 
-    const cacheKey = `hunter:search:${domain.toLowerCase()}:${limit}:${offset}`;
+    // Normalize limit: make integer and sensible default
+    let requestedLimit = parseInt(limit, 10);
+    if (isNaN(requestedLimit) || requestedLimit <= 0) requestedLimit = 10;
+    // allow a ceiling but we'll handle pagination error by retrying with 10
+    requestedLimit = Math.min(requestedLimit, 100);
+
+    const cacheKey = `hunter:search:${domain.toLowerCase()}:${requestedLimit}:${offset}`;
+
     // Try KV cache first if available
     try {
       if (typeof kv !== 'undefined') {
@@ -23,31 +38,60 @@ export default async function handler(req, res) {
         if (cached) return res.status(200).json(cached);
       }
     } catch (e) {
-      // KV not available or error — continue
       console.warn('KV read error', e);
     }
 
-    const limitPart = limit ? `&limit=${encodeURIComponent(limit)}` : '';
-    const offsetPart = offset ? `&offset=${encodeURIComponent(offset)}` : '';
-    const url = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}${limitPart}${offsetPart}&api_key=${encodeURIComponent(key)}`;
-
-    const r = await fetch(url);
-    const text = await r.text();
-    let json;
-    try {
-      json = JSON.parse(text);
-    } catch (err) {
-      return res.status(502).json({ error: 'Upstream returned non-JSON', status: r.status, body: text });
+    // Helper to call hunter and parse JSON
+    async function callHunter(limitToUse) {
+      const url = makeHunterUrl(domain, limitToUse, offset);
+      const r = await fetch(url);
+      const text = await r.text();
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch (err) {
+        // upstream returned non-JSON
+        return { ok: false, status: r.status, body: text, json: null };
+      }
+      return { ok: r.ok, status: r.status, body: json, json };
     }
 
-    if (!r.ok) return res.status(502).json({ error: 'Upstream API error', status: r.status, body: json });
+    // First attempt with requestedLimit
+    const first = await callHunter(requestedLimit);
 
-    const payload = { data: json };
+    // If upstream returned pagination error (free plan limit), retry with 10
+    if (!first.ok && first.body && first.body.errors && Array.isArray(first.body.errors)) {
+      const paginationError = first.body.errors.find((err) => err?.id === 'pagination_error' || err?.code === 400);
+      if (paginationError) {
+        // retry with safe limit = 10
+        const fallback = await callHunter(10);
+        if (!fallback.ok) {
+          // still failed — return 502 with upstream body
+          return res.status(502).json({ error: 'Upstream API error', status: fallback.status, body: fallback.body });
+        }
+        const payload = { data: fallback.json };
+        // cache short TTL if KV available
+        try {
+          if (typeof kv !== 'undefined') {
+            await kv.set(cacheKey, payload, { ex: 60 * 30 }); // 30 minutes
+          }
+        } catch (e) {
+          console.warn('KV write error', e);
+        }
+        return res.status(200).json(payload);
+      }
+    }
 
-    // Store in KV for short TTL to save credits
+    // If first call failed for other reasons, return 502 with body so client can show message
+    if (!first.ok) {
+      return res.status(502).json({ error: 'Upstream API error', status: first.status, body: first.body });
+    }
+
+    const payload = { data: first.json };
+    // cache short TTL if KV available
     try {
       if (typeof kv !== 'undefined') {
-        await kv.set(cacheKey, payload, { ex: 60 * 30 }); // 30 minute TTL
+        await kv.set(cacheKey, payload, { ex: 60 * 30 });
       }
     } catch (e) {
       console.warn('KV write error', e);
