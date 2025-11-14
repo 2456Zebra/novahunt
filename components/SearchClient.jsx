@@ -3,23 +3,18 @@
 import React, { useState } from 'react';
 
 /**
- * Real-only client search widget.
- * - Always calls the real server endpoints: /api/search-contacts and /api/verify-contact
- * - Masks emails by default and reveals only after explicit verification
- * - Defaults to showing the full Hunter result set by default (showAll = true),
- *   but masks addresses; Reveal short-circuits for hunter-marked verified items.
+ * Strict Hunter-only client:
+ * - Always uses /api/search-contacts (server must call Hunter)
+ * - Displays exactly the emails returned by Hunter (payload.data.data.emails) in provider order
+ * - Masks addresses by default; Reveal simply exposes the exact value Hunter returned (no extra verify calls)
+ * - No mock, no inferred addresses added client-side
  */
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [results, setResults] = useState(null);
-  const [showAll, setShowAll] = useState(true); // show provider results (mimic Hunter)
   const [revealed, setRevealed] = useState({});
-  const [verifying, setVerifying] = useState({});
-
-  const searchUrl = '/api/search-contacts';
-  const verifyUrl = '/api/verify-contact';
 
   function maskEmail(email) {
     if (!email || typeof email !== 'string') return email;
@@ -32,44 +27,12 @@ export default function SearchClient() {
     return `${first}${stars}${last}@${host}`;
   }
 
-  // Reveal: short-circuit if provider already marked as valid
-  async function handleReveal(em) {
+  // Reveal: show the exact Hunter-provided email value for this row
+  function handleReveal(em) {
     const key = (em?.value || em?.email || '').toLowerCase();
     if (!key) return;
-
-    // If Hunter already marked this email valid, reveal immediately (no extra API call)
-    if (em?.verification?.status === 'valid') {
-      const full = em?.value || em?.email || null;
-      setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, payload: { source: 'hunter', verification: em?.verification } } }));
-      return;
-    }
-
-    setVerifying((v) => ({ ...v, [key]: true }));
-    try {
-      const res = await fetch(verifyUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: em?.value || em?.email }),
-      });
-
-      if (!res.ok) {
-        const txt = await res.text();
-        setRevealed((r) => ({ ...r, [key]: { ok: false, error: `Verification failed: ${res.status} ${txt}` } }));
-      } else {
-        const payload = await res.json();
-        const verified =
-          payload?.data?.data?.status === 'valid' ||
-          payload?.data?.status === 'valid' ||
-          payload?.status === 'valid';
-        const full = em?.value || em?.email || payload?.data?.data?.email || payload?.email;
-        if (verified && full) setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, payload } }));
-        else setRevealed((r) => ({ ...r, [key]: { ok: false, error: 'Not verified', payload } }));
-      }
-    } catch (err) {
-      setRevealed((r) => ({ ...r, [key]: { ok: false, error: err?.message || 'Unknown error' } }));
-    } finally {
-      setVerifying((v) => ({ ...v, [key]: false }));
-    }
+    const full = em?.value || em?.email || null;
+    setRevealed((r) => ({ ...r, [key]: { ok: true, email: full } }));
   }
 
   async function handleSubmit(e) {
@@ -85,8 +48,7 @@ export default function SearchClient() {
 
     setLoading(true);
     try {
-      // ask server for up to 100 results (adjust limit as needed)
-      const res = await fetch(searchUrl, {
+      const res = await fetch('/api/search-contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain: trimmed, limit: 100 }),
@@ -101,28 +63,17 @@ export default function SearchClient() {
 
       const payload = await res.json();
 
-      const emails =
-        (payload && payload.data && payload.data.data && payload.data.data.emails) ||
-        (payload && payload.data && payload.data.emails) ||
-        payload?.emails ||
+      // Strictly use Hunter's returned emails array (provider order)
+      const hunterEmails =
+        payload?.data?.data?.emails ??
+        payload?.data?.emails ??
+        payload?.emails ??
         [];
 
-      const meta = payload?.data?.meta || null;
+      // Keep only entries that include a value (exactly what Hunter returned)
+      const filtered = hunterEmails.filter((e) => !!(e?.value || e?.email));
 
-      // dedupe keeping provider order
-      const deduped = [];
-      const seen = new Set();
-      for (const e of emails) {
-        const val = (e?.value || e?.email || '').toLowerCase();
-        if (!val || seen.has(val)) continue;
-        seen.add(val);
-        deduped.push(e);
-      }
-
-      const verifiedOnly = deduped.filter((e) => e?.verification?.status === 'valid' && Array.isArray(e?.sources) && e.sources.length > 0);
-
-      setResults({ raw: payload, meta, verifiedOnly, all: deduped });
-      setRevealed({});
+      setResults({ raw: payload, all: filtered, meta: payload?.data?.meta ?? null });
     } catch (err) {
       setError(err?.message || 'Unknown error');
     } finally {
@@ -132,22 +83,21 @@ export default function SearchClient() {
 
   const renderRow = (em, i) => {
     const emailVal = em?.value || em?.email || '(no email)';
+    const key = (emailVal || `${i}`).toLowerCase();
+    const showFull = revealed[key]?.ok === true;
     const masked = maskEmail(emailVal);
     const name = [em?.first_name, em?.last_name].filter(Boolean).join(' ').trim() || em?.linkedin || 'Name not provided';
-    const title = em?.position || em?.position_raw || 'Contact';
+    const title = em?.position || em?.position_raw || '-';
     const department = em?.department || '-';
     const verification = em?.verification?.status || '-';
     const primarySource = Array.isArray(em?.sources) && em.sources.length > 0 ? em.sources[0] : null;
-    const key = (emailVal || `${title}-${i}`).toLowerCase();
-    const revealState = revealed[key];
-    const showFull = revealState?.ok === true;
 
     return (
-      <tr key={key || i}>
-        <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>
+      <tr key={key}>
+        <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <strong style={{ marginBottom: 6 }}>{name}</strong>
-            <span style={{ fontFamily: 'monospace' }}>{showFull ? revealState.email : masked}</span>
+            <span style={{ fontFamily: 'monospace' }}>{showFull ? revealed[key].email : masked}</span>
 
             <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ fontSize: 12, color: verification === 'valid' ? '#059669' : '#b45309', fontWeight: 600 }}>
@@ -159,22 +109,16 @@ export default function SearchClient() {
                 </a>
               )}
               {!showFull && (
-                <button onClick={() => handleReveal(em)} disabled={verifying[key]} style={{ marginLeft: 8, fontSize: 12, padding: '4px 8px' }}>
-                  {verifying[key] ? 'Checking…' : 'Reveal'}
+                <button onClick={() => handleReveal(em)} style={{ marginLeft: 8, fontSize: 12, padding: '4px 8px' }}>
+                  Reveal
                 </button>
               )}
-              {revealState && revealState.ok === false && <span style={{ color: '#ef4444', fontSize: 12 }}>{revealState.error || 'Not revealed'}</span>}
             </div>
           </div>
         </td>
 
-        <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>
-          <div style={{ fontSize: 14 }}>{title}</div>
-        </td>
-
-        <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>
-          <div style={{ fontSize: 13, color: '#374151' }}>{department}</div>
-        </td>
+        <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>{title}</td>
+        <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>{department}</td>
       </tr>
     );
   };
@@ -194,14 +138,6 @@ export default function SearchClient() {
         </button>
       </form>
 
-      {loading && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ height: 8, background: '#eee', borderRadius: 999 }}>
-            <div style={{ height: 8, width: '50%', background: '#111827', borderRadius: 999, transition: 'width .3s' }} />
-          </div>
-        </div>
-      )}
-
       {error && <p style={{ color: 'red', marginTop: 12 }}>{error}</p>}
 
       {results && (
@@ -209,14 +145,7 @@ export default function SearchClient() {
           <h3 style={{ marginTop: 0 }}>Contacts</h3>
 
           <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
-            {results.meta ? <>Showing {results.all.length} results (displaying {(showAll ? results.all.length : results.verifiedOnly.length)} on current filter)</> : <>Showing {results.all.length} results</>}
-          </div>
-
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ fontSize: 14, marginRight: 12 }}>
-              <input type="checkbox" checked={showAll} onChange={() => setShowAll(!showAll)} /> Show all (including lower-trust)
-            </label>
-            <span style={{ color: '#6b7280', fontSize: 13 }}>We show hunter results by default. Click Reveal to show an email when you want it.</span>
+            {results.meta ? <>Showing {results.all.length} results (provider: Hunter)</> : <>Showing {results.all.length} results</>}
           </div>
 
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -227,7 +156,7 @@ export default function SearchClient() {
                 <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Department</th>
               </tr>
             </thead>
-            <tbody>{(showAll ? results.all : results.verifiedOnly).map(renderRow)}</tbody>
+            <tbody>{results.all.map(renderRow)}</tbody>
           </table>
 
           <details style={{ marginTop: 12 }}>
