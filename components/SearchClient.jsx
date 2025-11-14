@@ -100,7 +100,6 @@ export default function SearchClient() {
 
       const meta = payload?.data?.meta || null;
 
-      // dedupe
       const deduped = [];
       const seen = new Set();
       for (const e of emails) {
@@ -201,7 +200,7 @@ export default function SearchClient() {
           <h3 style={{ marginTop: 0 }}>Contacts</h3>
 
           <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
-            {results.meta ? <>Showing {results.verifiedOnly?.length ?? results.verifiedOnly?.length} verified of {results.meta.results} total results</> : <>Showing {results.verifiedOnly?.length ?? 0} verified results</>}
+            {results.meta ? <>Showing {results.verifiedOnly?.length ?? 0} verified of {results.meta.results} total results</> : <>Showing {results.verifiedOnly?.length ?? 0} verified results</>}
           </div>
 
           <div style={{ marginBottom: 8 }}>
