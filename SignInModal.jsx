@@ -4,7 +4,7 @@ import React, { useState } from "react";
 
 /**
  * Lightweight client-only SignIn modal (NO firebase imports).
- * This is a safe placeholder so builds succeed. Replace later with real Firebase logic.
+ * Safe placeholder so builds succeed. Replace later with real Firebase logic.
  */
 export default function SignInModal({ open, onClose }) {
   const [mode, setMode] = useState("signin"); // signin | signup | forgot
@@ -26,13 +26,13 @@ export default function SignInModal({ open, onClose }) {
       setMessage("Demo sign-in: feature disabled in this build. You will be redirected.");
       setTimeout(() => {
         setMessage("");
-        onClose();
+        if (typeof onClose === 'function') onClose();
       }, 1200);
     } else if (mode === "signup") {
       setMessage("Demo sign-up: account creation disabled in this build.");
       setTimeout(() => {
         setMessage("");
-        onClose();
+        if (typeof onClose === 'function') onClose();
       }, 1400);
     } else if (mode === "forgot") {
       setMessage("Demo reset: please check your real app flow.");
