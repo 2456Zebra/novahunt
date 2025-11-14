@@ -19,7 +19,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'invalid email format' });
     }
 
-    // Basic caching (ephemeral) to reduce repeated verifies on warm server instance
+    // Basic ephemeral cache to reduce repeated verifies on warm instance
     if (!global.__verify_cache) global.__verify_cache = {};
     const cacheKey = `v:${email.toLowerCase()}`;
     if (global.__verify_cache[cacheKey]) {
