@@ -1,9 +1,10 @@
-// Stripe webhook endpoint — validates signature and stores subscription info in Vercel KV.
+// Stripe webhook endpoint — validates signature and stores subscription info in KV.
 // Make sure to set STRIPE_WEBHOOK_SECRET in Vercel and configure the Stripe dashboard to send events to:
 // https://YOUR_SITE/api/webhook
 import Stripe from 'stripe';
 import { buffer } from 'micro';
-import { kv } from '@vercel/kv';
+import { getKV } from './_kv-wrapper';
+const kv = getKV();
 
 export const config = {
   api: {
@@ -11,7 +12,7 @@ export const config = {
   },
 };
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-11-15' });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2023-11-15' });
 
 export default async function handler(req, res) {
   const sig = req.headers['stripe-signature'];
@@ -31,11 +32,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Handle relevant events
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
-        // session.customer_email may exist; metadata.nh_session contains the client-side session
         const email = session.customer_email || (() => {
           try {
             const parsed = JSON.parse(session.metadata?.nh_session || '{}');
@@ -45,8 +44,7 @@ export default async function handler(req, res) {
           }
         })();
 
-        // store checkout -> email as well
-        if (email) {
+        if (email && kv) {
           await kv.set(`stripe:checkout:${session.id}`, { email, created_at: new Date().toISOString() }, { ex: 60 * 60 * 24 * 7 });
         }
         break;
@@ -57,57 +55,42 @@ export default async function handler(req, res) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
-        // On subscription events, save subscription info keyed by customer email when available
-        const sub = event.data.object; // subscription or invoice depending on event
-        // Try to get email: invoice has customer_email on hosted_invoice_url? fallback via customer object lookup
+        const obj = event.data.object;
         let email = null;
 
-        if (sub.customer_email) email = sub.customer_email;
-        // subscription object sometimes contains customer id — fetch customer to get email
-        if (!email && sub.customer) {
+        if (obj.customer_email) email = obj.customer_email;
+        if (!email && obj.customer) {
           try {
-            const customer = await stripe.customers.retrieve(sub.customer);
+            const customer = await stripe.customers.retrieve(obj.customer);
             email = customer?.email || null;
           } catch (e) {
-            console.warn('Could not fetch customer', e);
+            console.warn('Could not fetch customer', e?.message || e);
           }
         }
 
-        // For invoices, look at invoice.customer and fetch email
-        if (!email && sub?.customer) {
-          try {
-            const customer = await stripe.customers.retrieve(sub.customer);
-            email = customer?.email || null;
-          } catch (e) {
-            // ignore
-          }
-        }
-
-        if (email) {
-          // Keep subscription data useful for gating features
+        if (email && kv) {
           const dataToStore = {
-            id: sub.id || sub.subscription || null,
-            status: sub.status || 'unknown',
-            priceId: (sub.items && sub.items?.data && sub.items.data[0]?.price?.id) || null,
-            current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
-            raw: sub,
+            id: obj.id || obj.subscription || null,
+            status: obj.status || 'unknown',
+            priceId: (obj.items && obj.items?.data && obj.items.data[0]?.price?.id) || null,
+            current_period_end: obj.current_period_end ? new Date(obj.current_period_end * 1000).toISOString() : null,
+            raw: obj,
             updated_at: new Date().toISOString(),
           };
           try {
             await kv.set(`stripe:subscription:${email.toLowerCase()}`, dataToStore, { ex: 60 * 60 * 24 * 365 });
           } catch (e) {
-            console.warn('KV write error (subscription)', e);
+            console.warn('KV write error (subscription)', e?.message || e);
           }
         }
         break;
       }
 
       default:
-        // console.log(`Unhandled event type ${event.type}`);
         break;
     }
   } catch (err) {
-    console.error('Error processing webhook', err);
+    console.error('Error processing webhook', err?.message || err);
     return res.status(500).send('Webhook handler error');
   }
 
