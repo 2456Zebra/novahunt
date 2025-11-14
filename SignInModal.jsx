@@ -3,12 +3,8 @@
 import React, { useState, useEffect } from 'react';
 
 /**
- * SignInModal — lightweight local account support for testing.
- * - Sign up stores a local test account in localStorage (no external auth).
- * - Sign in validates against the local account and shows success message.
- * - Does NOT auto-close; user stays on the modal after actions.
- *
- * Note: Replace with real auth when ready.
+ * SignInModal — stores a local test account in localStorage for testing.
+ * After successful sign-in it provides a Back to dashboard button and auto-closes.
  */
 export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
   const [mode, setMode] = useState(initialMode); // signin | signup | forgot
@@ -16,6 +12,7 @@ export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [justSignedIn, setJustSignedIn] = useState(false);
 
   useEffect(() => {
     setMode(initialMode);
@@ -23,6 +20,7 @@ export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
     setError('');
     setEmail('');
     setPassword('');
+    setJustSignedIn(false);
   }, [initialMode, open]);
 
   if (!open) return null;
@@ -39,7 +37,6 @@ export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
 
     try {
       if (mode === 'signup') {
-        // store a simple local account for testing
         const accountsJSON = localStorage.getItem('nh_accounts') || '{}';
         const accounts = JSON.parse(accountsJSON);
         if (accounts[email]) {
@@ -48,7 +45,7 @@ export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
         }
         accounts[email] = { password, created_at: new Date().toISOString() };
         localStorage.setItem('nh_accounts', JSON.stringify(accounts));
-        setMessage('Account created locally. You can now sign in.');
+        setMessage('Account created locally.');
       } else if (mode === 'signin') {
         const accountsJSON = localStorage.getItem('nh_accounts') || '{}';
         const accounts = JSON.parse(accountsJSON);
@@ -58,8 +55,16 @@ export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
           return;
         }
         setMessage(`Signed in as ${email}`);
+        // mark signed in and offer a Back to dashboard button
+        setJustSignedIn(true);
+        // auto-close after a short delay (so user sees message)
+        setTimeout(() => {
+          setJustSignedIn(false);
+          onClose?.();
+          // optional: navigate to dashboard root
+          try { window.location.href = '/'; } catch (err) {}
+        }, 1000);
       } else if (mode === 'forgot') {
-        // no email sending; show instructions
         setMessage('If this were a production site, a password reset email would be sent. For now, sign up again or contact the owner.');
       }
     } catch (err) {
@@ -68,8 +73,8 @@ export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
-      <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '92%', maxWidth: '420px' }} onClick={(e) => e.stopPropagation()}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
+      <div style={{ background: 'white', padding: '1.25rem', borderRadius: '10px', width: '92%', maxWidth: '420px' }} onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'none', border: 'none', fontSize: '1.25rem' }}>×</button>
 
         <h2 style={{ marginTop: 0 }}>{mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Reset Password'}</h2>
@@ -77,15 +82,23 @@ export default function SignInModal({ open, onClose, initialMode = 'signin' }) {
         {message && <p style={{ color: 'green' }}>{message}</p>}
         {error && <p style={{ color: 'red' }}>{error}</p>}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ padding: '0.75rem', border: '1px solid #ccc', borderRadius: '8px' }} />
-          {mode !== 'forgot' && <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ padding: '0.75rem', border: '1px solid #ccc', borderRadius: '8px' }} />}
-          <button type="submit" style={{ background: '#111827', color: 'white', padding: '0.75rem', borderRadius: '8px', border: 'none' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ padding: '0.6rem', border: '1px solid #ccc', borderRadius: '8px' }} />
+          {mode !== 'forgot' && <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ padding: '0.6rem', border: '1px solid #ccc', borderRadius: '8px' }} />}
+          <button type="submit" style={{ background: '#111827', color: 'white', padding: '0.6rem', borderRadius: '8px', border: 'none' }}>
             {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create account' : 'Send Reset Link'}
           </button>
         </form>
 
-        <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>
+        {justSignedIn && (
+          <div style={{ marginTop: '1rem' }}>
+            <button onClick={() => { onClose?.(); try { window.location.href = '/'; } catch (err) {} }} style={{ background: '#059669', color: 'white', padding: '0.5rem 0.75rem', borderRadius: '8px', border: 'none' }}>
+              Back to dashboard
+            </button>
+          </div>
+        )}
+
+        <div style={{ marginTop: '0.75rem', textAlign: 'center', fontSize: '0.9rem' }}>
           {mode === 'signin' && (
             <>
               Forgot password? <a href="#" onClick={() => setMode('forgot')} style={{ color: '#007bff' }}>Reset</a> • <a href="#" onClick={() => setMode('signup')} style={{ color: '#007bff' }}>Create account</a>
