@@ -6,14 +6,15 @@ import React, { useState } from 'react';
  * Real-only client search widget.
  * - Always calls the real server endpoints: /api/search-contacts and /api/verify-contact
  * - Masks emails by default and reveals only after explicit verification
- * - Defaults to showing verified results only (verification + source)
+ * - Defaults to showing the full Hunter result set by default (showAll = true),
+ *   but masks addresses; Reveal short-circuits for hunter-marked verified items.
  */
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [results, setResults] = useState(null);
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(true); // show provider results (mimic Hunter)
   const [revealed, setRevealed] = useState({});
   const [verifying, setVerifying] = useState({});
 
@@ -31,9 +32,17 @@ export default function SearchClient() {
     return `${first}${stars}${last}@${host}`;
   }
 
+  // Reveal: short-circuit if provider already marked as valid
   async function handleReveal(em) {
     const key = (em?.value || em?.email || '').toLowerCase();
     if (!key) return;
+
+    // If Hunter already marked this email valid, reveal immediately (no extra API call)
+    if (em?.verification?.status === 'valid') {
+      const full = em?.value || em?.email || null;
+      setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, payload: { source: 'hunter', verification: em?.verification } } }));
+      return;
+    }
 
     setVerifying((v) => ({ ...v, [key]: true }));
     try {
@@ -76,7 +85,7 @@ export default function SearchClient() {
 
     setLoading(true);
     try {
-      // ask server for up to 100 results (tweak if you want less)
+      // ask server for up to 100 results (adjust limit as needed)
       const res = await fetch(searchUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -100,6 +109,7 @@ export default function SearchClient() {
 
       const meta = payload?.data?.meta || null;
 
+      // dedupe keeping provider order
       const deduped = [];
       const seen = new Set();
       for (const e of emails) {
@@ -109,7 +119,6 @@ export default function SearchClient() {
         deduped.push(e);
       }
 
-      // Only show verified + with sources by default
       const verifiedOnly = deduped.filter((e) => e?.verification?.status === 'valid' && Array.isArray(e?.sources) && e.sources.length > 0);
 
       setResults({ raw: payload, meta, verifiedOnly, all: deduped });
@@ -200,14 +209,14 @@ export default function SearchClient() {
           <h3 style={{ marginTop: 0 }}>Contacts</h3>
 
           <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
-            {results.meta ? <>Showing {results.verifiedOnly?.length ?? 0} verified of {results.meta.results} total results</> : <>Showing {results.verifiedOnly?.length ?? 0} verified results</>}
+            {results.meta ? <>Showing {results.all.length} results (displaying {(showAll ? results.all.length : results.verifiedOnly.length)} on current filter)</> : <>Showing {results.all.length} results</>}
           </div>
 
           <div style={{ marginBottom: 8 }}>
             <label style={{ fontSize: 14, marginRight: 12 }}>
               <input type="checkbox" checked={showAll} onChange={() => setShowAll(!showAll)} /> Show all (including lower-trust)
             </label>
-            <span style={{ color: '#6b7280', fontSize: 13 }}>We show verified contacts by default. Toggle to include unverified suggestions.</span>
+            <span style={{ color: '#6b7280', fontSize: 13 }}>We show hunter results by default. Click Reveal to show an email when you want it.</span>
           </div>
 
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
