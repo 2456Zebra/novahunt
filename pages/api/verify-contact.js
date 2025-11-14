@@ -1,6 +1,5 @@
-// Neutral verify endpoint: accepts POST { email } or GET ?email=...
-// Returns provider verification payload in { data: ... } shape.
-// Accepts both POST and GET to avoid 405 failures from unexpected client calls.
+// Verify an email using Hunter's email-verifier endpoint.
+// Accepts POST { email } or GET ?email=...
 export default async function handler(req, res) {
   try {
     const method = req.method || 'GET';
@@ -13,13 +12,13 @@ export default async function handler(req, res) {
     if (!email) return res.status(400).json({ error: 'email required' });
 
     const key = process.env.HUNTER_API_KEY;
-    if (!key) return res.status(500).json({ error: 'API key not configured' });
+    if (!key) return res.status(500).json({ error: 'HUNTER_API_KEY not configured' });
 
     if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
       return res.status(400).json({ error: 'invalid email format' });
     }
 
-    // Basic ephemeral cache to reduce repeated verifies on warm instance
+    // Basic ephemeral cache on warm instance
     if (!global.__verify_cache) global.__verify_cache = {};
     const cacheKey = `v:${email.toLowerCase()}`;
     if (global.__verify_cache[cacheKey]) {
