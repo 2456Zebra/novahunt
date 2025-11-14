@@ -1,14 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 /**
- * Strict Hunter-only client with improved UX:
- * - Uses /api/search-contacts (server must call Hunter)
- * - Masks addresses by default; Reveal exposes the exact value returned by server
- * - Shows confidence % if present
- * - Shows "Showing X of Y. Upgrade to see all." when meta.results exists
- * - Replaces "provider: Hunter" text with "Powered by AI"
+ * Client: supports opt-in include_inferred (signed-in only), colored confidence, pattern display.
  */
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
@@ -16,8 +11,24 @@ export default function SearchClient() {
   const [error, setError] = useState('');
   const [results, setResults] = useState(null);
   const [revealed, setRevealed] = useState({});
+  const [includeInferred, setIncludeInferred] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const [sessionValue, setSessionValue] = useState(null);
 
-  const PROVIDER_LABEL = 'Powered by AI'; // user requested not to call out Hunter
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('nh_session');
+      if (s) {
+        setSignedIn(true);
+        setSessionValue(s); // send this as header when requesting inferred
+      } else {
+        setSignedIn(false);
+        setSessionValue(null);
+      }
+    } catch (e) {
+      setSignedIn(false);
+    }
+  }, []);
 
   function maskEmail(email) {
     if (!email || typeof email !== 'string') return email;
@@ -28,6 +39,16 @@ export default function SearchClient() {
     const last = local[local.length - 1];
     const stars = '*'.repeat(Math.max(3, Math.min(local.length - 2, 6)));
     return `${first}${stars}${last}@${host}`;
+  }
+
+  function confidenceColor(c) {
+    if (c == null) return '#6b7280';
+    const n = Number(c);
+    if (isNaN(n)) return '#6b7280';
+    if (n >= 90) return '#059669'; // green
+    if (n >= 75) return '#16a34a'; // green-strong
+    if (n >= 60) return '#f59e0b'; // amber
+    return '#ef4444'; // red
   }
 
   function handleReveal(em) {
@@ -50,10 +71,16 @@ export default function SearchClient() {
 
     setLoading(true);
     try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (includeInferred && sessionValue) {
+        // send local session string to allow server to honor include_inferred
+        headers['x-nh-session'] = sessionValue;
+      }
+
       const res = await fetch('/api/search-contacts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: trimmed, limit: 100 }),
+        headers,
+        body: JSON.stringify({ domain: trimmed, limit: 100, include_inferred: includeInferred }),
       });
 
       if (!res.ok) {
@@ -71,10 +98,15 @@ export default function SearchClient() {
         payload?.emails ??
         [];
 
-      // keep exactly what the server returned (but do not auto-reveal)
       const filtered = hunterEmails.filter((e) => !!(e?.value || e?.email));
 
-      setResults({ raw: payload, all: filtered, meta: payload?.data?.meta ?? null });
+      setResults({
+        raw: payload,
+        all: filtered,
+        meta: payload?.data?.meta ?? null,
+        filtered_out: payload?.data?.meta?.filtered_out ?? 0,
+        pattern: payload?.data?.data?.pattern ?? null,
+      });
     } catch (err) {
       setError(err?.message || 'Unknown error');
     } finally {
@@ -83,12 +115,15 @@ export default function SearchClient() {
   }
 
   const renderConfidence = (em) => {
-    // Hunter sometimes returns confidence or score fields
-    const c = em?.confidence ?? em?.confidence_score ?? em?.score ?? em?.confidencePercent;
+    const c = em?.confidence ?? em?.confidence_score ?? em?.score;
     if (c == null) return null;
-    // Normalize to 0-100 if necessary
     const val = typeof c === 'number' ? Math.round(c) : c;
-    return <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>{val}%</span>;
+    const color = confidenceColor(val);
+    return (
+      <span style={{ fontSize: 12, color, marginLeft: 8, fontWeight: 600 }}>
+        {val}% 
+      </span>
+    );
   };
 
   const renderRow = (em, i) => {
@@ -139,7 +174,7 @@ export default function SearchClient() {
 
   return (
     <div style={{ maxWidth: 940, margin: '0 auto', padding: '1rem' }}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8 }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input
           type="text"
           placeholder="Enter a website (for example coca-cola.com)"
@@ -150,8 +185,16 @@ export default function SearchClient() {
         <button type="submit" style={{ padding: '0.6rem 1rem', background: '#111827', color: 'white', border: 'none', borderRadius: 6 }} disabled={loading}>
           {loading ? 'Looking…' : 'Find Contacts'}
         </button>
+
+        {signedIn && (
+          <label style={{ marginLeft: 12, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={includeInferred} onChange={(e) => setIncludeInferred(e.target.checked)} />
+            Include inferred addresses (signed-in only)
+          </label>
+        )}
       </form>
 
+      {loading && <div style={{ marginTop: 12 }}>Loading…</div>}
       {error && <p style={{ color: 'red', marginTop: 12 }}>{error}</p>}
 
       {results && (
@@ -161,11 +204,16 @@ export default function SearchClient() {
           <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
             {results.meta ? (
               <>
-                Showing {results.all.length} of {results.meta?.results ?? 'unknown'} results. <span style={{ color: '#6b7280' }}>Upgrade to see all.</span> <span style={{ marginLeft: 8, color: '#6b7280' }}>{PROVIDER_LABEL}</span>
+                Showing {results.all.length} of {results.meta?.results ?? 'unknown'} results.
+                {typeof results.filtered_out === 'number' && results.filtered_out > 0 && (
+                  <span style={{ marginLeft: 8, color: '#6b7280' }}>{results.filtered_out} low-trust results hidden</span>
+                )}
+                {results.pattern && <span style={{ marginLeft: 8, color: '#9ca3af' }}>Email pattern: {results.pattern}</span>}
+                <span style={{ marginLeft: 8, color: '#6b7280' }}>Powered by AI</span>
               </>
             ) : (
               <>
-                Showing {results.all.length} results <span style={{ marginLeft: 8, color: '#6b7280' }}>{PROVIDER_LABEL}</span>
+                Showing {results.all.length} results <span style={{ marginLeft: 8, color: '#6b7280' }}>Powered by AI</span>
               </>
             )}
           </div>
