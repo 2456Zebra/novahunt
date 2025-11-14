@@ -1,7 +1,6 @@
 // Server-side: call Hunter domain-search and return provider payload under { data: ... }.
-// Tries requested limit first; if Hunter returns pagination_error (free plan limited to 10),
-// retries with limit=10 so the user gets results instead of a 502.
-// Filters out inferred/guessed addresses (no sources AND not explicitly verified) so UI shows only higher-trust Hunter records.
+// Supports opt-in include_inferred (body.include_inferred) — honored only when client sends a session header.
+// Saves a raw backup in KV before filtering so you can restore if needed.
 import { kv } from '@vercel/kv';
 
 function makeHunterUrl(domain, limit = 10, offset = '') {
@@ -18,20 +17,20 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { domain, limit = 10, offset = '' } = req.body || {};
+    const { domain, limit = 10, offset = '', include_inferred = false } = req.body || {};
     if (!domain) return res.status(400).json({ error: 'domain required in POST body' });
 
     const key = process.env.HUNTER_API_KEY;
     if (!key) return res.status(500).json({ error: 'HUNTER_API_KEY not configured' });
 
-    // Normalize limit: make integer and sensible default
+    // Normalize limit
     let requestedLimit = parseInt(limit, 10);
     if (isNaN(requestedLimit) || requestedLimit <= 0) requestedLimit = 10;
     requestedLimit = Math.min(requestedLimit, 100);
 
     const cacheKey = `hunter:search:${domain.toLowerCase()}:${requestedLimit}:${offset}`;
 
-    // Try KV cache first if available
+    // Try KV cache first
     try {
       if (typeof kv !== 'undefined') {
         const cached = await kv.get(cacheKey);
@@ -41,7 +40,6 @@ export default async function handler(req, res) {
       console.warn('KV read error', e);
     }
 
-    // Helper to call hunter and parse JSON
     async function callHunter(limitToUse) {
       const url = makeHunterUrl(domain, limitToUse, offset);
       const r = await fetch(url);
@@ -50,75 +48,105 @@ export default async function handler(req, res) {
       try {
         json = JSON.parse(text);
       } catch (err) {
-        // upstream returned non-JSON
         return { ok: false, status: r.status, body: text, json: null };
       }
       return { ok: r.ok, status: r.status, body: json, json };
     }
 
-    // First attempt with requestedLimit
+    // Try first
     const first = await callHunter(requestedLimit);
 
-    // If upstream returned pagination error (free plan limit), retry with 10
+    // fallback for pagination error / free plan
     if (!first.ok && first.body && first.body.errors && Array.isArray(first.body.errors)) {
       const paginationError = first.body.errors.find((err) => err?.id === 'pagination_error' || err?.code === 400);
       if (paginationError) {
-        // retry with safe limit = 10
         const fallback = await callHunter(10);
         if (!fallback.ok) {
-          // still failed — return 502 with upstream body
           return res.status(502).json({ error: 'Upstream API error', status: fallback.status, body: fallback.body });
         }
+        // proceed with fallback.json
         const payload = { data: fallback.json };
-
-        // Filter out inferred/guessed emails: keep those with sources or explicitly verified
+        // Save raw backup and then filter below
         try {
-          if (payload?.data?.data?.emails && Array.isArray(payload.data.data.emails)) {
+          if (typeof kv !== 'undefined') {
+            await kv.set(`${cacheKey}:raw`, payload, { ex: 60 * 60 * 24 }); // 24 hours
+          }
+        } catch (e) {
+          console.warn('KV write raw backup error', e);
+        }
+
+        // determine whether to include inferred: allow only when client explicitly requested and provided a session header
+        const sessionHeader = req.headers['x-nh-session'];
+        const allowInferred = include_inferred === true && !!sessionHeader;
+
+        // filter unless allowed
+        try {
+          if (!allowInferred && payload?.data?.data?.emails && Array.isArray(payload.data.data.emails)) {
+            const originalCount = payload.data.data.emails.length;
             payload.data.data.emails = payload.data.data.emails.filter((e) => {
               if (!e) return false;
               if (Array.isArray(e.sources) && e.sources.length > 0) return true;
               if (e.verification && e.verification.status === 'valid') return true;
-              return false; // drop inferred/guessed entries
+              return false;
             });
+            // attach info for client about filtering
+            payload.data.meta = payload.data.meta || {};
+            payload.data.meta.filtered_out = originalCount - payload.data.data.emails.length;
           }
-        } catch (e) {
-          console.warn('filter error', e);
+        } catch (err) {
+          console.warn('filter error', err);
         }
 
-        // cache short TTL if KV available
+        // cache filtered payload
         try {
           if (typeof kv !== 'undefined') {
-            await kv.set(cacheKey, payload, { ex: 60 * 30 }); // 30 minutes
+            await kv.set(cacheKey, payload, { ex: 60 * 30 });
           }
         } catch (e) {
           console.warn('KV write error', e);
         }
+
         return res.status(200).json(payload);
       }
     }
 
-    // If first call failed for other reasons, return 502 with body so client can show message
     if (!first.ok) {
       return res.status(502).json({ error: 'Upstream API error', status: first.status, body: first.body });
     }
 
     const payload = { data: first.json };
 
-    // Filter out inferred/guessed emails: keep those with sources or explicitly verified
+    // Save a raw copy (before filtering) so we can inspect/recover if needed
     try {
-      if (payload?.data?.data?.emails && Array.isArray(payload.data.data.emails)) {
+      if (typeof kv !== 'undefined') {
+        await kv.set(`${cacheKey}:raw`, payload, { ex: 60 * 60 * 24 }); // 24 hours
+      }
+    } catch (e) {
+      console.warn('KV write raw backup error', e);
+    }
+
+    // decide whether client is allowed to request inferred entries:
+    const sessionHeader = req.headers['x-nh-session'];
+    const allowInferred = include_inferred === true && !!sessionHeader;
+
+    // Filter out inferred/guessed emails unless allowed
+    try {
+      if (!allowInferred && payload?.data?.data?.emails && Array.isArray(payload.data.data.emails)) {
+        const originalCount = payload.data.data.emails.length;
         payload.data.data.emails = payload.data.data.emails.filter((e) => {
           if (!e) return false;
           if (Array.isArray(e.sources) && e.sources.length > 0) return true;
           if (e.verification && e.verification.status === 'valid') return true;
           return false;
         });
+        payload.data.meta = payload.data.meta || {};
+        payload.data.meta.filtered_out = originalCount - payload.data.data.emails.length;
       }
     } catch (e) {
       console.warn('filter error', e);
     }
 
-    // cache short TTL if KV available
+    // cache filtered payload
     try {
       if (typeof kv !== 'undefined') {
         await kv.set(cacheKey, payload, { ex: 60 * 30 });
