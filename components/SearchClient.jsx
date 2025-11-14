@@ -4,11 +4,7 @@ import React, { useState } from 'react';
 
 /**
  * Client-only contact search widget.
- * - Calls neutral server endpoints /api/search-contacts and /api/verify-contact
- * - Masks emails by default, shows name and title, and has per-email Reveal button.
- * - Shows a human-friendly Trust score instead of raw numeric confidence only.
- *
- * Designed for non-technical users (models/actors/sellers).
+ * Neutral wording (no provider mention). Shows Name, Title, Department, Trust, masked email and a Reveal button.
  */
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
@@ -21,28 +17,22 @@ export default function SearchClient() {
 
   function maskEmail(email) {
     if (!email || typeof email !== 'string') return email;
-    const [local, domain] = email.split('@');
-    if (!local || !domain) return email;
-    if (local.length <= 2) return `${local[0]}***@${domain}`;
+    const [local, host] = email.split('@');
+    if (!local || !host) return email;
+    if (local.length <= 2) return `${local[0]}***@${host}`;
     const first = local[0];
     const last = local[local.length - 1];
     const stars = '*'.repeat(Math.max(3, Math.min(local.length - 2, 6)));
-    return `${first}${stars}${last}@${domain}`;
+    return `${first}${stars}${last}@${host}`;
   }
 
-  // Compute a simple Trust score using available info
   function computeTrustScore(em) {
-    // 0-100 integer
     let score = 0;
-    // Verified gets big boost
     if (em?.verification?.status === 'valid') score += 60;
-    // Confidence field (0-100) if present
     if (typeof em?.confidence === 'number') score += Math.round(Math.min(40, em.confidence * 0.4));
     else if (typeof em?.score === 'number') score += Math.round(Math.min(40, em.score * 0.4));
-    // Sources count adds small boost
     const sources = Array.isArray(em?.sources) ? em.sources.length : 0;
     score += Math.min(20, sources * 4);
-    // recency: if last_seen_on within last 180 days, small boost
     try {
       const lastSeen = em?.sources?.[0]?.last_seen_on;
       if (lastSeen) {
@@ -59,7 +49,6 @@ export default function SearchClient() {
     const key = (em?.value || em?.email || '').toLowerCase();
     if (!key) return;
 
-    // If already verified in payload, reveal directly
     if (em?.verification?.status === 'valid' && em?.value) {
       setRevealed((r) => ({ ...r, [key]: { ok: true, email: em.value } }));
       return;
@@ -67,6 +56,7 @@ export default function SearchClient() {
 
     setVerifying((v) => ({ ...v, [key]: true }));
     try {
+      // POST verify as normal, but server also accepts GET for safety
       const res = await fetch('/api/verify-contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -80,11 +70,8 @@ export default function SearchClient() {
         const payload = await res.json();
         const verified = payload?.data?.data?.status === 'valid' || payload?.data?.status === 'valid' || payload?.status === 'valid';
         const full = em?.value || em?.email || payload?.data?.data?.email || payload?.email;
-        if (verified && full) {
-          setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, payload } }));
-        } else {
-          setRevealed((r) => ({ ...r, [key]: { ok: false, error: 'Not verified', payload } }));
-        }
+        if (verified && full) setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, payload } }));
+        else setRevealed((r) => ({ ...r, [key]: { ok: false, error: 'Not verified', payload } }));
       }
     } catch (err) {
       setRevealed((r) => ({ ...r, [key]: { ok: false, error: err?.message || 'Unknown error' } }));
@@ -100,7 +87,7 @@ export default function SearchClient() {
 
     const trimmed = (domain || '').trim();
     if (!trimmed) {
-      setError('Please enter a website (e.g. coca-cola.com)');
+      setError('Please enter a website (for example: coca-cola.com)');
       return;
     }
 
@@ -120,7 +107,6 @@ export default function SearchClient() {
       }
 
       const payload = await res.json();
-
       const emails =
         (payload && payload.data && payload.data.data && payload.data.data.emails) ||
         (payload && payload.data && payload.data.emails) ||
@@ -129,7 +115,6 @@ export default function SearchClient() {
 
       const meta = payload?.data?.meta || null;
 
-      // Dedupe and normalize
       const deduped = [];
       const seen = new Set();
       for (const e of emails) {
@@ -139,12 +124,7 @@ export default function SearchClient() {
         deduped.push(e);
       }
 
-      // Partition highQuality by our trust threshold
-      const highQuality = deduped.filter((e) => {
-        const trust = computeTrustScore(e);
-        return trust >= 60;
-      });
-
+      const highQuality = deduped.filter((e) => computeTrustScore(e) >= 60);
       const lowQuality = deduped.filter((e) => !highQuality.includes(e));
 
       setResults({ raw: payload, meta, highQuality, lowQuality, all: [...highQuality, ...lowQuality] });
@@ -156,11 +136,12 @@ export default function SearchClient() {
     }
   }
 
-  const renderEmailRow = (em, i) => {
+  const renderRow = (em, i) => {
     const emailVal = em?.value || em?.email || '(no email)';
     const masked = maskEmail(emailVal);
-    const name = [em?.first_name, em?.last_name].filter(Boolean).join(' ').trim() || em?.linkedin || '';
+    const name = [em?.first_name, em?.last_name].filter(Boolean).join(' ').trim() || (em?.linkedin || 'Name not provided');
     const title = em?.position || em?.position_raw || 'Contact';
+    const department = em?.department || em?.type || '-';
     const trust = computeTrustScore(em);
     const primarySource = Array.isArray(em?.sources) && em.sources.length > 0 ? em.sources[0] : null;
     const key = (emailVal || `${title}-${i}`).toLowerCase();
@@ -170,9 +151,8 @@ export default function SearchClient() {
       <tr key={key || i}>
         <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <strong style={{ marginBottom: 6 }}>{name || 'Name not provided'}</strong>
+            <strong style={{ marginBottom: 6 }}>{name}</strong>
             <span style={{ fontFamily: 'monospace' }}>{revealState?.ok ? revealState.email : masked}</span>
-
             <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ fontSize: 12, color: trust >= 80 ? '#059669' : trust >= 50 ? '#b45309' : '#6b7280', fontWeight: 600 }}>
                 Trust: {trust}%
@@ -182,20 +162,12 @@ export default function SearchClient() {
                   source
                 </a>
               )}
-
               {!revealState?.ok && (
-                <button
-                  onClick={() => handleReveal(em)}
-                  disabled={verifying[key]}
-                  style={{ marginLeft: 8, fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
-                >
+                <button onClick={() => handleReveal(em)} disabled={verifying[key]} style={{ marginLeft: 8, fontSize: 12, padding: '4px 8px' }}>
                   {verifying[key] ? 'Checking…' : 'Reveal'}
                 </button>
               )}
-
-              {revealState && revealState.ok === false && (
-                <span style={{ color: '#ef4444', fontSize: 12 }}>{revealState.error || 'Not revealed'}</span>
-              )}
+              {revealState && revealState.ok === false && <span style={{ color: '#ef4444', fontSize: 12 }}>{revealState.error || 'Not revealed'}</span>}
             </div>
           </div>
         </td>
@@ -205,7 +177,7 @@ export default function SearchClient() {
         </td>
 
         <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>
-          <div style={{ fontSize: 13, color: '#374151' }}>{em?.type || '-'}</div>
+          <div style={{ fontSize: 13, color: '#374151' }}>{department}</div>
         </td>
       </tr>
     );
@@ -221,18 +193,7 @@ export default function SearchClient() {
           onChange={(e) => setDomain(e.target.value)}
           style={{ flex: 1, padding: '0.6rem', borderRadius: 6, border: '1px solid #ccc' }}
         />
-        <button
-          type="submit"
-          style={{
-            padding: '0.6rem 1rem',
-            background: '#111827',
-            color: 'white',
-            border: 'none',
-            borderRadius: 6,
-            cursor: 'pointer',
-          }}
-          disabled={loading}
-        >
+        <button type="submit" style={{ padding: '0.6rem 1rem', background: '#111827', color: 'white', border: 'none', borderRadius: 6 }} disabled={loading}>
           {loading ? 'Looking…' : 'Find Contacts'}
         </button>
       </form>
@@ -252,20 +213,14 @@ export default function SearchClient() {
           <h3 style={{ marginTop: 0 }}>Contacts</h3>
 
           <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
-            {results.meta ? (
-              <>Showing {results.all.length} of {results.meta.results} results</>
-            ) : (
-              <>Showing {results.all.length} results</>
-            )}
+            {results.meta ? <>Showing {results.all.length} of {results.meta.results} results</> : <>Showing {results.all.length} results</>}
           </div>
 
           <div style={{ marginBottom: 8 }}>
             <label style={{ fontSize: 14, marginRight: 12 }}>
               <input type="checkbox" checked={showAll} onChange={() => setShowAll(!showAll)} /> Show all (including lower-trust)
             </label>
-            <span style={{ color: '#6b7280', fontSize: 13 }}>
-              We show the best contacts first. Use Reveal to see masked emails.
-            </span>
+            <span style={{ color: '#6b7280', fontSize: 13 }}>We show the best contacts first. Click Reveal to show a masked email.</span>
           </div>
 
           {Array.isArray(showAll ? results.all : results.highQuality) && (showAll ? results.all : results.highQuality).length > 0 ? (
@@ -274,12 +229,10 @@ export default function SearchClient() {
                 <tr>
                   <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Name & Email</th>
                   <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Title</th>
-                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Type</th>
+                  <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Department</th>
                 </tr>
               </thead>
-              <tbody>
-                {(showAll ? results.all : results.highQuality).map(renderEmailRow)}
-              </tbody>
+              <tbody>{(showAll ? results.all : results.highQuality).map(renderRow)}</tbody>
             </table>
           ) : (
             <p>No high-trust contacts found for this site. Toggle "Show all" to include lower-trust suggestions.</p>
