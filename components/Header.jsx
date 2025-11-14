@@ -12,7 +12,7 @@ export default function Header() {
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         <Link href="/signin"><a style={{ padding: '6px 10px' }}>Sign in</a></Link>
         <Link href="/signup"><a style={{ padding: '6px 10px' }}>Sign up</a></Link>
-        <Link href="/upgrade"><a><UpgradeButton label="Upgrade" priceId={process.env.STRIPE_PRICE_MONTHLY || ''} /></a></Link>
+        <UpgradeButton label="Upgrade" priceId={process.env.STRIPE_PRICE_MONTHLY || ''} />
       </div>
     </header>
   );
