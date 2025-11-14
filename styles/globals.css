@@ -1,4 +1,4 @@
-/* Minimal global styles to stop build errors and provide base styling */
+/* Minimal global styles */
 html, body, #__next {
   height: 100%;
   margin: 0;
@@ -7,11 +7,5 @@ html, body, #__next {
   color: #111827;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-button {
-  font-family: inherit;
-}
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
