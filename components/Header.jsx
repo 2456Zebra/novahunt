@@ -1,82 +1,72 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import SignInModal from '../SignInModal'; // ensure this path matches where SignInModal.jsx is located
+import React from 'react';
+import Link from 'next/link';
+import HeaderUserSnippet from './HeaderUserSnippet';
+import UsageWidget from './UsageWidget';
+
+/**
+ * Site header — copy/paste this entire file into components/Header.jsx (replace your existing header).
+ * It renders:
+ * - left: logo / home link
+ * - center: simple nav
+ * - right: clickable signed-in email (HeaderUserSnippet) and small UsageWidget
+ *
+ * This is intentionally self-contained and uses inline styles to avoid depending on your CSS system.
+ * If you use Tailwind or a global header already, paste the contents into your existing header component instead.
+ */
 
 export default function Header() {
-  const [userEmail, setUserEmail] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('signin');
-
-  useEffect(() => {
-    // on mount, read session from localStorage
-    try {
-      const s = localStorage.getItem('nh_session');
-      if (s) {
-        const parsed = JSON.parse(s);
-        setUserEmail(parsed?.email || null);
-      }
-    } catch (e) {
-      // ignore
-    }
-
-    function onAuth(e) {
-      const email = e?.detail?.email;
-      setUserEmail(email || null);
-    }
-    function onOpenAuth(e) {
-      setModalMode((e?.detail?.mode) || 'signin');
-      setModalOpen(true);
-    }
-
-    window.addEventListener('nh:auth-change', onAuth);
-    window.addEventListener('nh:open-auth', onOpenAuth);
-    return () => {
-      window.removeEventListener('nh:auth-change', onAuth);
-      window.removeEventListener('nh:open-auth', onOpenAuth);
-    };
-  }, []);
-
-  function openSignIn(mode = 'signin') {
-    setModalMode(mode);
-    setModalOpen(true);
-  }
-
-  function handleSignOut() {
-    try {
-      localStorage.removeItem('nh_session');
-      window.dispatchEvent(new CustomEvent('nh:auth-change', { detail: { email: null } }));
-      setUserEmail(null);
-      window.location.href = '/';
-    } catch (err) {
-      console.warn(err);
-    }
-  }
-
   return (
-    <>
-      <header style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontWeight: 700, display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div>NovaHunt</div>
-          <div style={{ fontSize: 12, color: '#6b7280' }}>powered by AI</div>
+    <header style={{
+      width: '100%',
+      borderBottom: '1px solid #e6e7ea',
+      background: '#fff',
+      position: 'sticky',
+      top: 0,
+      zIndex: 50,
+    }}>
+      <div style={{
+        maxWidth: 1100,
+        margin: '0 auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '10px 16px'
+      }}>
+        {/* Left: logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Link href="/">
+            <a style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: '#111827' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <rect width="24" height="24" rx="6" fill="#0f172a" />
+                <text x="12" y="16" textAnchor="middle" fontSize="12" fill="#fff" fontFamily="Arial, Helvetica, sans-serif">NH</text>
+              </svg>
+              <span style={{ fontWeight: 700 }}>NovaHunt</span>
+            </a>
+          </Link>
         </div>
 
-        <div>
-          {userEmail ? (
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <span style={{ fontSize: 14, color: '#111827' }}>{userEmail}</span>
-              <button onClick={handleSignOut} style={{ background: 'transparent', border: '1px solid #e5e7eb', padding: '6px 10px', borderRadius: 8 }}>Sign out</button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button onClick={() => openSignIn('signin')} style={{ background: 'transparent', border: 'none', color: '#111827', cursor: 'pointer' }}>Sign in</button>
-              <button onClick={() => openSignIn('signup')} style={{ background: '#111827', color: 'white', padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>Sign up</button>
-            </div>
-          )}
-        </div>
-      </header>
+        {/* Center: nav */}
+        <nav style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <Link href="/"><a style={{ color: '#374151', textDecoration: 'none' }}>Dashboard</a></Link>
+          <Link href="/search"><a style={{ color: '#374151', textDecoration: 'none' }}>Search</a></Link>
+          <Link href="/upgrade"><a style={{ color: '#374151', textDecoration: 'none' }}>Upgrade</a></Link>
+        </nav>
 
-      <SignInModal open={modalOpen} onClose={() => setModalOpen(false)} initialMode={modalMode} />
-    </>
+        {/* Right: account + usage */}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {/* UsageWidget is lightweight and will fetch account usage when mounted */}
+          <div style={{ display: 'none', alignItems: 'center' /* set to 'flex' to show widget in header */ }}>
+            <UsageWidget />
+          </div>
+
+          {/* HeaderUserSnippet shows Sign in or clickable email that opens AccountPopover */}
+          <div>
+            <HeaderUserSnippet />
+          </div>
+        </div>
+      </div>
+    </header>
   );
 }
