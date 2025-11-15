@@ -1,9 +1,10 @@
-// Server endpoint to finalize a Stripe Checkout return and create a local session.
+// Server endpoint to finalize a Stripe Checkout return and create a local session + user record.
 // Usage: POST /api/complete-checkout with JSON body { sessionId: "<checkout_session_id>" }
 // Also supports GET with query ?sessionId=...
 import Stripe from 'stripe';
 import { getKV } from './_kv-wrapper';
 const kv = getKV();
+import crypto from 'crypto';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
@@ -12,8 +13,11 @@ function makeSessionString(email) {
     email,
     created_at: new Date().toISOString(),
   };
-  // simple encoded string; you can replace with JWT or other token later
   return JSON.stringify(payload);
+}
+
+function generateToken() {
+  return crypto.randomBytes(32).toString('hex');
 }
 
 export default async function handler(req, res) {
@@ -59,26 +63,63 @@ export default async function handler(req, res) {
       console.warn('KV write (checkout mapping) failed', e?.message || e);
     }
 
+    // Ensure a basic user record exists; if no password present, create a set-password token
+    let setPasswordToken = null;
+    try {
+      if (kv) {
+        const existing = await kv.get(`user:${emailKey}`);
+        if (!existing) {
+          // create a minimal user record
+          const userRecord = {
+            email: emailKey,
+            created_at: new Date().toISOString(),
+            has_password: false,
+            metadata: {
+              created_via: 'stripe_checkout',
+              stripe_customer: session.customer || null,
+            },
+          };
+          await kv.set(`user:${emailKey}`, userRecord);
+          // create one-time token to let user set a password
+          setPasswordToken = generateToken();
+          const tokenKey = `user:setpw:${setPasswordToken}`;
+          await kv.set(tokenKey, { email: emailKey, created_at: new Date().toISOString() }, { ex: 60 * 60 * 24 }); // expires in 24h
+        } else {
+          // existing user: if they don't have a password we can create token for convenience
+          if (!existing.has_password) {
+            setPasswordToken = generateToken();
+            const tokenKey = `user:setpw:${setPasswordToken}`;
+            await kv.set(tokenKey, { email: emailKey, created_at: new Date().toISOString() }, { ex: 60 * 60 * 24 });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('KV write (user record) failed', e?.message || e);
+    }
+
     // Create a simple local session string and store server-side (optional)
     const nhSessionString = makeSessionString(emailKey);
 
     try {
       if (kv) {
-        // store by email and also by raw token if you want to validate later
         await kv.set(`local:session:${emailKey}`, { nhSession: nhSessionString, created_at: new Date().toISOString() }, { ex: 60 * 60 * 24 * 30 });
       }
     } catch (e) {
       console.warn('KV write (local session) failed', e?.message || e);
     }
 
-    // Set a cookie for compatibility (not required if client writes localStorage)
-    // Cookie is HttpOnly (so client JS can't read it) but we'll also return the nh_session so client can write localStorage.
+    // Set a cookie for compatibility and return nh_session and token (if any)
     const cookieValue = encodeURIComponent(nhSessionString);
     const cookie = `nh_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
     res.setHeader('Set-Cookie', cookie);
 
-    // Return session details and the nh_session string so the client page can store it in localStorage
-    return res.status(200).json({ ok: true, email: emailKey, sessionId, nh_session: nhSessionString });
+    return res.status(200).json({
+      ok: true,
+      email: emailKey,
+      sessionId,
+      nh_session: nhSessionString,
+      set_password_token: setPasswordToken,
+    });
   } catch (err) {
     console.error('complete-checkout error', err?.message || err);
     return res.status(500).json({ error: 'Server error' });
