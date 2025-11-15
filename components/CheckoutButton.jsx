@@ -3,50 +3,72 @@
 import React, { useState } from 'react';
 
 /**
- * Simple Checkout button component.
- * Props:
- *  - priceId (string) — the Stripe Price ID to purchase (monthly)
- *  - label (string) — button label
+ * CheckoutButton: accepts priceId and label.
+ * - Posts to /api/create-checkout (proxy) with x-nh-session header from localStorage.
+ * - Shows detailed server error messages to the user.
  */
 export default function CheckoutButton({ priceId, label = 'Upgrade' }) {
   const [loading, setLoading] = useState(false);
 
   async function startCheckout() {
+    if (!priceId) {
+      alert('Price ID is missing. Please contact the site admin.');
+      return;
+    }
+
     setLoading(true);
     try {
-      // send local session to server so it can attach customer_email / metadata
       const sessionValue = localStorage.getItem('nh_session') || '';
-      const res = await fetch('/api/create-checkout-session', {
+      const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-nh-session': sessionValue,
         },
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({
+          priceId,
+        }),
       });
 
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Checkout creation failed: ${res.status} ${txt}`);
+      let payload = null;
+      try {
+        payload = await res.json();
+      } catch (e) {
+        // non-JSON response
       }
 
-      const payload = await res.json();
+      if (!res.ok) {
+        const msg = (payload && (payload.error || payload.message)) || `Server returned ${res.status}`;
+        throw new Error(msg);
+      }
+
       if (payload && payload.url) {
         window.location.href = payload.url;
         return;
-      } else {
-        throw new Error('Missing checkout url in response');
       }
+
+      throw new Error('Missing checkout URL in server response');
     } catch (err) {
-      console.error(err);
-      alert('Could not start checkout: ' + (err?.message || 'unknown'));
+      console.error('Checkout error', err);
+      alert('Unable to start checkout: ' + (err?.message || 'unknown error'));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <button onClick={startCheckout} disabled={loading} style={{ background: '#111827', color: 'white', padding: '6px 10px', borderRadius: 8, border: 'none' }}>
+    <button
+      onClick={startCheckout}
+      disabled={loading}
+      style={{
+        background: '#111827',
+        color: 'white',
+        padding: '8px 12px',
+        borderRadius: 8,
+        border: 'none',
+        cursor: loading ? 'default' : 'pointer',
+      }}
+    >
       {loading ? 'Redirecting…' : label}
     </button>
   );
