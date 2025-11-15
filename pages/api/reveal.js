@@ -1,9 +1,18 @@
 // Called by client when user clicks Reveal on a contact.
 // Increments reveal count and returns remaining reveals and whether allowed.
-// Body: { contact: { value, ... } } (contact is optional - we only need to increment usage)
-// Header: x-nh-session with local session JSON that includes email.
 import { getKV } from './_kv-wrapper';
 const kv = getKV();
+
+function parseEmailFromHeader(sessionHeader) {
+  if (!sessionHeader) return null;
+  try {
+    const parsed = JSON.parse(sessionHeader);
+    return parsed?.email || null;
+  } catch (e) {
+    if (typeof sessionHeader === 'string' && sessionHeader.includes('@')) return sessionHeader;
+    return null;
+  }
+}
 
 function planFromPriceId(priceId) {
   if (!priceId) return 'free';
@@ -23,26 +32,17 @@ const PLAN_LIMITS = {
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).end('Method Not Allowed');
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
     const sessionHeader = req.headers['x-nh-session'] || '';
-    if (!sessionHeader) return res.status(401).json({ error: 'Not signed in' });
-
-    let email = null;
-    try {
-      const parsed = JSON.parse(sessionHeader);
-      email = parsed?.email || null;
-    } catch (e) {
-      if (typeof sessionHeader === 'string' && sessionHeader.includes('@')) email = sessionHeader;
-    }
-
+    const email = parseEmailFromHeader(sessionHeader);
     if (!email) return res.status(401).json({ error: 'Not signed in' });
 
     const emailKey = email.toLowerCase();
 
-    // determine plan/limits from stored subscription if present
+    // determine plan from stored subscription
     let subscription = null;
     try {
       if (kv) subscription = await kv.get(`stripe:subscription:${emailKey}`);
@@ -50,21 +50,21 @@ export default async function handler(req, res) {
       console.warn('KV read error (reveal subscription)', e?.message || e);
     }
 
-    const priceId = subscription?.priceId || null;
+    const priceId = subscription?.priceId || subscription?.raw?.items?.data?.[0]?.price?.id || null;
     const plan = planFromPriceId(priceId);
     const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
 
-    // increment reveal counter
+    // increment reveal counter atomically-ish
     let reveals = 0;
     try {
-      if (kv) {
-        const cur = parseInt((await kv.get(`usage:reveals:${emailKey}`)) || 0, 10) || 0;
-        reveals = cur + 1;
-        await kv.set(`usage:reveals:${emailKey}`, reveals);
-      } else {
-        // If no kv, we can't persist — return allowed but with no counter
-        return res.status(200).json({ allowed: true, reveals: 0, remaining: limits.reveals });
+      if (!kv) {
+        // fallback: not persisted
+        return res.status(200).json({ allowed: true, reveals: 0, remaining: limits.reveals, debug: { email: emailKey, plan } });
       }
+      const curRaw = await kv.get(`usage:reveals:${emailKey}`);
+      const cur = parseInt(curRaw || 0, 10) || 0;
+      reveals = cur + 1;
+      await kv.set(`usage:reveals:${emailKey}`, String(reveals));
     } catch (e) {
       console.warn('KV write error (reveal increment)', e?.message || e);
       return res.status(500).json({ error: 'KV write error' });
@@ -73,7 +73,15 @@ export default async function handler(req, res) {
     const remaining = Math.max(0, limits.reveals - reveals);
     const allowed = reveals <= limits.reveals;
 
-    return res.status(200).json({ allowed, reveals, remaining, limits });
+    // Return updated usage so client UI updates immediately
+    return res.status(200).json({
+      allowed,
+      reveals,
+      remaining,
+      limits,
+      plan,
+      debug: { email: emailKey },
+    });
   } catch (err) {
     console.error('reveal error', err?.message || err);
     return res.status(500).json({ error: 'Server error' });
