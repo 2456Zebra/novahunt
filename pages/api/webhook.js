@@ -1,6 +1,5 @@
 // Stripe webhook endpoint — validates signature and stores subscription info in KV.
-// Make sure to set STRIPE_WEBHOOK_SECRET in Vercel and configure the Stripe dashboard to send events to:
-// https://YOUR_SITE/api/webhook
+// Make sure STRIPE_WEBHOOK_SECRET is set in Vercel and Stripe points to this endpoint.
 import Stripe from 'stripe';
 import { buffer } from 'micro';
 import { getKV } from './_kv-wrapper';
@@ -12,7 +11,8 @@ export const config = {
   },
 };
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2023-11-15' });
+// Hotfix: do not pass apiVersion here to avoid mismatches with the deployed stripe package.
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
 export default async function handler(req, res) {
   const sig = req.headers['stripe-signature'];
