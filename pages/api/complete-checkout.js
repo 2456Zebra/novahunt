@@ -1,6 +1,5 @@
 // Server endpoint to finalize a Stripe Checkout return and create a local session + user record.
-// Usage: POST /api/complete-checkout with JSON body { sessionId: "<checkout_session_id>" }
-// Also supports GET with query ?sessionId=...
+// This version saves the subscription/customer details to KV if available so check-subscription returns accurate results.
 import Stripe from 'stripe';
 import { getKV } from './_kv-wrapper';
 const kv = getKV();
@@ -25,16 +24,16 @@ export default async function handler(req, res) {
     const sessionId = (req.method === 'GET' ? req.query.sessionId : (req.body && req.body.sessionId)) || null;
     if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
 
-    // Retrieve the Checkout Session from Stripe and expand customer if available
     let session;
     try {
-      session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['customer'] });
+      // Expand customer and subscription so we can capture subscription data immediately if available
+      session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['customer', 'subscription'] });
     } catch (err) {
       console.error('Stripe retrieve session error', err?.message || err);
       return res.status(500).json({ error: 'Could not retrieve checkout session' });
     }
 
-    // Extract email: prefer session.customer_email, then expanded customer, then metadata.nh_session (if it encodes email)
+    // Extract email and subscription
     let email = session.customer_email || null;
     if (!email && session.customer && session.customer.email) email = session.customer.email;
 
@@ -42,19 +41,13 @@ export default async function handler(req, res) {
       try {
         const parsed = JSON.parse(session.metadata.nh_session);
         email = parsed?.email || null;
-      } catch (e) {
-        // ignore parse errors
-      }
+      } catch (e) {}
     }
 
-    if (!email) {
-      // No email to create a local session for
-      return res.status(400).json({ error: 'Could not determine customer email from Checkout Session' });
-    }
+    if (!email) return res.status(400).json({ error: 'Could not determine customer email from Checkout Session' });
 
     const emailKey = String(email).toLowerCase();
 
-    // Persist a small mapping in KV so we can correlate later (and help webhook reconciliation)
     try {
       if (kv) {
         await kv.set(`stripe:checkout:${sessionId}`, { email: emailKey, sessionId, created_at: new Date().toISOString() }, { ex: 60 * 60 * 24 * 7 });
@@ -63,13 +56,42 @@ export default async function handler(req, res) {
       console.warn('KV write (checkout mapping) failed', e?.message || e);
     }
 
+    // If subscription object was expanded or available, persist it right away so check-subscription detects the plan
+    try {
+      const subscription = session.subscription || null;
+      if (subscription && kv) {
+        // store useful info and the raw subscription for later reference
+        const priceId = (subscription.items && subscription.items.data && subscription.items.data[0]?.price?.id) || null;
+        const toStore = {
+          id: subscription.id,
+          status: subscription.status || 'unknown',
+          priceId,
+          current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
+          raw: subscription,
+          updated_at: new Date().toISOString(),
+        };
+        await kv.set(`stripe:subscription:${emailKey}`, toStore, { ex: 60 * 60 * 24 * 365 });
+      } else if (session.customer && kv) {
+        // At least store the customer id so portal creation can find it
+        const custId = typeof session.customer === 'string' ? session.customer : (session.customer?.id || null);
+        if (custId) {
+          const existing = (await kv.get(`stripe:subscription:${emailKey}`)) || {};
+          existing.raw = existing.raw || {};
+          existing.raw.customer = custId;
+          existing.updated_at = new Date().toISOString();
+          await kv.set(`stripe:subscription:${emailKey}`, existing, { ex: 60 * 60 * 24 * 365 });
+        }
+      }
+    } catch (e) {
+      console.warn('KV write (subscription) failed', e?.message || e);
+    }
+
     // Ensure a basic user record exists; if no password present, create a set-password token
     let setPasswordToken = null;
     try {
       if (kv) {
         const existing = await kv.get(`user:${emailKey}`);
         if (!existing) {
-          // create a minimal user record
           const userRecord = {
             email: emailKey,
             created_at: new Date().toISOString(),
@@ -80,24 +102,17 @@ export default async function handler(req, res) {
             },
           };
           await kv.set(`user:${emailKey}`, userRecord);
-          // create one-time token to let user set a password
           setPasswordToken = generateToken();
-          const tokenKey = `user:setpw:${setPasswordToken}`;
-          await kv.set(tokenKey, { email: emailKey, created_at: new Date().toISOString() }, { ex: 60 * 60 * 24 }); // expires in 24h
-        } else {
-          // existing user: if they don't have a password we can create token for convenience
-          if (!existing.has_password) {
-            setPasswordToken = generateToken();
-            const tokenKey = `user:setpw:${setPasswordToken}`;
-            await kv.set(tokenKey, { email: emailKey, created_at: new Date().toISOString() }, { ex: 60 * 60 * 24 });
-          }
+          await kv.set(`user:setpw:${setPasswordToken}`, { email: emailKey, created_at: new Date().toISOString() }, { ex: 60 * 60 * 24 });
+        } else if (!existing.has_password) {
+          setPasswordToken = generateToken();
+          await kv.set(`user:setpw:${setPasswordToken}`, { email: emailKey, created_at: new Date().toISOString() }, { ex: 60 * 60 * 24 });
         }
       }
     } catch (e) {
       console.warn('KV write (user record) failed', e?.message || e);
     }
 
-    // Create a simple local session string and store server-side (optional)
     const nhSessionString = makeSessionString(emailKey);
 
     try {
@@ -108,7 +123,6 @@ export default async function handler(req, res) {
       console.warn('KV write (local session) failed', e?.message || e);
     }
 
-    // Set a cookie for compatibility and return nh_session and token (if any)
     const cookieValue = encodeURIComponent(nhSessionString);
     const cookie = `nh_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
     res.setHeader('Set-Cookie', cookie);
