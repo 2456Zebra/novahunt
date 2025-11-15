@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
+import RevealButton from '../components/RevealButton';
 
 export default function SearchPage() {
   const [domain, setDomain] = useState('');
@@ -33,7 +34,7 @@ export default function SearchPage() {
       if (!res.ok) {
         setError(body?.error || 'Search failed');
       } else {
-        setResults(body?.data || body); // support both shapes
+        setResults(body?.data || body);
       }
     } catch (err) {
       console.error(err);
@@ -72,7 +73,6 @@ export default function SearchPage() {
           <div style={{ marginTop: 18 }}>
             <h2>Results</h2>
 
-            {/* Hunter response shape: results.data.data.emails or results.data */}
             {Array.isArray(results?.data?.data?.emails) && results.data.data.emails.length === 0 && (
               <div>No emails found.</div>
             )}
@@ -80,19 +80,22 @@ export default function SearchPage() {
             {Array.isArray(results?.data?.data?.emails) && results.data.data.emails.length > 0 && (
               <div style={{ display: 'grid', gap: 12 }}>
                 {results.data.data.emails.map((e, i) => (
-                  <div key={i} style={{ padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
-                    <div style={{ fontWeight: 700 }}>{e.value}</div>
-                    <div style={{ fontSize: 13, color: '#6b7280' }}>{e.position || e.type || ''}</div>
-                    <div style={{ marginTop: 8, fontSize: 13 }}>
-                      Sources: {(e.sources || []).length} — Verification: {e.verification?.status || 'unknown'}
+                  <div key={i} style={{ padding: 12, border: '1px solid #eee', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{e.value}</div>
+                      <div style={{ fontSize: 13, color: '#6b7280' }}>{e.position || e.type || ''}</div>
+                      <div style={{ marginTop: 8, fontSize: 13 }}>
+                        Sources: {(e.sources || []).length} — Verification: {e.verification?.status || 'unknown'}
+                      </div>
+                    </div>
+                    <div>
+                      <RevealButton label="Reveal" contact={e} />
                     </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Generic payload */}
-            {!results?.data && Array.isArray(results) && results.length === 0 && <div>No results.</div>}
             {!results?.data && Array.isArray(results) && results.length > 0 && (
               <div style={{ display: 'grid', gap: 12 }}>
                 {results.map((r, i) => (
