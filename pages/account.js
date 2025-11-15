@@ -3,24 +3,50 @@ import React, { useEffect, useState } from 'react';
 export default function AccountPage() {
   const [usage, setUsage] = useState(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    async function fetchUsage() {
-      setLoading(true);
-      try {
-        const sessionValue = typeof window !== 'undefined' ? localStorage.getItem('nh_session') || '' : '';
-        const res = await fetch('/api/account-usage', {
-          headers: { 'x-nh-session': sessionValue }
-        });
-        const body = await res.json();
-        if (res.ok) setUsage(body);
-      } catch (err) {
-        console.error('account fetch', err);
-      } finally {
-        setLoading(false);
-      }
+  const [busy, setBusy] = useState(false);
+
+  async function fetchUsage() {
+    setLoading(true);
+    try {
+      const sessionValue = typeof window !== 'undefined' ? localStorage.getItem('nh_session') || '' : '';
+      const res = await fetch('/api/account-usage', {
+        headers: { 'x-nh-session': sessionValue }
+      });
+      const body = await res.json();
+      if (res.ok) setUsage(body);
+    } catch (err) {
+      console.error('account fetch', err);
+    } finally {
+      setLoading(false);
     }
-    fetchUsage();
-  }, []);
+  }
+
+  useEffect(() => { fetchUsage(); }, []);
+
+  async function reconcile() {
+    setBusy(true);
+    try {
+      const sessionValue = typeof window !== 'undefined' ? localStorage.getItem('nh_session') || '' : '';
+      const res = await fetch('/api/reconcile-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-nh-session': sessionValue },
+        body: JSON.stringify({})
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        alert('Reconcile failed: ' + (body?.error || 'unknown'));
+      } else {
+        // refresh usage
+        await fetchUsage();
+        alert('Reconciliation complete (' + (body?.source || 'unknown') + '). Plan should update if found.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Reconcile error');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
@@ -50,6 +76,11 @@ export default function AccountPage() {
 
           <div style={{ marginTop: 16 }}>
             <button onClick={() => window.location.href = '/'} style={{ padding: '8px 10px' }}>Back to dashboard</button>
+
+            <button onClick={reconcile} disabled={busy} style={{ marginLeft: 8, padding: '8px 10px' }}>
+              {busy ? 'Refreshing…' : 'Refresh subscription'}
+            </button>
+
             <button onClick={async () => {
               try {
                 const sessionValue = localStorage.getItem('nh_session') || '';
