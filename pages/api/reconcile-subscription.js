@@ -1,6 +1,6 @@
 // Reconcile subscription info for the current session or for a provided email.
 // POST { email?: "user@example.com" } or include x-nh-session header.
-// This will attempt to find a customer/subscription in KV, checkout mapping, or Stripe and persist stripe:subscription:{email}.
+// This will attempt to find a subscription (checkout mapping, Stripe) and persist stripe:subscription:{email}.
 import Stripe from 'stripe';
 import { getKV } from './_kv-wrapper';
 const kv = getKV();
@@ -17,7 +17,6 @@ async function findSubscriptionFromCheckoutKV(emailKey) {
       if (session && session.subscription) {
         return session.subscription;
       }
-      // If no subscription but we have a customer id, return customer id in a small object
       if (session && session.customer) {
         return { customer: typeof session.customer === 'string' ? session.customer : session.customer?.id || null };
       }
@@ -40,7 +39,6 @@ async function findSubscriptionFromStripeByEmail(emailKey) {
       const active = subs.data.find(s => s.status === 'active') || subs.data[0];
       return active;
     }
-    // no subscription found, but return customer id so portal can be created
     return { customer: customerId };
   } catch (e) {
     console.warn('Stripe lookup failed', e?.message || e);
@@ -75,7 +73,7 @@ export default async function handler(req, res) {
 
     const emailKey = String(email).toLowerCase();
 
-    // 1) Try KV direct
+    // Try KV first
     try {
       if (kv) {
         const existing = await kv.get(`stripe:subscription:${emailKey}`);
@@ -87,49 +85,47 @@ export default async function handler(req, res) {
       console.warn('KV read error', e?.message || e);
     }
 
-    // 2) Try checkout mapping (and persist if found)
+    // Try checkout mapping
+    let found = null;
     try {
-      const fromCheckout = await findSubscriptionFromCheckoutKV(emailKey);
-      if (fromCheckout) {
-        // normalize into storeable object
-        if (fromCheckout.id || fromCheckout.customer) {
-          let toStore = null;
-          if (fromCheckout.id) {
-            const subscription = fromCheckout;
-            const priceId = (subscription.items && subscription.items.data && subscription.items.data[0]?.price?.id) || null;
-            toStore = {
-              id: subscription.id,
-              status: subscription.status || 'unknown',
-              priceId,
-              raw: subscription,
-              updated_at: new Date().toISOString(),
-            };
-          } else if (fromCheckout.customer) {
-            // no subscription, but persist customer id
-            const existing = (await kv.get(`stripe:subscription:${emailKey}`)) || {};
-            existing.raw = existing.raw || {};
-            existing.raw.customer = fromCheckout.customer;
-            existing.updated_at = new Date().toISOString();
-            toStore = existing;
-          }
+      found = await findSubscriptionFromCheckoutKV(emailKey);
+      if (found) {
+        let toStore = null;
+        if (found.id) {
+          const subscription = found;
+          const priceId = (subscription.items && subscription.items.data && subscription.items.data[0]?.price?.id) || null;
+          toStore = {
+            id: subscription.id,
+            status: subscription.status || 'unknown',
+            priceId,
+            raw: subscription,
+            updated_at: new Date().toISOString(),
+          };
+        } else if (found.customer) {
+          const existing = (await kv.get(`stripe:subscription:${emailKey}`)) || {};
+          existing.raw = existing.raw || {};
+          existing.raw.customer = found.customer;
+          existing.updated_at = new Date().toISOString();
+          toStore = existing;
+        }
 
-          if (toStore && kv) {
-            try {
-              await kv.set(`stripe:subscription:${emailKey}`, toStore, { ex: 60 * 60 * 24 * 365 });
-            } catch (e) {
-              console.warn('KV write failed (checkout persist)', e?.message || e);
-            }
-            return res.status(200).json({ ok: true, source: 'checkout_session', subscription: toStore });
+        if (toStore && kv) {
+          try {
+            await kv.set(`stripe:subscription:${emailKey}`, toStore, { ex: 60 * 60 * 24 * 365 });
+          } catch (e) {
+            console.warn('KV write failed (checkout persist)', e?.message || e);
           }
         }
+
+        return res.status(200).json({ ok: true, source: 'checkout_session', subscription: toStore || found });
       }
     } catch (e) {
       console.warn('checkout mapping lookup failed', e?.message || e);
     }
 
-    // 3) Fallback: find via Stripe by email and persist
+    // Try Stripe by email
     try {
-      const found = await findSubscriptionFromStripeByEmail(emailKey);
+      found = await findSubscriptionFromStripeByEmail(emailKey);
       if (found) {
         let toStore = null;
         if (found.id) {
@@ -150,6 +146,7 @@ export default async function handler(req, res) {
           toStore = existing;
         }
 
+        // Force persist to KV so debug-kv and other endpoints see it
         if (toStore && kv) {
           try {
             await kv.set(`stripe:subscription:${emailKey}`, toStore, { ex: 60 * 60 * 24 * 365 });
@@ -164,7 +161,6 @@ export default async function handler(req, res) {
       console.warn('Stripe lookup failed in reconcile', e?.message || e);
     }
 
-    // Nothing found
     return res.status(404).json({ ok: false, error: 'No subscription found' });
   } catch (err) {
     console.error('reconcile-subscription error', err?.message || err);
