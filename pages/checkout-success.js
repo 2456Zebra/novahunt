@@ -34,6 +34,7 @@ export default function CheckoutSuccess() {
           return;
         }
 
+        // Persist local session string in localStorage
         if (body && body.nh_session) {
           try {
             localStorage.setItem('nh_session', body.nh_session);
@@ -42,16 +43,34 @@ export default function CheckoutSuccess() {
 
         if (body?.set_password_token) {
           setSetPwToken(body.set_password_token);
-          // If we created a token, show the set-password call-to-action and don't auto-redirect immediately.
-          setStatus('done');
-          return;
         }
 
-        // No token => short redirect to dashboard
+        // Immediately attempt to reconcile subscription for this user so they don't see "free" flash
+        try {
+          const sessionValue = body?.nh_session || localStorage.getItem('nh_session') || '';
+          // call reconcile-subscription with session header so server can find email
+          await fetch('/api/reconcile-subscription', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-nh-session': sessionValue,
+            },
+            body: JSON.stringify({})
+          });
+        } catch (e) {
+          // non-fatal if reconcile fails, webhook may still update later
+          console.warn('reconcile-subscription failed', e);
+        }
+
         setStatus('done');
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 700);
+
+        // If a set-password token exists, show the CTA and wait for the user to choose a path.
+        // Otherwise short redirect to dashboard.
+        if (!body?.set_password_token) {
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 700);
+        }
       } catch (err) {
         console.error('finalize checkout error', err);
         setStatus('error');
