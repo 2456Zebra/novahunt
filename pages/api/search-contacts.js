@@ -1,6 +1,6 @@
 // Server-side: call Hunter domain-search and return provider payload under { data: ... }.
 // Supports opt-in include_inferred (body.include_inferred) — honored only when client sends a session header.
-// Saves a raw backup in KV before filtering so you can restore if needed.
+// Saves a raw backup in KV before filtering so you can restore if needed and increments per-user search usage.
 import { getKV } from './_kv-wrapper';
 const kv = getKV();
 
@@ -9,6 +9,26 @@ function makeHunterUrl(domain, limit = 10, offset = '') {
   const offsetPart = offset ? `&offset=${encodeURIComponent(offset)}` : '';
   const key = process.env.HUNTER_API_KEY || '';
   return `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}${limitPart}${offsetPart}&api_key=${encodeURIComponent(key)}`;
+}
+
+async function incrementSearchUsageForRequest(req) {
+  try {
+    const sessionHeader = req.headers['x-nh-session'] || '';
+    let email = null;
+    try {
+      const parsed = JSON.parse(sessionHeader || '{}');
+      email = parsed?.email || null;
+    } catch (e) {
+      if (sessionHeader && sessionHeader.includes('@')) email = sessionHeader;
+    }
+    if (email && kv) {
+      const key = `usage:searches:${email.toLowerCase()}`;
+      const cur = parseInt((await kv.get(key)) || 0, 10) || 0;
+      await kv.set(key, cur + 1);
+    }
+  } catch (e) {
+    console.warn('KV write error (search usage increment)', e?.message || e);
+  }
 }
 
 export default async function handler(req, res) {
@@ -34,7 +54,11 @@ export default async function handler(req, res) {
     try {
       if (kv) {
         const cached = await kv.get(cacheKey);
-        if (cached) return res.status(200).json(cached);
+        if (cached) {
+          // increment usage and return cached
+          await incrementSearchUsageForRequest(req);
+          return res.status(200).json(cached);
+        }
       }
     } catch (e) {
       console.warn('KV read error', e?.message || e);
@@ -98,6 +122,9 @@ export default async function handler(req, res) {
           console.warn('KV write error', e?.message || e);
         }
 
+        // increment usage for this request
+        await incrementSearchUsageForRequest(req);
+
         return res.status(200).json(payload);
       }
     }
@@ -142,6 +169,9 @@ export default async function handler(req, res) {
     } catch (e) {
       console.warn('KV write error', e?.message || e);
     }
+
+    // increment usage for this request
+    await incrementSearchUsageForRequest(req);
 
     return res.status(200).json(payload);
   } catch (err) {
