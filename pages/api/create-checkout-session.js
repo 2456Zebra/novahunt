@@ -4,8 +4,7 @@ import Stripe from 'stripe';
 import { getKV } from './_kv-wrapper';
 const kv = getKV();
 
-// Hotfix: do not specify apiVersion here to avoid "Invalid Stripe API version" errors.
-// If you later upgrade the stripe package, you can add an explicit apiVersion again.
+// Use default Stripe initialization without explicit apiVersion to avoid mismatch issues.
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
 export default async function handler(req, res) {
@@ -15,12 +14,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { priceId, successUrl = process.env.SUCCESS_URL, cancelUrl = process.env.CANCEL_URL } = req.body || {};
-    if (!priceId) return res.status(400).json({ error: 'priceId required in request body' });
+    const { priceId } = req.body || {};
+    const successEnv = process.env.SUCCESS_URL || 'https://www.novahunt.ai/checkout-success';
+    const cancelEnv = process.env.CANCEL_URL || 'https://www.novahunt.ai/checkout-cancel';
 
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return res.status(500).json({ error: 'STRIPE_SECRET_KEY not configured' });
+    if (!priceId) return res.status(400).json({ error: 'priceId required in request body' });
+    if (!process.env.STRIPE_SECRET_KEY) return res.status(500).json({ error: 'STRIPE_SECRET_KEY not configured' });
+
+    // Ensure the success_url contains the Stripe placeholder so Stripe appends the session id on redirect
+    let successUrl = successEnv;
+    if (!successUrl.includes('{CHECKOUT_SESSION_ID}')) {
+      // Add the placeholder safely (handle existing querystring)
+      const sep = successUrl.includes('?') ? '&' : '?';
+      successUrl = `${successUrl}${sep}session_id={CHECKOUT_SESSION_ID}`;
     }
+
+    const cancelUrl = cancelEnv;
 
     // Determine email from local session header (the client sends nh_session JSON string as header)
     let sessionHeader = req.headers['x-nh-session'] || null;
@@ -38,8 +47,8 @@ export default async function handler(req, res) {
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl || 'https://YOUR_SITE/checkout-success?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: cancelUrl || 'https://YOUR_SITE/checkout-cancel',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       allow_promotion_codes: true,
       customer_email: email || undefined,
       metadata: {
@@ -59,6 +68,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ url: session.url });
   } catch (err) {
     console.error('create-checkout-session error', err?.message || err);
+    // Surface Stripe error text where available
     return res.status(500).json({ error: err?.message || 'Server error' });
   }
 }
