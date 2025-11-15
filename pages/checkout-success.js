@@ -8,8 +8,13 @@ export default function CheckoutSuccess() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    // Always attempt to finalize on mount — read session_id from query string if not present via router
     async function finalize() {
-      const sessionId = sessionIdQuery || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('session_id') : null);
+      // Prefer router-provided query, fallback to window.location.search
+      const sessionId =
+        sessionIdQuery ||
+        (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('session_id') : null);
+
       if (!sessionId) {
         setStatus('error');
         setMessage('Missing session_id in query string.');
@@ -39,10 +44,15 @@ export default function CheckoutSuccess() {
           }
         }
 
+        // If a set_password_token was returned, optionally show a message (kept simple for now)
+        if (body?.set_password_token) {
+          // You could show a link or auto-email — for now we log to console for convenience in testing
+          console.info('set_password_token:', body.set_password_token);
+        }
+
         setStatus('done');
-        // short delay so user sees success message
+        // short delay so user sees success message before redirect
         setTimeout(() => {
-          // send the user to dashboard signed-in
           window.location.href = '/';
         }, 700);
       } catch (err) {
@@ -52,8 +62,11 @@ export default function CheckoutSuccess() {
       }
     }
 
-    if (sessionIdQuery !== undefined) finalize();
-  }, [sessionIdQuery]);
+    // Call finalize immediately on mount (and also on updates if router query becomes available)
+    finalize();
+  // We intentionally only run once on mount — finalize reads router/query and window.location directly.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <main style={{ maxWidth: 760, margin: '0 auto', padding: 24 }}>
