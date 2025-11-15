@@ -1,5 +1,5 @@
-// Called by client when user clicks Reveal on a contact.
-// Increments reveal count and returns remaining reveals and whether allowed.
+// Reveal endpoint — requires a valid session (x-nh-session or cookie) that contains an email.
+// Increments reveal usage and returns updated counts and allowed flag.
 import { getKV } from './_kv-wrapper';
 const kv = getKV();
 
@@ -36,33 +36,29 @@ export default async function handler(req, res) {
   }
 
   try {
-    const sessionHeader = req.headers['x-nh-session'] || '';
+    const sessionHeader = req.headers['x-nh-session'] || (req.cookies && req.cookies.nh_session) || '';
     const email = parseEmailFromHeader(sessionHeader);
     if (!email) return res.status(401).json({ error: 'Not signed in' });
 
     const emailKey = email.toLowerCase();
 
-    // determine plan from stored subscription
+    // determine plan (from stripe:subscription)
     let subscription = null;
     try {
       if (kv) subscription = await kv.get(`stripe:subscription:${emailKey}`);
     } catch (e) {
       console.warn('KV read error (reveal subscription)', e?.message || e);
     }
-
     const priceId = subscription?.priceId || subscription?.raw?.items?.data?.[0]?.price?.id || null;
     const plan = planFromPriceId(priceId);
     const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
 
-    // increment reveal counter atomically-ish
+    // increment reveal counter
     let reveals = 0;
     try {
-      if (!kv) {
-        // fallback: not persisted
-        return res.status(200).json({ allowed: true, reveals: 0, remaining: limits.reveals, debug: { email: emailKey, plan } });
-      }
+      if (!kv) return res.status(500).json({ error: 'KV not available' });
       const curRaw = await kv.get(`usage:reveals:${emailKey}`);
-      const cur = parseInt(curRaw || 0, 10) || 0;
+      const cur = parseInt(curRaw || '0', 10) || 0;
       reveals = cur + 1;
       await kv.set(`usage:reveals:${emailKey}`, String(reveals));
     } catch (e) {
@@ -73,7 +69,6 @@ export default async function handler(req, res) {
     const remaining = Math.max(0, limits.reveals - reveals);
     const allowed = reveals <= limits.reveals;
 
-    // Return updated usage so client UI updates immediately
     return res.status(200).json({
       allowed,
       reveals,
