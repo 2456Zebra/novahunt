@@ -1,7 +1,7 @@
 // Admin debug injector for KV (protected by DEBUG_SECRET).
 // POST { email: "user@example.com", subscription?: { ... } }
 // If subscription not provided, this will attempt to discover via checkout mapping or Stripe and persist it.
-// Returns { ok:true, stored: <object> } on success.
+// After persisting, this version reads the key back from KV and returns the read value so we can confirm persistence.
 import Stripe from 'stripe';
 import { getKV } from './_kv-wrapper';
 const kv = getKV();
@@ -62,8 +62,9 @@ export default async function handler(req, res) {
   const emailKey = String(email).toLowerCase();
 
   try {
-    // If subscription payload provided, use it directly
     let toStore = null;
+
+    // If a subscription payload is provided, normalize it into the object we store
     if (subscription && (subscription.id || subscription.raw || subscription.customer)) {
       if (subscription.id) {
         const priceId = (subscription.items && subscription.items.data && subscription.items.data[0]?.price?.id) || null;
@@ -75,7 +76,6 @@ export default async function handler(req, res) {
           updated_at: new Date().toISOString(),
         };
       } else {
-        // provided object contains only customer id or partial info
         const existing = (await kv.get(`stripe:subscription:${emailKey}`)) || {};
         existing.raw = subscription.raw || {};
         if (subscription.customer) existing.raw.customer = subscription.customer;
@@ -83,7 +83,7 @@ export default async function handler(req, res) {
         toStore = existing;
       }
     } else {
-      // Try to discover subscription then persist it
+      // Discover via checkout KV or Stripe
       let found = null;
       found = await findSubscriptionFromCheckoutKV(emailKey);
       if (!found) found = await findSubscriptionFromStripeByEmail(emailKey);
@@ -118,6 +118,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ ok: false, error: 'KV not available' });
     }
 
+    // Persist to KV
     try {
       await kv.set(`stripe:subscription:${emailKey}`, toStore, { ex: 60 * 60 * 24 * 365 });
     } catch (e) {
@@ -125,7 +126,15 @@ export default async function handler(req, res) {
       return res.status(500).json({ ok: false, error: 'KV write failed', detail: String(e?.message || e) });
     }
 
-    return res.status(200).json({ ok: true, stored: toStore });
+    // Verify by reading the same key back immediately
+    let readBack = null;
+    try {
+      readBack = await kv.get(`stripe:subscription:${emailKey}`);
+    } catch (e) {
+      readBack = `read error: ${String(e?.message || e)}`;
+    }
+
+    return res.status(200).json({ ok: true, stored: toStore, readBack });
   } catch (err) {
     console.error('debug-inject-kv error', err?.message || err);
     return res.status(500).json({ error: 'Server error' });
