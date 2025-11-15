@@ -41,7 +41,6 @@ export default function AccountPopover({ email }) {
 
   async function handleManage() {
     try {
-      // include current nh_session in headers so server can identify the user
       const sessionValue = localStorage.getItem('nh_session') || '';
       const res = await fetch('/api/create-portal-session', {
         method: 'POST',
@@ -56,6 +55,24 @@ export default function AccountPopover({ email }) {
     } catch (err) {
       console.error(err);
       alert('Could not open billing portal');
+    }
+  }
+
+  function handleAccount() {
+    window.location.href = '/account';
+  }
+
+  function handleLogout() {
+    try {
+      // clear localStorage session and reload to sign-out
+      localStorage.removeItem('nh_session');
+      // clear cookie by setting expired cookie
+      document.cookie = 'nh_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure';
+      // refresh to update UI
+      window.location.href = '/';
+    } catch (e) {
+      console.error('logout error', e);
+      window.location.href = '/';
     }
   }
 
@@ -93,11 +110,17 @@ export default function AccountPopover({ email }) {
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button onClick={() => { window.location.href = '/'; }} style={{ flex: 1, padding: '8px 10px' }}>
+            <button onClick={handleAccount} style={{ flex: 1, padding: '8px 10px' }}>
               Account
             </button>
             <button onClick={handleManage} style={{ flex: 1, padding: '8px 10px', background: '#0f172a', color: 'white', borderRadius: 6 }}>
               Manage billing
+            </button>
+          </div>
+
+          <div style={{ marginTop: 8 }}>
+            <button onClick={handleLogout} style={{ width: '100%', padding: '8px 10px', background: '#ef4444', color: '#fff', borderRadius: 6, border: 'none' }}>
+              Sign out
             </button>
           </div>
         </div>
