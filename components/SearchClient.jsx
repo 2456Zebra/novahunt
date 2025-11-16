@@ -128,11 +128,17 @@ export default function SearchClient() {
       </td>
       <td className="p-4 text-gray-600">{row.position}</td>
       <td className="p-4 text-center">
-        <span className={`inline-block px-3 py-1 rounded-full text-white text-sm font-bold ${
-          row.score >= 95 ? 'bg-green-500' :
-          row.score >= 85 ? 'bg-amber-500' :
-          row.score >= 70 ? 'bg-orange-500' : 'bg-gray-500'
-        }`}>
+        <span
+          className={`inline-block px-3 py-1 rounded-full text-white text-sm font-bold ${
+            row.score >= 95
+              ? 'bg-green-500'
+              : row.score >= 85
+              ? 'bg-amber-500'
+              : row.score >= 70
+              ? 'bg-orange-500'
+              : 'bg-gray-500'
+          }`}
+        >
           {row.score}%
         </span>
       </td>
@@ -226,4 +232,40 @@ export default function SearchClient() {
                       Sign in to see all {total} results
                     </button>
                   )}
-                </p
+                </p>
+
+                <div className="overflow-x-auto rounded-lg shadow-lg">
+                  <table className="w-full bg-white">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="p-4 text-left font-semibold text-gray-700">Email</th>
+                        <th className="p-4 text-left font-semibold text-gray-700">Name</th>
+                        <th className="p-4 text-left font-semibold text-gray-700">Title</th>
+                        <th className="p-4 text-left font-semibold text-gray-700">Score</th>
+                        <th className="p-4 text-left font-semibold text-gray-700">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.visible.map((row, idx) => renderRow(row, idx))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      <SignInModal
+        isOpen={showSignIn}
+        onClose={() => setShowSignIn(false)}
+        onSuccess={(newSession) => {
+          localStorage.setItem('nh_session', newSession);
+          setSession(newSession);
+          setShowSignIn(false);
+          window.location.reload();
+        }}
+      />
+    </>
+  );
+}
