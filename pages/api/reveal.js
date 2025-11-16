@@ -1,8 +1,9 @@
 // Reveal endpoint — require signed-in session and enforce plan limits.
-// Replace your current reveal.js with this file (or merge the core logic).
+// Replace or merge with your existing reveal logic as appropriate.
 import { getKV } from './_kv-wrapper';
 const kv = getKV();
 
+// Plan limits — keep these in sync with account-usage logic
 const PLAN_LIMITS = {
   free: { searches: 5, reveals: 2 },
   starter: { searches: 500, reveals: 100 },
@@ -12,7 +13,9 @@ const PLAN_LIMITS = {
 
 function safeParseSession(header) {
   if (!header) return null;
-  try { return JSON.parse(header); } catch (e) {
+  try {
+    return JSON.parse(header);
+  } catch (e) {
     if (typeof header === 'string' && header.includes('@')) return { email: header };
     return null;
   }
@@ -30,38 +33,54 @@ function planFromSubscription(subscription) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST'); return res.status(405).json({ error: 'Method Not Allowed' });
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
 
   try {
     const sessionHeader = req.headers['x-nh-session'] || '';
     const parsed = safeParseSession(sessionHeader);
     const email = parsed?.email || null;
-    if (!email) return res.status(401).json({ ok: false, error: 'Authentication required to reveal' });
+    if (!email) {
+      return res.status(401).json({ ok: false, error: 'Authentication required to reveal' });
+    }
     const emailKey = String(email).toLowerCase();
 
-    // Read subscription for plan decision (if not present, fallback to free)
+    // read subscription from KV (fallbacks in account-usage will populate if missing)
     let subscription = null;
-    try { if (kv) subscription = await kv.get(`stripe:subscription:${emailKey}`); } catch (e) { console.warn('KV read error (reveal subscription)', e?.message || e); }
+    try {
+      if (kv) subscription = await kv.get(`stripe:subscription:${emailKey}`);
+    } catch (e) {
+      console.warn('KV read error (reveal subscription)', e?.message || e);
+    }
 
     const plan = planFromSubscription(subscription);
     const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
 
     // Check current usage counts
     let revealsUsed = 0;
-    try { if (kv) { const v = await kv.get(`usage:reveals:${emailKey}`); revealsUsed = parseInt(v || '0', 10) || 0; } } catch (e) { console.warn('KV read error (reveal count)', e?.message || e); }
+    try {
+      if (kv) {
+        const v = await kv.get(`usage:reveals:${emailKey}`);
+        revealsUsed = parseInt(v || '0', 10) || 0;
+      }
+    } catch (e) {
+      console.warn('KV read error (reveal count)', e?.message || e);
+    }
 
     if (revealsUsed >= limits.reveals) {
       return res.status(402).json({ ok: false, error: 'Reveal limit reached for your plan', plan, limits, used: { reveals: revealsUsed } });
     }
 
-    // TODO: Replace this with your real reveal provider logic (Hunter etc).
-    // This block currently emulates a reveal result for testing.
+    // === Reveal provider logic ===
+    // If you have an existing reveal implementation, call it here and assign to `revealed`.
+    // TODO: Replace placeholder with real reveal provider call (e.g., Hunter integration).
     let revealed = null;
     try {
-      // If you have an existing doReveal helper, call it here:
-      // revealed = await doReveal(req.body);
+      // Example placeholder result for testing:
       revealed = { message: 'Revealed (placeholder)', payload: req.body };
+      // If you have doReveal(payload) function, replace above line with:
+      // revealed = await doReveal(req.body);
     } catch (e) {
       console.error('Reveal provider error', e?.message || e);
       return res.status(500).json({ ok: false, error: 'Reveal provider error' });
