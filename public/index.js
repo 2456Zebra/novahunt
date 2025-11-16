@@ -129,8 +129,11 @@
           it.revealed = true;
           // Dispatch event to update usage widget
           try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) { /* ignore */ }
-          // Re-render to show unmasked email
-          renderResults(items, showAll, mode);
+          // Re-render - always check authentication to prevent showing more than 3 results to free users
+          const currentSession = localStorage.getItem('nh_session');
+          // Free users (no session) should only see 3 results, authenticated users can see what was originally shown
+          const shouldShowAll = currentSession ? showAll : false;
+          renderResults(items, shouldShowAll, mode);
         } catch (e) {
           alert(`Error: ${e.message || 'Network error'}`);
           revealBtn.disabled = false;
