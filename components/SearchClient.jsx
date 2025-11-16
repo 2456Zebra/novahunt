@@ -147,4 +147,83 @@ export default function SearchClient() {
           }`}
         >
           {revealing.includes(idx)
-            ? 'Revealing
+            ? 'Revealing...'
+            : row.revealed
+            ? 'Revealed'
+            : 'Reveal Full Email'}
+        </button>
+      </td>
+    </tr>
+  );
+
+  return (
+    <>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <header className="bg-white shadow-sm p-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">NovaHunt</h1>
+          <div>
+            {session ? (
+              <span className="text-green-600 font-semibold">PRO</span>
+            ) : (
+              <button
+                onClick={() => setShowSignIn(true)}
+                className="text-blue-600 font-medium hover:underline"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center p-8">
+          <div className="w-full max-w-4xl text-center">
+            <h2 className="text-4xl font-bold text-gray-900 mb-2">Find Business Emails</h2>
+            <p className="text-lg text-gray-600 mb-8">
+              Confidence scores <strong>85%–100%</strong>.
+            </p>
+
+            <form onSubmit={handleSearch} className="flex justify-center gap-4 flex-wrap">
+              <input
+                value={domain}
+                onChange={e => setDomain(e.target.value)}
+                placeholder="e.g. fordmodels.com"
+                className="px-5 py-3 text-lg w-96 max-w-full rounded-lg border border-gray-300 outline-none"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className={`px-8 py-3 rounded-lg font-bold text-white transition ${
+                  loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {loading ? 'Searching…' : 'Search'}
+              </button>
+            </form>
+
+            {error && <p className="text-red-600 mt-4 font-semibold">{error}</p>}
+
+            {loading && (
+              <div className="max-w-md mx-auto mt-6">
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {!loading && results.visible.length > 0 && (
+              <div className="mt-8">
+                <p className="text-center text-gray-600 mb-4">
+                  Showing <strong>{results.visible.length}</strong> of <strong>{total}</strong> emails.
+                  {!session && total > 3 && (
+                    <button
+                      onClick={() => setShowSignIn(true)}
+                      className="ml-2 text-blue-600 font-semibold underline hover:text-blue-800"
+                      style={{ font: 'inherit', fontSize: 'inherit' }}
+                    >
+                      Sign in to see all {total} results
+                    </button>
+                  )}
+                </p
