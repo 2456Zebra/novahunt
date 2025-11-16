@@ -1,7 +1,7 @@
 // Safe KV wrapper — returns a working kv-like API.
 // Priority:
 // 1) If KV_REST_API_URL && KV_REST_API_TOKEN are set, attempt to load @vercel/kv and return it.
-// 2) Else if UPSTASH_REST_URL && UPSTASH_REST_TOKEN are set, return an Upstash-backed wrapper.
+// 2) Else if UPSTASH_REST_URL/UPSTASH_REDIS_REST_URL && UPSTASH_REST_TOKEN/UPSTASH_REDIS_REST_TOKEN are set, return an Upstash-backed wrapper.
 // 3) Otherwise return an in-memory fallback (non-persistent).
 export function getKV() {
   // 1) Try Vercel KV if env vars present
@@ -18,15 +18,19 @@ export function getKV() {
     }
   }
 
+  // Helper to find Upstash env variants
+  const upstashUrl = process.env.UPSTASH_REST_URL || process.env.UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_RESTURL || null;
+  const upstashToken = process.env.UPSTASH_REST_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.UPSTASH_REDIS_RESTTOKEN || null;
+
   // 2) Try Upstash Redis (REST) if configured
-  if (process.env.UPSTASH_REST_URL && process.env.UPSTASH_REST_TOKEN) {
+  if (upstashUrl && upstashToken) {
     try {
       // Use @upstash/redis REST client
       // eslint-disable-next-line global-require
       const { Redis } = require('@upstash/redis');
       const redis = new Redis({
-        url: process.env.UPSTASH_REST_URL,
-        token: process.env.UPSTASH_REST_TOKEN,
+        url: upstashUrl,
+        token: upstashToken,
       });
 
       // Normalize get/set/del signatures to accept objects (JSON) and strings
@@ -35,7 +39,6 @@ export function getKV() {
           try {
             const v = await redis.get(key);
             if (v === null || typeof v === 'undefined') return null;
-            // Upstash returns strings or primitives; attempt JSON parse
             if (typeof v === 'string') {
               try {
                 return JSON.parse(v);
@@ -52,9 +55,9 @@ export function getKV() {
 
         set: async (key, value, opts) => {
           try {
-            // store JSON for objects to preserve structure
             const storeVal = (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') ? value : JSON.stringify(value);
             if (opts && opts.ex) {
+              // redis.setex expects seconds
               await redis.setex(key, opts.ex, storeVal);
             } else {
               await redis.set(key, storeVal);
@@ -76,11 +79,9 @@ export function getKV() {
           }
         },
 
-        // keys is expensive in Redis; use scan approach if needed. Provide simple helper.
         keys: async (pattern = '*') => {
           try {
             const res = [];
-            // Upstash redis client supports scan
             let cursor = 0;
             do {
               const scan = await redis.scan(cursor, { match: pattern, count: 100 });
@@ -117,7 +118,6 @@ export function getKV() {
     set: async (key, value, opts) => {
       try {
         store.set(key, value);
-        // ignore opts (ttl) in fallback
         return true;
       } catch (e) {
         return false;
