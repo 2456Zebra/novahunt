@@ -54,7 +54,8 @@
         if (it.email) secondaryParts.push(maskEmail(it.email));
         secondary.textContent = secondaryParts.join(' • ');
       } else {
-        const displayEmail = mode === 'import' ? (it.email || '') : maskEmail(it.email || '');
+        // Always mask emails initially - reveal only after API call with auth
+        const displayEmail = it.revealed ? (it.email || '') : maskEmail(it.email || '');
         primary.textContent = displayEmail || '(no email)';
         secondary.textContent = `${it.name || '—'}${it.title ? ' • ' + it.title : ''}`.trim();
       }
@@ -74,17 +75,67 @@
       emailEl.appendChild(right);
       li.appendChild(emailEl);
 
-      // Reveal button (Pro feature)
+      // Reveal button - requires authentication and enforces plan limits
       const actions = document.createElement('div');
       actions.style.marginTop = '6px';
       const revealBtn = document.createElement('button');
-      revealBtn.textContent = 'Reveal Full Email';
+      revealBtn.textContent = it.revealed ? 'Revealed' : 'Reveal Full Email';
       revealBtn.style.padding = '6px 8px';
       revealBtn.style.borderRadius = '6px';
       revealBtn.style.border = '1px solid #ddd';
-      revealBtn.style.background = '#fff';
-      revealBtn.addEventListener('click', () => {
-        alert('Reveal is a Pro feature. Sign up to view full emails.');
+      revealBtn.style.background = it.revealed ? '#28a745' : '#fff';
+      revealBtn.style.color = it.revealed ? '#fff' : '#000';
+      revealBtn.disabled = it.revealed;
+      revealBtn.addEventListener('click', async () => {
+        // Check if user is signed in
+        const session = localStorage.getItem('nh_session');
+        if (!session) {
+          alert('Please sign in to reveal full emails. Click "Sign In" below.');
+          return;
+        }
+        
+        // Call the reveal API endpoint
+        revealBtn.disabled = true;
+        revealBtn.textContent = 'Revealing...';
+        try {
+          const res = await fetch('/api/reveal', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-nh-session': session
+            },
+            body: JSON.stringify({ contactId: it.email, email: it.email, ...it })
+          });
+          
+          const json = await res.json();
+          
+          if (res.status === 401) {
+            alert('Authentication required. Please sign in again.');
+            localStorage.removeItem('nh_session');
+            return;
+          }
+          
+          if (res.status === 402) {
+            alert(`Reveal limit reached for your plan. ${json.error || 'Please upgrade to continue.'}`);
+            return;
+          }
+          
+          if (!res.ok) {
+            alert(`Reveal failed: ${json.error || 'Unknown error'}`);
+            return;
+          }
+          
+          // Success - mark as revealed and re-render
+          it.revealed = true;
+          // Dispatch event to update usage widget
+          try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) { /* ignore */ }
+          // Re-render to show unmasked email
+          renderResults(items, showAll, mode);
+        } catch (e) {
+          alert(`Error: ${e.message || 'Network error'}`);
+          revealBtn.disabled = false;
+          revealBtn.textContent = 'Reveal Full Email';
+        }
       });
       actions.appendChild(revealBtn);
 
