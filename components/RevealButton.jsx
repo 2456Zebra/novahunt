@@ -6,11 +6,13 @@ export default function RevealButton({ contactId, payload }) {
   const [error, setError] = useState(null);
 
   async function doReveal() {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
+      const nh = localStorage.getItem('nh_session') || '';
       const res = await fetch('/api/reveal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-nh-session': localStorage.getItem('nh_session') || '' },
+        headers: { 'Content-Type': 'application/json', 'x-nh-session': nh },
         body: JSON.stringify({ contactId, ...payload }),
       });
       const json = await res.json();
@@ -23,12 +25,16 @@ export default function RevealButton({ contactId, payload }) {
       }
     } catch (e) {
       setError(String(e?.message || e));
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div className="reveal-button">
-      <button onClick={doReveal} disabled={loading}>{loading ? 'Revealing…' : 'Reveal'}</button>
+      <button onClick={doReveal} disabled={loading} className="btn btn-reveal">
+        {loading ? 'Revealing…' : 'Reveal'}
+      </button>
       {error && <div className="error">{error}</div>}
       {result && <div className="reveal-result">{JSON.stringify(result)}</div>}
     </div>
