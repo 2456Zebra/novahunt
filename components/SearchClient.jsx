@@ -71,11 +71,59 @@ export default function SearchClient() {
     return '#ef4444'; // red
   }
 
-  function handleReveal(em) {
+  async function handleReveal(em) {
     const key = (em?.value || em?.email || '').toLowerCase();
     if (!key) return;
-    const full = em?.value || em?.email || null;
-    setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, userRevealed: true } }));
+    
+    // Check if user is signed in
+    const session = sessionValue || localStorage.getItem('nh_session');
+    if (!session) {
+      alert('Please sign in to reveal full emails.');
+      // Open sign-in modal
+      window.dispatchEvent(new CustomEvent('nh:open-auth', { detail: { mode: 'signin' } }));
+      return;
+    }
+    
+    // Call the reveal API endpoint
+    try {
+      const res = await fetch('/api/reveal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-nh-session': session
+        },
+        body: JSON.stringify({ contactId: key, email: key, ...em })
+      });
+      
+      const json = await res.json();
+      
+      if (res.status === 401) {
+        alert('Authentication required. Please sign in again.');
+        localStorage.removeItem('nh_session');
+        setSignedIn(false);
+        setSessionValue(null);
+        return;
+      }
+      
+      if (res.status === 402) {
+        alert(`Reveal limit reached for your plan. ${json.error || 'Please upgrade to continue.'}`);
+        return;
+      }
+      
+      if (!res.ok) {
+        alert(`Reveal failed: ${json.error || 'Unknown error'}`);
+        return;
+      }
+      
+      // Success - store revealed email
+      const full = em?.value || em?.email || null;
+      setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, userRevealed: true } }));
+      
+      // Dispatch event to update usage widget
+      try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) { /* ignore */ }
+    } catch (err) {
+      alert(`Error: ${err.message || 'Network error'}`);
+    }
   }
 
   async function performSearch(domainValue, useInferred = false) {
@@ -242,14 +290,17 @@ export default function SearchClient() {
           <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
             {results.meta ? (
               <>
-                Showing {results.all.length} of {results.meta?.results ?? 'unknown'} results.{' '}
+                Showing {signedIn ? results.all.length : Math.min(results.all.length, 3)} of {results.meta?.results ?? 'unknown'} results.{' '}
+                {!signedIn && results.all.length > 3 && <span style={{ color: '#d97706', fontWeight: 600 }}>Sign in to see all results.</span>}{' '}
                 <a href="/upgrade" style={{ color: '#2563eb', marginLeft: 6, textDecoration: 'underline' }}>Upgrade to see all</a>{' '}
                 {results.filtered_out > 0 && <span style={{ marginLeft: 8, color: '#6b7280' }}>{results.filtered_out} low-trust results hidden</span>}
                 <span style={{ marginLeft: 8, color: '#6b7280' }}>Powered by AI</span>
               </>
             ) : (
               <>
-                Showing {results.all.length} results <span style={{ marginLeft: 8, color: '#6b7280' }}>Powered by AI</span>
+                Showing {signedIn ? results.all.length : Math.min(results.all.length, 3)} results{' '}
+                {!signedIn && results.all.length > 3 && <span style={{ color: '#d97706', fontWeight: 600 }}>Sign in to see all results.</span>}{' '}
+                <span style={{ marginLeft: 8, color: '#6b7280' }}>Powered by AI</span>
               </>
             )}
           </div>
@@ -262,7 +313,7 @@ export default function SearchClient() {
                 <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Department</th>
               </tr>
             </thead>
-            <tbody>{results.all.map(renderRow)}</tbody>
+            <tbody>{(signedIn ? results.all : results.all.slice(0, 3)).map(renderRow)}</tbody>
           </table>
 
           <details style={{ marginTop: 12 }}>
