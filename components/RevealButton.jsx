@@ -1,68 +1,44 @@
-'use client';
-
 import React, { useState } from 'react';
 
-/**
- * RevealButton: server-authorized reveal.
- * Props:
- *  - label (string) text to show on the button
- *  - contact (object) optional contact data to send to server
- *
- * The button calls /api/reveal and only displays the revealed value if server returns allowed:true.
- */
-export default function RevealButton({ label = 'Reveal', contact = {} }) {
+export default function RevealButton({ contactId, payload }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
 
-  async function onClick() {
-    setError('');
+  async function doReveal() {
     setLoading(true);
+    setError(null);
     try {
-      const sessionValue = (typeof window !== 'undefined' && localStorage.getItem('nh_session')) || '';
       const res = await fetch('/api/reveal', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-nh-session': sessionValue,
-        },
-        body: JSON.stringify({ contact }),
+        headers: { 'Content-Type': 'application/json', 'x-nh-session': localStorage.getItem('nh_session') || '' },
+        body: JSON.stringify({ contactId, ...payload }),
       });
-
-      const body = await res.json().catch(() => null);
+      const json = await res.json();
       if (!res.ok) {
-        const msg = (body && (body.error || body.message)) || `Server returned ${res.status}`;
-        throw new Error(msg);
-      }
-
-      if (body && body.allowed) {
-        // If server included a revealed email value, use it; otherwise display generic revealed state
-        if (body.revealedEmail) setResult(body.revealedEmail);
-        else setResult('Revealed');
-        return;
-      }
-
-      if (body && body.allowed === false) {
-        setError('Reveal not allowed — upgrade or sign in.');
+        setError(json?.error || 'Reveal failed');
       } else {
-        setError('Unable to reveal (sign-in required)');
+        setResult(json.revealed);
+        // Immediately notify app to refresh account-usage/header
+        try {
+          // Fire event for header to pick up
+          window.dispatchEvent(new Event('account-usage-updated'));
+        } catch (e) { /* ignore */ }
       }
-    } catch (err) {
-      console.error('reveal error', err);
-      setError(err.message || 'Network error');
+    } catch (e) {
+      setError(String(e?.message || e));
     } finally {
       setLoading(false);
     }
   }
 
-  if (result) return <span style={{ fontWeight: 700 }}>{result}</span>;
-
   return (
-    <div>
-      <button onClick={onClick} disabled={loading} style={{ padding: '6px 10px' }}>
-        {loading ? 'Revealing…' : label}
+    <div className="reveal-button">
+      <button onClick={doReveal} disabled={loading} className="btn btn-reveal">
+        {loading ? 'Revealing…' : 'Reveal'}
       </button>
-      {error && <div style={{ color: '#ef4444', marginTop: 6 }}>{error}</div>}
+      {error && <div className="error">{error}</div>}
+      {result && <div className="reveal-result">{JSON.stringify(result)}</div>}
     </div>
   );
 }
