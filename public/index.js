@@ -54,7 +54,8 @@
         if (it.email) secondaryParts.push(maskEmail(it.email));
         secondary.textContent = secondaryParts.join(' • ');
       } else {
-        const displayEmail = mode === 'import' ? (it.email || '') : maskEmail(it.email || '');
+        // Always mask emails initially - reveal only after API call with auth
+        const displayEmail = it.revealed ? (it.email || '') : maskEmail(it.email || '');
         primary.textContent = displayEmail || '(no email)';
         secondary.textContent = `${it.name || '—'}${it.title ? ' • ' + it.title : ''}`.trim();
       }
@@ -74,17 +75,70 @@
       emailEl.appendChild(right);
       li.appendChild(emailEl);
 
-      // Reveal button (Pro feature)
+      // Reveal button - requires authentication and enforces plan limits
       const actions = document.createElement('div');
       actions.style.marginTop = '6px';
       const revealBtn = document.createElement('button');
-      revealBtn.textContent = 'Reveal Full Email';
+      revealBtn.textContent = it.revealed ? 'Revealed' : 'Reveal Full Email';
       revealBtn.style.padding = '6px 8px';
       revealBtn.style.borderRadius = '6px';
       revealBtn.style.border = '1px solid #ddd';
-      revealBtn.style.background = '#fff';
-      revealBtn.addEventListener('click', () => {
-        alert('Reveal is a Pro feature. Sign up to view full emails.');
+      revealBtn.style.background = it.revealed ? '#28a745' : '#fff';
+      revealBtn.style.color = it.revealed ? '#fff' : '#000';
+      revealBtn.disabled = it.revealed;
+      revealBtn.addEventListener('click', async () => {
+        // Check if user is signed in
+        const session = localStorage.getItem('nh_session');
+        if (!session) {
+          alert('Please sign in to reveal full emails. Click "Sign In" below.');
+          return;
+        }
+        
+        // Call the reveal API endpoint
+        revealBtn.disabled = true;
+        revealBtn.textContent = 'Revealing...';
+        try {
+          const res = await fetch('/api/reveal', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-nh-session': session
+            },
+            body: JSON.stringify({ contactId: it.email, email: it.email, ...it })
+          });
+          
+          const json = await res.json();
+          
+          if (res.status === 401) {
+            alert('Authentication required. Please sign in again.');
+            localStorage.removeItem('nh_session');
+            return;
+          }
+          
+          if (res.status === 402) {
+            alert(`Reveal limit reached for your plan. ${json.error || 'Please upgrade to continue.'}`);
+            return;
+          }
+          
+          if (!res.ok) {
+            alert(`Reveal failed: ${json.error || 'Unknown error'}`);
+            return;
+          }
+          
+          // Success - mark as revealed and re-render
+          it.revealed = true;
+          // Dispatch event to update usage widget
+          try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) { /* ignore */ }
+          // Re-render - always check authentication to prevent showing more than 3 results to free users
+          const currentSession = localStorage.getItem('nh_session');
+          // Free users (no session) should only see 3 results, authenticated users can see what was originally shown
+          const shouldShowAll = currentSession ? showAll : false;
+          renderResults(items, shouldShowAll, mode);
+        } catch (e) {
+          alert(`Error: ${e.message || 'Network error'}`);
+          revealBtn.disabled = false;
+          revealBtn.textContent = 'Reveal Full Email';
+        }
       });
       actions.appendChild(revealBtn);
 
@@ -96,6 +150,9 @@
     if (!moreWrap) return;
     moreWrap.innerHTML = '';
     if ((items || []).length > 3 && !showAll) {
+      // Check if user is authenticated - only authenticated users can see more than 3 results
+      const session = localStorage.getItem('nh_session');
+      
       const showMoreBtn = document.createElement('button');
       showMoreBtn.id = 'nh-show-more';
       showMoreBtn.style.padding = '.5rem .75rem';
@@ -104,9 +161,15 @@
       showMoreBtn.style.color = '#fff';
       showMoreBtn.style.border = 'none';
       showMoreBtn.style.marginTop = '8px';
-      showMoreBtn.textContent = `Show ${items.length - 3} more`;
+      showMoreBtn.textContent = session ? `Show ${items.length - 3} more` : 'Upgrade to see more results';
       showMoreBtn.addEventListener('click', () => {
-        renderResults(items, true, mode);
+        if (session) {
+          // Authenticated users can see more results
+          renderResults(items, true, mode);
+        } else {
+          // Free users need to upgrade to see more than 3 results
+          alert('Upgrade to a paid plan to see more than 3 results. Free plan shows 3 results only. Click "Upgrade to Pro" below.');
+        }
       });
       moreWrap.appendChild(showMoreBtn);
     }
