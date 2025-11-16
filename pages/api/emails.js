@@ -1,49 +1,56 @@
 // pages/api/emails.js
-// 100% HUNTER.IO — REAL EMAILS, NAMES, TITLES, CONFIDENCE
-// NO SCRAPING. NO JINA. NO FAVICON.IO
-
-import fetch from 'node-fetch';
-
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { domain } = req.body;
-  if (!domain) return res.status(400).json({ error: 'Domain required' });
-
-  const API_KEY = process.env.HUNTER_API_KEY;
-  if (!API_KEY) {
-    return res.status(500).json({ error: 'HUNTER_API_KEY missing in Vercel' });
+  if (!domain || typeof domain !== 'string') {
+    return res.status(400).json({ error: 'Valid domain required' });
   }
 
-  const url = `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${API_KEY}&limit=100`;
+  // Simulate search delay
+  await new Promise(resolve => setTimeout(resolve, 2500));
 
-  try {
-    const r = await fetch(url);
-    const data = await r.json();
-
-    if (data.errors) {
-      const err = data.errors[0];
-      if (err.id === 'rate_limit_exceeded') {
-        return res.json({ total: 0, results: [], message: "Free tier limit reached. Upgrade Hunter." });
-      }
-      return res.json({ total: 0, results: [], error: err.details });
+  // Fake results
+  const fakeResults = [
+    {
+      email: 'c***@fordmodels.com',
+      first_name: 'Caden',
+      last_name: 'P',
+      position: 'Talent Agent',
+      score: 98
+    },
+    {
+      email: 'c***@fordmodels.com',
+      first_name: 'Cathy',
+      last_name: 'Q',
+      position: 'Booking Manager',
+      score: 95
+    },
+    {
+      email: 's***@fordmodels.com',
+      first_name: 'Subramanian',
+      last_name: 'R',
+      position: 'Creative Director',
+      score: 88
+    },
+    {
+      email: 'j***@fordmodels.com',
+      first_name: 'Jane',
+      last_name: 'D',
+      position: 'Photographer',
+      score: 85
+    },
+    {
+      email: 'm***@fordmodels.com',
+      first_name: 'Mike',
+      last_name: 'S',
+      position: 'Scout',
+      score: 82
     }
+  ];
 
-    const emails = data.data.emails || [];
-    const total = data.data.total || emails.length;
-
-    const results = emails.map(e => ({
-      email: e.value.includes('*') ? `********@${domain}` : e.value,
-      first_name: e.first_name || "",
-      last_name: e.last_name || "",
-      position: e.position || "Unknown",
-      score: e.confidence || 80,
-      revealed: !e.value.includes('*')
-    }));
-
-    res.json({ results, total });
-  } catch (err) {
-    console.error("Hunter API error:", err);
-    res.status(500).json({ error: "Search failed. Check Hunter API key." });
-  }
+  res.json({
+    results: fakeResults,
+    total: 5
+  });
 }
