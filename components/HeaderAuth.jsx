@@ -10,7 +10,6 @@ export default function HeaderAuth() {
 
   useEffect(() => {
     function readSession() {
-      // Try localStorage first (client session)
       try {
         const ls = localStorage.getItem('nh_session');
         if (ls) {
@@ -26,7 +25,6 @@ export default function HeaderAuth() {
       } catch (e) {
         // ignore
       }
-      // fallback: try cookie
       try {
         const match = document.cookie.match(/(?:^|; )nh_session=([^;]+)/);
         if (match) {
@@ -47,7 +45,6 @@ export default function HeaderAuth() {
 
     readSession();
 
-    // Update when a 'account-usage-updated' event is fired
     function onUpdate() {
       readSession();
     }
@@ -60,7 +57,6 @@ export default function HeaderAuth() {
       localStorage.removeItem('nh_session');
       document.cookie = 'nh_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
     } catch (e) { /* ignore */ }
-    // Optionally hit signout API if you have one, then reload
     router.reload();
   }
 
