@@ -106,7 +106,7 @@ export default function SearchClient() {
       }
       
       if (res.status === 402) {
-        alert(`Reveal limit reached for your plan. ${json.error || 'Please upgrade to continue.'}`);
+        alert('Reveal limit reached for your plan. Please upgrade to see all.');
         return;
       }
       
@@ -291,7 +291,14 @@ export default function SearchClient() {
             {results.meta ? (
               <>
                 Showing {signedIn ? results.all.length : Math.min(results.all.length, 3)} of {results.meta?.results ?? 'unknown'} results.{' '}
-                {!signedIn && results.all.length > 3 && <span style={{ color: '#d97706', fontWeight: 600 }}>Sign in to see all results.</span>}{' '}
+                {!signedIn && results.all.length > 3 && (
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('nh:open-auth', { detail: { mode: 'signin' } }))}
+                    style={{ color: '#d97706', fontWeight: 600, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
+                  >
+                    Sign in to see all results.
+                  </button>
+                )}{' '}
                 <a href="/upgrade" style={{ color: '#2563eb', marginLeft: 6, textDecoration: 'underline' }}>Upgrade to see all</a>{' '}
                 {results.filtered_out > 0 && <span style={{ marginLeft: 8, color: '#6b7280' }}>{results.filtered_out} low-trust results hidden</span>}
                 <span style={{ marginLeft: 8, color: '#6b7280' }}>Powered by AI</span>
@@ -299,7 +306,14 @@ export default function SearchClient() {
             ) : (
               <>
                 Showing {signedIn ? results.all.length : Math.min(results.all.length, 3)} results{' '}
-                {!signedIn && results.all.length > 3 && <span style={{ color: '#d97706', fontWeight: 600 }}>Sign in to see all results.</span>}{' '}
+                {!signedIn && results.all.length > 3 && (
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('nh:open-auth', { detail: { mode: 'signin' } }))}
+                    style={{ color: '#d97706', fontWeight: 600, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
+                  >
+                    Sign in to see all results.
+                  </button>
+                )}{' '}
                 <span style={{ marginLeft: 8, color: '#6b7280' }}>Powered by AI</span>
               </>
             )}
