@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import SignInModal from './SignInModal';
 
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
@@ -68,7 +69,7 @@ export default function SearchClient() {
 
   async function handleReveal(idx) {
     if (!session) {
-      alert('Please sign in to reveal full emails');
+      setShowSignIn(true);
       return;
     }
 
@@ -91,6 +92,7 @@ export default function SearchClient() {
         alert('Session expired. Please sign in again.');
         localStorage.removeItem('nh_session');
         setSession(null);
+        setShowSignIn(true);
         return;
       }
 
@@ -105,4 +107,44 @@ export default function SearchClient() {
         const updated = [...prev.all];
         updated[idx].revealed = true;
         updated[idx].email = data.email;
-        return { all: updated, visible: session ? updated : updated.slice(0,
+        return { all: updated, visible: session ? updated : updated.slice(0, 3) };
+      });
+
+      window.dispatchEvent(new CustomEvent('account-usage-updated'));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setRevealing(prev => prev.filter(i => i !== idx));
+    }
+  }
+
+  const renderRow = (row, idx) => (
+    <tr key={idx} className="border-b border-gray-200">
+      <td className="p-4 font-mono text-blue-600">
+        {row.revealed ? row.email : row.email.replace(/@/, ' @')}
+      </td>
+      <td className="p-4 font-medium">
+        {row.first_name} {row.last_name}
+      </td>
+      <td className="p-4 text-gray-600">{row.position}</td>
+      <td className="p-4 text-center">
+        <span className={`inline-block px-3 py-1 rounded-full text-white text-sm font-bold ${
+          row.score >= 95 ? 'bg-green-500' :
+          row.score >= 85 ? 'bg-amber-500' :
+          row.score >= 70 ? 'bg-orange-500' : 'bg-gray-500'
+        }`}>
+          {row.score}%
+        </span>
+      </td>
+      <td className="p-4 text-center">
+        <button
+          onClick={() => handleReveal(idx)}
+          disabled={revealing.includes(idx)}
+          className={`px-4 py-2 rounded font-medium transition ${
+            row.revealed
+              ? 'bg-green-100 text-green-800 cursor-default'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
+        >
+          {revealing.includes(idx)
+            ? 'Revealing
