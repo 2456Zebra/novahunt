@@ -1,5 +1,5 @@
-import { getSession } from '../../lib/auth';
-import { incrementUsage } from '../../lib/usage';
+import { getSession } from '../../../lib/auth';
+import { incrementUsage } from '../../../lib/usage';
 
 export default async function handler(req, res) {
   const sessionHeader = req.headers['x-nh-session'];
