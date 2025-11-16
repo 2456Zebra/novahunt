@@ -140,7 +140,7 @@ export default function SetPasswordPage() {
       </form>
 
       <div style={{ marginTop: 18, color: '#6b7280' }}>
-        If the token has expired, use "Resend / Generate link" above to create a new one.
+        If the token has expired, use &quot;Resend / Generate link&quot; above to create a new one.
       </div>
     </main>
   );
