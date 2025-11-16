@@ -147,6 +147,9 @@
     if (!moreWrap) return;
     moreWrap.innerHTML = '';
     if ((items || []).length > 3 && !showAll) {
+      // Check if user is authenticated - only authenticated users can see more than 3 results
+      const session = localStorage.getItem('nh_session');
+      
       const showMoreBtn = document.createElement('button');
       showMoreBtn.id = 'nh-show-more';
       showMoreBtn.style.padding = '.5rem .75rem';
@@ -155,9 +158,15 @@
       showMoreBtn.style.color = '#fff';
       showMoreBtn.style.border = 'none';
       showMoreBtn.style.marginTop = '8px';
-      showMoreBtn.textContent = `Show ${items.length - 3} more`;
+      showMoreBtn.textContent = session ? `Show ${items.length - 3} more` : 'Upgrade to see more results';
       showMoreBtn.addEventListener('click', () => {
-        renderResults(items, true, mode);
+        if (session) {
+          // Authenticated users can see more results
+          renderResults(items, true, mode);
+        } else {
+          // Free users need to upgrade to see more than 3 results
+          alert('Upgrade to a paid plan to see more than 3 results. Free plan shows 3 results only. Click "Upgrade to Pro" below.');
+        }
       });
       moreWrap.appendChild(showMoreBtn);
     }
