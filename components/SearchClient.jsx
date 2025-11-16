@@ -294,9 +294,9 @@ export default function SearchClient() {
                 {!signedIn && results.all.length > 3 && (
                   <button
                     onClick={() => window.dispatchEvent(new CustomEvent('nh:open-auth', { detail: { mode: 'signin' } }))}
-                    style={{ color: '#d97706', fontWeight: 600, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
+                    style={{ color: '#d97706', fontWeight: 600, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', font: 'inherit', fontSize: 'inherit' }}
                   >
-                    Sign in to see all results.
+                    Sign in to see all results
                   </button>
                 )}{' '}
                 <a href="/upgrade" style={{ color: '#2563eb', marginLeft: 6, textDecoration: 'underline' }}>Upgrade to see all</a>{' '}
@@ -309,9 +309,9 @@ export default function SearchClient() {
                 {!signedIn && results.all.length > 3 && (
                   <button
                     onClick={() => window.dispatchEvent(new CustomEvent('nh:open-auth', { detail: { mode: 'signin' } }))}
-                    style={{ color: '#d97706', fontWeight: 600, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
+                    style={{ color: '#d97706', fontWeight: 600, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', font: 'inherit', fontSize: 'inherit' }}
                   >
-                    Sign in to see all results.
+                    Sign in to see all results
                   </button>
                 )}{' '}
                 <span style={{ marginLeft: 8, color: '#6b7280' }}>Powered by AI</span>
