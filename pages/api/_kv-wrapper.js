@@ -1,4 +1,4 @@
-// Safe KV wrapper — returns a working kv-like API.
+// Safe KV wrapper — Upstash-aware and adds incr support for atomic counters.
 // Priority:
 // 1) If KV_REST_API_URL && KV_REST_API_TOKEN are set, attempt to load @vercel/kv and return it.
 // 2) Else if UPSTASH_REST_URL/UPSTASH_REDIS_REST_URL && UPSTASH_REST_TOKEN/UPSTASH_REDIS_REST_TOKEN are set, return an Upstash-backed wrapper.
