@@ -58,6 +58,18 @@ export default function SearchClient() {
       setProgress(100);
       clearInterval(timer);
       setTimeout(() => setProgress(0), 500);
+
+      // Increment search count
+      if (session) {
+        await fetch('/api/usage/increment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-nh-session': session
+          },
+          body: JSON.stringify({ type: 'searches' })
+        }).catch(() => {});
+      }
     } catch (err) {
       setError(err.message);
       setProgress(0);
@@ -110,6 +122,15 @@ export default function SearchClient() {
         return { all: updated, visible: session ? updated : updated.slice(0, 3) };
       });
 
+      await fetch('/api/usage/increment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-nh-session': session
+        },
+        body: JSON.stringify({ type: 'reveals' })
+      }).catch(() => {});
+
       window.dispatchEvent(new CustomEvent('account-usage-updated'));
     } catch (err) {
       alert(err.message);
@@ -128,17 +149,11 @@ export default function SearchClient() {
       </td>
       <td className="p-4 text-gray-600">{row.position}</td>
       <td className="p-4 text-center">
-        <span
-          className={`inline-block px-3 py-1 rounded-full text-white text-sm font-bold ${
-            row.score >= 95
-              ? 'bg-green-500'
-              : row.score >= 85
-              ? 'bg-amber-500'
-              : row.score >= 70
-              ? 'bg-orange-500'
-              : 'bg-gray-500'
-          }`}
-        >
+        <span className={`inline-block px-3 py-1 rounded-full text-white text-sm font-bold ${
+          row.score >= 95 ? 'bg-green-500' :
+          row.score >= 85 ? 'bg-amber-500' :
+          row.score >= 70 ? 'bg-orange-500' : 'bg-gray-500'
+        }`}>
           {row.score}%
         </span>
       </td>
@@ -226,8 +241,7 @@ export default function SearchClient() {
                   {!session && total > 3 && (
                     <button
                       onClick={() => setShowSignIn(true)}
-                      className="ml-2 text-blue-600 font-semibold underline hover:text-blue-800"
-                      style={{ font: 'inherit', fontSize: 'inherit' }}
+                      className="ml-2 text-blue-600 font-semibold underline hover:text-blue-800 cursor-pointer"
                     >
                       Sign in to see all {total} results
                     </button>
