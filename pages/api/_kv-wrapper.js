@@ -33,7 +33,7 @@ export function getKV() {
         token: upstashToken,
       });
 
-      // Normalize get/set/del signatures to accept objects (JSON) and strings
+      // Normalize get/set/del/incr signatures to accept objects (JSON) and strings
       return {
         get: async (key) => {
           try {
@@ -76,6 +76,32 @@ export function getKV() {
           } catch (e) {
             console.warn('Upstash del error', e?.message || e);
             return false;
+          }
+        },
+
+        incr: async (key, by = 1) => {
+          try {
+            // Upstash supports INCRBY via redis.incrby
+            if (by === 1) {
+              const val = await redis.incr(key);
+              return parseInt(val || '0', 10);
+            } else {
+              const val = await redis.incrby(key, by);
+              return parseInt(val || '0', 10);
+            }
+          } catch (e) {
+            console.warn('Upstash incr error', e?.message || e);
+            // fallback: read/parse/set
+            try {
+              const cur = await redis.get(key);
+              const n = parseInt(cur || '0', 10) || 0;
+              const next = n + by;
+              await redis.set(key, String(next));
+              return next;
+            } catch (e2) {
+              console.warn('Upstash incr fallback failed', e2?.message || e2);
+              return null;
+            }
           }
         },
 
@@ -130,6 +156,17 @@ export function getKV() {
         return true;
       } catch (e) {
         return false;
+      }
+    },
+
+    incr: async (key, by = 1) => {
+      try {
+        const cur = store.has(key) ? parseInt(store.get(key) || '0', 10) : 0;
+        const next = cur + by;
+        store.set(key, next);
+        return next;
+      } catch (e) {
+        return null;
       }
     },
 
