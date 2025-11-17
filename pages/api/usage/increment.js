@@ -1,4 +1,5 @@
-import { getUserBySession, incrementUsage } from '../../../lib/user-store';
+import { getUserBySession } from '../../../lib/session';
+import { incrementUsage } from '../../../lib/user-store';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
