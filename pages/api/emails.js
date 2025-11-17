@@ -1,4 +1,10 @@
-import { kv } from '@vercel/kv';
+// pages/api/emails.js
+import { createClient } from '@upstash/redis';
+
+const redis = createClient({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
 
 const HUNTER_API_KEY = process.env.HUNTER_API_KEY;
 
@@ -13,24 +19,23 @@ export default async function handler(req, res) {
   }
 
   if (!HUNTER_API_KEY) {
+    console.error('HUNTER_API_KEY missing');
     return res.status(500).json({ error: 'Server misconfigured' });
   }
 
-  // Cache for 24 hours
+  // Cache key
   const cacheKey = `hunter:${domain}`;
-  const cached = await kv.get(cacheKey);
+  const cached = await redis.get(cacheKey);
   if (cached) {
     return res.json(cached);
   }
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000); // 10s max
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
     const response = await fetch(
-      `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(
-        domain
-      )}&api_key=${HUNTER_API_KEY}&limit=100`,
+      `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&api_key=${HUNTER_API_KEY}&limit=100`,
       { signal: controller.signal }
     );
 
@@ -42,10 +47,9 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-
     const emails = data.data?.emails || [];
 
-    const results = emails.map((e) => ({
+    const results = emails.map(e => ({
       email: e.value,
       first_name: e.first_name || '',
       last_name: e.last_name || '',
@@ -55,12 +59,12 @@ export default async function handler(req, res) {
 
     const result = { results, total: results.length };
 
-    // Cache result
-    await kv.set(cacheKey, result, { ex: 86400 });
+    // Cache for 24h
+    await redis.set(cacheKey, result, { ex: 86400 });
 
     return res.json(result);
   } catch (err) {
-    console.error('Hunter API error:', err.message);
+    console.error('Hunter error:', err.message);
     return res.status(500).json({ error: 'Search failed. Try again.' });
   }
 }
