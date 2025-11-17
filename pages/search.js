@@ -1,113 +1,78 @@
-import React, { useState } from 'react';
-import Head from 'next/head';
-import RevealButton from '../components/RevealButton';
+import { useEffect, useState } from 'react';
 
 export default function SearchPage() {
-  const [domain, setDomain] = useState('');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState(null); // null = not searched yet
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
-  async function doSearch(e) {
-    e && e.preventDefault();
-    setError(null);
-    setResults(null);
-
-    const d = (domain || '').trim();
-    if (!d) {
-      setError('Please enter a domain (e.g. example.com)');
-      return;
-    }
-
+  async function doSearch(q) {
+    setError('');
     setLoading(true);
     try {
-      const sessionValue = typeof window !== 'undefined' ? localStorage.getItem('nh_session') || '' : '';
-      const res = await fetch('/api/search-contacts', {
+      // example: POST to /api/search with { q }
+      const res = await fetch('/api/search', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-nh-session': sessionValue,
-        },
-        body: JSON.stringify({ domain: d, limit: 20 })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q }),
       });
       const body = await res.json();
       if (!res.ok) {
         setError(body?.error || 'Search failed');
-      } else {
-        setResults(body?.data || body);
+        setResults([]);
+        setLoading(false);
+        return;
       }
+
+      // Some APIs return { results: [...] } or similar — normalize here
+      const hits = body?.results ?? body ?? [];
+      setResults(Array.isArray(hits) ? hits : []);
+      setLoading(false);
     } catch (err) {
-      console.error(err);
-      setError(err?.message || 'Network error');
-    } finally {
+      setError('Network error while searching');
+      setResults([]);
       setLoading(false);
     }
   }
 
+  function onSubmit(e) {
+    e.preventDefault();
+    if (!query || query.trim().length === 0) return;
+    doSearch(query.trim());
+  }
+
   return (
-    <>
-      <Head>
-        <title>Search — NovaHunt</title>
-      </Head>
+    <main className="container">
+      <h1>Search</h1>
+      <form onSubmit={onSubmit}>
+        <input
+          placeholder="Enter domain or query (e.g. coca-cola.com)"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <button type="submit" disabled={loading}>
+          {loading ? 'Searching…' : 'Search'}
+        </button>
+      </form>
 
-      <main style={{ maxWidth: 980, margin: '0 auto', padding: 24 }}>
-        <h1>Search</h1>
-        <p>Enter a domain to search for contacts and email addresses.</p>
+      {error && <div className="error">{error}</div>}
 
-        <form onSubmit={doSearch} style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
-            placeholder="example.com"
-            style={{ padding: 8, width: 360 }}
-            aria-label="domain"
-          />
-          <button type="submit" style={{ padding: '8px 12px' }} disabled={loading}>
-            {loading ? 'Searching…' : 'Search'}
-          </button>
-        </form>
-
-        {error && <div style={{ marginTop: 12, color: '#ef4444' }}>{error}</div>}
-
-        {results && (
-          <div style={{ marginTop: 18 }}>
-            <h2>Results</h2>
-
-            {Array.isArray(results?.data?.data?.emails) && results.data.data.emails.length === 0 && (
-              <div>No emails found.</div>
-            )}
-
-            {Array.isArray(results?.data?.data?.emails) && results.data.data.emails.length > 0 && (
-              <div style={{ display: 'grid', gap: 12 }}>
-                {results.data.data.emails.map((e, i) => (
-                  <div key={i} style={{ padding: 12, border: '1px solid #eee', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{e.value}</div>
-                      <div style={{ fontSize: 13, color: '#6b7280' }}>{e.position || e.type || ''}</div>
-                      <div style={{ marginTop: 8, fontSize: 13 }}>
-                        Sources: {(e.sources || []).length} — Verification: {e.verification?.status || 'unknown'}
-                      </div>
-                    </div>
-                    <div>
-                      <RevealButton label="Reveal" contact={e} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!results?.data && Array.isArray(results) && results.length > 0 && (
-              <div style={{ display: 'grid', gap: 12 }}>
-                {results.map((r, i) => (
-                  <pre key={i} style={{ padding: 12, border: '1px solid #eee', borderRadius: 8, whiteSpace: 'pre-wrap' }}>
-                    {JSON.stringify(r, null, 2)}
-                  </pre>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-    </>
+      {results === null ? (
+        <div className="hint">Enter a search and press Search</div>
+      ) : results.length === 0 ? (
+        <div className="no-results">No results found.</div>
+      ) : (
+        <ul className="results-list">
+          {results.map((r, i) => (
+            <li key={r.id ?? i}>
+              <a href={r.url ?? '#'} target="_blank" rel="noopener noreferrer">
+                {r.title ?? r.url ?? 'Result'}
+              </a>
+              {r.snippet && <p>{r.snippet}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
   );
 }
