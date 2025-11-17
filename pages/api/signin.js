@@ -1,4 +1,5 @@
-import { getUserByEmail, verifyPasswordForUser, createSessionForUser } from '../../lib/user-store';
+import { verifyPasswordForUser } from '../../lib/user-store';
+import { createSessionForUser } from '../../lib/session';
 
 function makeSessionString(token) {
   return token;
@@ -20,7 +21,7 @@ export default async function handler(req, res) {
     const ok = await verifyPasswordForUser(emailKey, password);
     if (!ok) return res.status(400).json({ error: 'Invalid email or password' });
 
-    // create a session token backed by file-store
+    // create a stateless signed session token
     const token = await createSessionForUser(emailKey);
     const nhSession = makeSessionString(token);
 
