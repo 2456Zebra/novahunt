@@ -10,7 +10,6 @@ export default function Document() {
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                // If no persisted model preference, set the default to Copilot before React loads.
                 if (typeof window !== 'undefined' && window.localStorage && !localStorage.getItem('nh_model')) {
                   localStorage.setItem('nh_model', 'Copilot');
                 }
