@@ -1,24 +1,17 @@
-// Sign-in endpoint: POST { email, password }
-// Validates PBKDF2-stored password in KV (same hashing as set-password).
-import { getKV } from './_kv-wrapper';
-import crypto from 'crypto';
-const kv = getKV();
+// Sign-in endpoint (adapted to use lib/user-store.js)
+// POST { email, password }
+// Returns { ok: true, email, nh_session } on success
 
-function verifyPassword(password, stored) {
-  // stored: { hash, salt, iterations, algorithm }
-  const iterations = stored?.iterations || 150000;
-  const salt = Buffer.from(stored?.salt || '', 'hex');
-  const derived = crypto.pbkdf2Sync(password, salt, iterations, 64, 'sha512').toString('hex');
-  return derived === stored?.hash;
-}
+import { getUserByEmail, verifyPasswordForUser, createSessionForUser } from '../../lib/user-store';
 
-function makeSessionString(email) {
-  return JSON.stringify({ email, created_at: new Date().toISOString() });
+function makeSessionString(token) {
+  // return the token (string) as the session value client expects
+  return token;
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+    res.setHeader('Allow', 'POST, OPTIONS');
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
@@ -26,35 +19,17 @@ export default async function handler(req, res) {
     const { email, password } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
 
-    const emailKey = String(email).toLowerCase();
+    const emailKey = String(email).toLowerCase().trim();
 
-    // read user
-    let user;
-    try {
-      if (!kv) return res.status(500).json({ error: 'KV not available' });
-      user = await kv.get(`user:${emailKey}`);
-    } catch (e) {
-      console.error('KV read error (signin)', e?.message || e);
-      return res.status(500).json({ error: 'Server error' });
-    }
-
-    if (!user || !user.has_password || !user.password) {
-      return res.status(400).json({ error: 'Invalid email or password' });
-    }
-
-    // verify password
-    const ok = verifyPassword(password, user.password);
+    // verify password using file-store helper
+    const ok = await verifyPasswordForUser(emailKey, password);
     if (!ok) return res.status(400).json({ error: 'Invalid email or password' });
 
-    // create session and persist local session
-    const nhSession = makeSessionString(emailKey);
-    try {
-      await kv.set(`local:session:${emailKey}`, { nhSession, created_at: new Date().toISOString() }, { ex: 60 * 60 * 24 * 30 });
-    } catch (e) {
-      console.warn('KV write (local session)', e?.message || e);
-    }
+    // create a session token backed by file-store
+    const token = await createSessionForUser(emailKey);
+    const nhSession = makeSessionString(token);
 
-    // set cookie and return nh_session
+    // Set a cookie (optional) and return session in body
     const cookie = `nh_session=${encodeURIComponent(nhSession)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
     res.setHeader('Set-Cookie', cookie);
 
