@@ -5,7 +5,10 @@
 import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).end();
+  }
 
   const { domain } = req.body;
   if (!domain) return res.status(400).json({ error: 'Domain required' });
