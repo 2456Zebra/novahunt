@@ -1,4 +1,4 @@
-import { getUserByEmail, verifyPasswordForUser } from '../../lib/user-store';
+import { verifyPasswordForUser } from '../../lib/user-store';
 import { createSessionForUser } from '../../lib/session';
 
 function makeSessionString(token) {
@@ -18,8 +18,22 @@ export default async function handler(req, res) {
     const emailKey = String(email).toLowerCase().trim();
 
     // verify password using file-store helper
-    const ok = await verifyPasswordForUser(emailKey, password);
-    if (!ok) return res.status(400).json({ error: 'Invalid email or password' });
+    let ok = false;
+    let verifyError = null;
+    try {
+      ok = await verifyPasswordForUser(emailKey, password);
+    } catch (e) {
+      verifyError = String(e?.message || e);
+      ok = false;
+    }
+
+    if (!ok) {
+      // In non-debug mode return generic error to avoid user enumeration
+      if (process.env.DEBUG_SIGNIN === 'true') {
+        return res.status(400).json({ error: 'Invalid email or password', detail: verifyError || 'invalid' });
+      }
+      return res.status(400).json({ error: 'Invalid email or password' });
+    }
 
     // create a stateless signed session token
     const token = await createSessionForUser(emailKey);
