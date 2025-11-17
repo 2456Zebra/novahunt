@@ -1,4 +1,5 @@
-import { getUserBySession, incrementUsage } from '../../../lib/user-store';
+import { getUserBySession } from '../../../lib/session';
+import { incrementUsage } from '../../../lib/user-store';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -7,14 +8,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Accept session token either via X-NH-SESSION header or body.session
     const sessionHeader = req.headers['x-nh-session'] || (req.body && req.body.session);
     if (!sessionHeader) return res.status(401).json({ error: 'Unauthorized' });
 
     const sessionUser = await getUserBySession(sessionHeader);
     if (!sessionUser || !sessionUser.email) return res.status(401).json({ error: 'Unauthorized' });
 
-    // Normalize type aliases: allow 'search','searches' => 'search'; 'reveal','reveals' => 'reveal'
     let { type, amount } = req.body || {};
     amount = typeof amount === 'number' ? amount : 1;
     if (!type || typeof type !== 'string') return res.status(400).json({ error: 'type is required' });

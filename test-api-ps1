@@ -1,0 +1,46 @@
+# test-api.ps1
+$base = 'https://novahunt-git-copilot-merge-copilot-u-edd8e6-nova-hunts-projects.vercel.app'
+
+# Credentials
+$creds = @{ email = 'qa+test1@novahunt.ai'; password = 'Password123!' }
+
+# Signup
+Write-Host "==> Signup..."
+try {
+  $signupJson = $creds | ConvertTo-Json
+  $signup = Invoke-RestMethod -Uri "$base/api/signup" -Method Post -Body $signupJson -ContentType 'application/json' -ErrorAction Stop
+  Write-Host "Signup response:"
+  $signup | ConvertTo-Json -Depth 5 | Write-Host
+} catch {
+  Write-Host "Signup failed:" $_.Exception.Message
+}
+
+# Signin
+Write-Host "`n==> Signin..."
+try {
+  $signinJson = $creds | ConvertTo-Json
+  $signin = Invoke-RestMethod -Uri "$base/api/signin" -Method Post -Body $signinJson -ContentType 'application/json' -ErrorAction Stop
+  Write-Host "Signin response:"
+  $signin | ConvertTo-Json -Depth 5 | Write-Host
+
+  $token = $signin.nh_session
+  if (-not $token) { Write-Host "No nh_session token returned."; exit 1 }
+  Write-Host "`nToken (nh_session):"
+  Write-Host $token
+} catch {
+  Write-Host "Signin failed:" $_.Exception.Message
+  exit 1
+}
+
+# Usage increment
+Write-Host "`n==> Increment usage (search +1)..."
+try {
+  $body = @{ type = 'search'; amount = 1; session = $token }
+  $bodyJson = $body | ConvertTo-Json
+  $usage = Invoke-RestMethod -Uri "$base/api/usage/increment" -Method Post -Body $bodyJson -ContentType 'application/json' -ErrorAction Stop
+  Write-Host "Usage response:"
+  $usage | ConvertTo-Json -Depth 5 | Write-Host
+} catch {
+  Write-Host "Usage increment failed:" $_.Exception.Message
+  exit 1
+}
