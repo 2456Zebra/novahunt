@@ -1,11 +1,6 @@
-// Sign-in endpoint (adapted to use lib/user-store.js)
-// POST { email, password }
-// Returns { ok: true, email, nh_session } on success
-
 import { getUserByEmail, verifyPasswordForUser, createSessionForUser } from '../../lib/user-store';
 
 function makeSessionString(token) {
-  // return the token (string) as the session value client expects
   return token;
 }
 
