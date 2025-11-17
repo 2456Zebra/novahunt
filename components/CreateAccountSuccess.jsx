@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 
 // Replace the account-created success UI with this clearer component.
+// Remove or rename "Stay here" in your create-account success page to use this component.
 export default function CreateAccountSuccess({ email }) {
   const router = useRouter();
 

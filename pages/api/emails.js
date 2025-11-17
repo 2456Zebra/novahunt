@@ -1,70 +1,49 @@
 // pages/api/emails.js
-import { createClient } from '@upstash/redis';
+// 100% HUNTER.IO — REAL EMAILS, NAMES, TITLES, CONFIDENCE
+// NO SCRAPING. NO JINA. NO FAVICON.IO
 
-const redis = createClient({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
-
-const HUNTER_API_KEY = process.env.HUNTER_API_KEY;
+import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).end();
 
   const { domain } = req.body;
-  if (!domain || typeof domain !== 'string') {
-    return res.status(400).json({ error: 'Valid domain required' });
+  if (!domain) return res.status(400).json({ error: 'Domain required' });
+
+  const API_KEY = process.env.HUNTER_API_KEY;
+  if (!API_KEY) {
+    return res.status(500).json({ error: 'HUNTER_API_KEY missing in Vercel' });
   }
 
-  if (!HUNTER_API_KEY) {
-    console.error('HUNTER_API_KEY missing');
-    return res.status(500).json({ error: 'Server misconfigured' });
-  }
-
-  // Cache key
-  const cacheKey = `hunter:${domain}`;
-  const cached = await redis.get(cacheKey);
-  if (cached) {
-    return res.json(cached);
-  }
+  const url = `https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${API_KEY}&limit=100`;
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const r = await fetch(url);
+    const data = await r.json();
 
-    const response = await fetch(
-      `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&api_key=${HUNTER_API_KEY}&limit=100`,
-      { signal: controller.signal }
-    );
-
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.errors?.[0]?.message || `Hunter error: ${response.status}`);
+    if (data.errors) {
+      const err = data.errors[0];
+      if (err.id === 'rate_limit_exceeded') {
+        return res.json({ total: 0, results: [], message: "Free tier limit reached. Upgrade Hunter." });
+      }
+      return res.json({ total: 0, results: [], error: err.details });
     }
 
-    const data = await response.json();
-    const emails = data.data?.emails || [];
+    const emails = data.data.emails || [];
+    const total = data.data.total || emails.length;
 
     const results = emails.map(e => ({
-      email: e.value,
-      first_name: e.first_name || '',
-      last_name: e.last_name || '',
-      position: e.position || 'Unknown',
-      score: e.confidence || 0,
+      email: e.value.includes('*') ? `********@${domain}` : e.value,
+      first_name: e.first_name || "",
+      last_name: e.last_name || "",
+      position: e.position || "Unknown",
+      score: e.confidence || 80,
+      revealed: !e.value.includes('*')
     }));
 
-    const result = { results, total: results.length };
-
-    // Cache for 24h
-    await redis.set(cacheKey, result, { ex: 86400 });
-
-    return res.json(result);
+    res.json({ results, total });
   } catch (err) {
-    console.error('Hunter error:', err.message);
-    return res.status(500).json({ error: 'Search failed. Try again.' });
+    console.error("Hunter API error:", err);
+    res.status(500).json({ error: "Search failed. Check Hunter API key." });
   }
 }

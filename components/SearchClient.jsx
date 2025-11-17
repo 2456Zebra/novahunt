@@ -1,93 +1,90 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import SignInModal from './SignInModal';
+import React, { useEffect, useState } from 'react';
+
+/**
+ * SearchClient:
+ * - No "Email pattern" shown.
+ * - Shows "Showing X of Y results. Upgrade to see all." with clickable Upgrade link.
+ * - Signed-in users see a checkbox "Include lower-trust results" that requests include_inferred on the server.
+ * - Sends local nh_session in header when include_inferred is requested (server honors only if header present).
+ * - Colored confidence indicator preserved.
+ */
 
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [results, setResults] = useState({ all: [], visible: [] });
-  const [total, setTotal] = useState(0);
-  const [session, setSession] = useState(null);
-  const [showSignIn, setShowSignIn] = useState(false);
-  const [revealing, setRevealing] = useState([]);
   const [error, setError] = useState('');
+  const [results, setResults] = useState(null);
+  const [revealed, setRevealed] = useState({});
+  const [includeInferred, setIncludeInferred] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const [sessionValue, setSessionValue] = useState(null);
 
   useEffect(() => {
-    const s = localStorage.getItem('nh_session');
-    if (s) setSession(s);
+    try {
+      const s = localStorage.getItem('nh_session');
+      if (s) {
+        setSignedIn(true);
+        setSessionValue(s);
+      } else {
+        setSignedIn(false);
+        setSessionValue(null);
+      }
+      // listen for session changes
+      function onAuth(e) {
+        const email = e?.detail?.email;
+        if (email) {
+          const s = localStorage.getItem('nh_session');
+          setSignedIn(!!s);
+          setSessionValue(s || null);
+        } else {
+          setSignedIn(false);
+          setSessionValue(null);
+        }
+      }
+      window.addEventListener('nh:auth-change', onAuth);
+      return () => window.removeEventListener('nh:auth-change', onAuth);
+    } catch (err) {
+      // ignore
+    }
   }, []);
 
-  function startProgress() {
-    setProgress(6);
-    const t = setInterval(() => {
-      setProgress(p => {
-        const next = Math.min(95, p + (3 + Math.random() * 10));
-        if (next >= 95) clearInterval(t);
-        return next;
-      });
-    }, 800);
-    return t;
+  function maskEmail(email) {
+    if (!email || typeof email !== 'string') return email;
+    const [local, host] = email.split('@');
+    if (!local || !host) return email;
+    if (local.length <= 2) return `${local[0]}***@${host}`;
+    const first = local[0];
+    const last = local[local.length - 1];
+    const stars = '*'.repeat(Math.max(3, Math.min(local.length - 2, 6)));
+    return `${first}${stars}${last}@${host}`;
   }
 
-  async function handleSearch(e) {
-    e.preventDefault();
-    if (!domain.trim()) return;
-    setError('');
-    setResults({ all: [], visible: [] });
-    setTotal(0);
-    setLoading(true);
-    setProgress(0);
-    const timer = startProgress();
-
-    try {
-      const res = await fetch('/api/emails', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: domain.trim() }),
-        cache: 'no-store'
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || data.message || 'API failed');
-
-      const all = data.results || [];
-      const visible = session ? all : all.slice(0, 3);
-      setResults({ all, visible });
-      setTotal(data.total || all.length);
-      setProgress(100);
-      clearInterval(timer);
-      setTimeout(() => setProgress(0), 500);
-
-      // Increment search count
-      if (session) {
-        await fetch('/api/usage/increment', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-nh-session': session
-          },
-          body: JSON.stringify({ type: 'searches' })
-        }).catch(() => {});
-      }
-    } catch (err) {
-      setError(err.message);
-      setProgress(0);
-      clearInterval(timer);
-    } finally {
-      setLoading(false);
-    }
+  function confidenceColor(c) {
+    if (c == null) return '#6b7280';
+    const n = Number(c);
+    if (isNaN(n)) return '#6b7280';
+    if (n >= 90) return '#059669'; // green
+    if (n >= 75) return '#16a34a';
+    if (n >= 60) return '#f59e0b'; // amber
+    return '#ef4444'; // red
   }
 
-  async function handleReveal(idx) {
+  async function handleReveal(em) {
+    const key = (em?.value || em?.email || '').toLowerCase();
+    if (!key) return;
+    
+    // Check if user is signed in
+    const session = sessionValue || localStorage.getItem('nh_session');
     if (!session) {
-      setShowSignIn(true);
+      alert('Please sign in to reveal full emails.');
+      // Open sign-in modal
+      window.dispatchEvent(new CustomEvent('nh:open-auth', { detail: { mode: 'signin' } }));
       return;
     }
-
-    if (revealing.includes(idx)) return;
-    setRevealing(prev => [...prev, idx]);
-
+    
+    // Call the reveal API endpoint
     try {
       const res = await fetch('/api/reveal', {
         method: 'POST',
@@ -95,191 +92,252 @@ export default function SearchClient() {
           'Content-Type': 'application/json',
           'x-nh-session': session
         },
-        body: JSON.stringify({ index: idx })
+        body: JSON.stringify({ contactId: key, email: key, ...em })
       });
-
-      const data = await res.json();
-
+      
+      const json = await res.json();
+      
       if (res.status === 401) {
-        alert('Session expired. Please sign in again.');
+        alert('Authentication required. Please sign in again.');
         localStorage.removeItem('nh_session');
-        setSession(null);
-        setShowSignIn(true);
+        setSignedIn(false);
+        setSessionValue(null);
         return;
       }
-
+      
       if (res.status === 402) {
         alert('Reveal limit reached for your plan. Please upgrade to see all.');
         return;
       }
-
-      if (!res.ok) throw new Error(data.error || 'Reveal failed');
-
-      setResults(prev => {
-        const updated = [...prev.all];
-        updated[idx].revealed = true;
-        updated[idx].email = data.email;
-        return { all: updated, visible: session ? updated : updated.slice(0, 3) };
-      });
-
-      await fetch('/api/usage/increment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-nh-session': session
-        },
-        body: JSON.stringify({ type: 'reveals' })
-      }).catch(() => {});
-
-      window.dispatchEvent(new CustomEvent('account-usage-updated'));
+      
+      if (!res.ok) {
+        alert(`Reveal failed: ${json.error || 'Unknown error'}`);
+        return;
+      }
+      
+      // Success - store revealed email
+      const full = em?.value || em?.email || null;
+      setRevealed((r) => ({ ...r, [key]: { ok: true, email: full, userRevealed: true } }));
+      
+      // Dispatch event to update usage widget
+      try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) { /* ignore */ }
     } catch (err) {
-      alert(err.message);
-    } finally {
-      setRevealing(prev => prev.filter(i => i !== idx));
+      alert(`Error: ${err.message || 'Network error'}`);
     }
   }
 
-  const renderRow = (row, idx) => (
-    <tr key={idx} className="border-b border-gray-200">
-      <td className="p-4 font-mono text-blue-600">
-        {row.revealed ? row.email : row.email.replace(/@/, ' @')}
-      </td>
-      <td className="p-4 font-medium">
-        {row.first_name} {row.last_name}
-      </td>
-      <td className="p-4 text-gray-600">{row.position}</td>
-      <td className="p-4 text-center">
-        <span className={`inline-block px-3 py-1 rounded-full text-white text-sm font-bold ${
-          row.score >= 95 ? 'bg-green-500' :
-          row.score >= 85 ? 'bg-amber-500' :
-          row.score >= 70 ? 'bg-orange-500' : 'bg-gray-500'
-        }`}>
-          {row.score}%
-        </span>
-      </td>
-      <td className="p-4 text-center">
-        <button
-          onClick={() => handleReveal(idx)}
-          disabled={revealing.includes(idx)}
-          className={`px-4 py-2 rounded font-medium transition ${
-            row.revealed
-              ? 'bg-green-100 text-green-800 cursor-default'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
-        >
-          {revealing.includes(idx)
-            ? 'Revealing...'
-            : row.revealed
-            ? 'Revealed'
-            : 'Reveal Full Email'}
-        </button>
-      </td>
-    </tr>
-  );
+  async function performSearch(domainValue, useInferred = false) {
+    setError('');
+    setResults(null);
+    setLoading(true);
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (useInferred && sessionValue) headers['x-nh-session'] = sessionValue;
+
+      const res = await fetch('/api/search-contacts', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ domain: domainValue, limit: 100, include_inferred: !!useInferred }),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        setError(`Search error: ${res.status} ${txt}`);
+        setLoading(false);
+        return;
+      }
+
+      const payload = await res.json();
+
+      const hunterEmails =
+        payload?.data?.data?.emails ??
+        payload?.data?.emails ??
+        payload?.emails ??
+        [];
+
+      const filtered = hunterEmails.filter((e) => !!(e?.value || e?.email));
+
+      setResults({
+        raw: payload,
+        all: filtered,
+        meta: payload?.data?.meta ?? null,
+        filtered_out: payload?.data?.meta?.filtered_out ?? 0,
+      });
+    } catch (err) {
+      setError(err?.message || 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const trimmed = (domain || '').trim();
+    if (!trimmed) {
+      setError('Enter a website (for example coca-cola.com)');
+      return;
+    }
+    await performSearch(trimmed, includeInferred);
+  }
+
+  // If signed in and includeInferred toggled while results exist, re-run search automatically
+  useEffect(() => {
+    if (results && results.raw && signedIn) {
+      // re-run with new preference
+      (async () => {
+        if (domain && domain.trim()) await performSearch(domain.trim(), includeInferred);
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [includeInferred]);
+
+  const renderConfidence = (em) => {
+    const c = em?.confidence ?? em?.confidence_score ?? em?.score;
+    if (c == null) return null;
+    const val = typeof c === 'number' ? Math.round(c) : c;
+    const color = confidenceColor(val);
+    return (
+      <span style={{ fontSize: 12, color, marginLeft: 8, fontWeight: 600 }}>
+        {val}%
+      </span>
+    );
+  };
+
+  const renderRow = (em, i) => {
+    const emailVal = em?.value || em?.email || '(no email)';
+    const key = (emailVal || `${i}`).toLowerCase();
+    const showFull = revealed[key]?.ok === true && revealed[key]?.userRevealed === true;
+    const masked = maskEmail(emailVal);
+    const name = [em?.first_name, em?.last_name].filter(Boolean).join(' ').trim() || em?.linkedin || 'Name not provided';
+    const title = em?.position || em?.position_raw || '-';
+    const department = em?.department || '-';
+    const verification = em?.verification?.status || '-';
+    const primarySource = Array.isArray(em?.sources) && em.sources.length > 0 ? em.sources[0] : null;
+
+    return (
+      <tr key={key}>
+        <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <strong style={{ marginBottom: 6 }}>{name}</strong>
+              {renderConfidence(em)}
+            </div>
+
+            <span style={{ fontFamily: 'monospace' }}>{showFull ? revealed[key].email : masked}</span>
+
+            <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: verification === 'valid' ? '#059669' : '#b45309', fontWeight: 600 }}>
+                {verification === 'valid' ? 'Verified' : 'Unverified'}
+              </span>
+              {primarySource && (
+                <a href={primarySource.uri} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#2563eb' }}>
+                  source
+                </a>
+              )}
+              {!showFull && (
+                <button onClick={() => handleReveal(em)} style={{ marginLeft: 8, fontSize: 12, padding: '4px 8px' }}>
+                  Reveal
+                </button>
+              )}
+            </div>
+          </div>
+        </td>
+
+        <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>{title}</td>
+        <td style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>{department}</td>
+      </tr>
+    );
+  };
+
+  // If user tries to enable Include lower-trust while not signed in, open the auth modal
+  function handleIncludeInferredToggle(e) {
+    const wants = e.target.checked;
+    if (wants && !signedIn) {
+      // request auth: header listener in header will open modal
+      window.dispatchEvent(new CustomEvent('nh:open-auth', { detail: { mode: 'signin' } }));
+      return;
+    }
+    setIncludeInferred(wants);
+  }
 
   return (
-    <>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <header className="bg-white shadow-sm p-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">NovaHunt</h1>
-          <div>
-            {session ? (
-              <span className="text-green-600 font-semibold">PRO</span>
+    <div style={{ maxWidth: 940, margin: '0 auto', padding: '1rem' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input
+          type="text"
+          placeholder="Enter a website (for example coca-cola.com)"
+          value={domain}
+          onChange={(e) => setDomain(e.target.value)}
+          style={{ flex: 1, padding: '0.6rem', borderRadius: 6, border: '1px solid #ccc' }}
+        />
+        <button type="submit" style={{ padding: '0.6rem 1rem', background: '#111827', color: 'white', border: 'none', borderRadius: 6 }} disabled={loading}>
+          {loading ? 'Looking…' : 'Find Contacts'}
+        </button>
+
+        <label style={{ marginLeft: 12, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" checked={includeInferred} onChange={handleIncludeInferredToggle} />
+          Include lower-trust results (signed-in only)
+        </label>
+      </form>
+
+      {loading && <div style={{ marginTop: 12 }}>Loading…</div>}
+      {error && <p style={{ color: 'red', marginTop: 12 }}>{error}</p>}
+
+      {results && (
+        <div style={{ marginTop: 16 }}>
+          <h3 style={{ marginTop: 0 }}>Contacts</h3>
+
+          <div style={{ marginBottom: 8, color: '#374151', fontSize: 14 }}>
+            {results.meta ? (
+              <>
+                Showing {signedIn ? results.all.length : Math.min(results.all.length, 3)} of {results.meta?.results ?? 'unknown'} results.{' '}
+                {!signedIn && results.all.length > 3 && (
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('nh:open-auth', { detail: { mode: 'signin' } }))}
+                    style={{ color: '#d97706', fontWeight: 600, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', font: 'inherit', fontSize: 'inherit' }}
+                  >
+                    Sign in to see all results
+                  </button>
+                )}{' '}
+                <a href="/upgrade" style={{ color: '#2563eb', marginLeft: 6, textDecoration: 'underline' }}>Upgrade to see all</a>{' '}
+                {results.filtered_out > 0 && <span style={{ marginLeft: 8, color: '#6b7280' }}>{results.filtered_out} low-trust results hidden</span>}
+                <span style={{ marginLeft: 8, color: '#6b7280' }}>Powered by AI</span>
+              </>
             ) : (
-              <button
-                onClick={() => setShowSignIn(true)}
-                className="text-blue-600 font-medium hover:underline"
-              >
-                Sign In
-              </button>
+              <>
+                Showing {signedIn ? results.all.length : Math.min(results.all.length, 3)} results{' '}
+                {!signedIn && results.all.length > 3 && (
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('nh:open-auth', { detail: { mode: 'signin' } }))}
+                    style={{ color: '#d97706', fontWeight: 600, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', font: 'inherit', fontSize: 'inherit' }}
+                  >
+                    Sign in to see all results
+                  </button>
+                )}{' '}
+                <span style={{ marginLeft: 8, color: '#6b7280' }}>Powered by AI</span>
+              </>
             )}
           </div>
-        </header>
 
-        <main className="flex-1 flex items-center justify-center p-8">
-          <div className="w-full max-w-4xl text-center">
-            <h2 className="text-4xl font-bold text-gray-900 mb-2">Find Business Emails</h2>
-            <p className="text-lg text-gray-600 mb-8">
-              Confidence scores <strong>85%–100%</strong>.
-            </p>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Name & Email</th>
+                <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Title</th>
+                <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #eee' }}>Department</th>
+              </tr>
+            </thead>
+            <tbody>{(signedIn ? results.all : results.all.slice(0, 3)).map(renderRow)}</tbody>
+          </table>
 
-            <form onSubmit={handleSearch} className="flex justify-center gap-4 flex-wrap">
-              <input
-                value={domain}
-                onChange={e => setDomain(e.target.value)}
-                placeholder="e.g. fordmodels.com"
-                className="px-5 py-3 text-lg w-96 max-w-full rounded-lg border border-gray-300 outline-none"
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                className={`px-8 py-3 rounded-lg font-bold text-white transition ${
-                  loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-              >
-                {loading ? 'Searching…' : 'Search'}
-              </button>
-            </form>
-
-            {error && <p className="text-red-600 mt-4 font-semibold">{error}</p>}
-
-            {loading && (
-              <div className="max-w-md mx-auto mt-6">
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {!loading && results.visible.length > 0 && (
-              <div className="mt-8">
-                <p className="text-center text-gray-600 mb-4">
-                  Showing <strong>{results.visible.length}</strong> of <strong>{total}</strong> emails.
-                  {!session && total > 3 && (
-                    <button
-                      onClick={() => setShowSignIn(true)}
-                      className="ml-2 text-blue-600 font-semibold underline hover:text-blue-800 cursor-pointer"
-                    >
-                      Sign in to see all {total} results
-                    </button>
-                  )}
-                </p>
-
-                <div className="overflow-x-auto rounded-lg shadow-lg">
-                  <table className="w-full bg-white">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="p-4 text-left font-semibold text-gray-700">Email</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Name</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Title</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Score</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results.visible.map((row, idx) => renderRow(row, idx))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
-        </main>
-      </div>
-
-      <SignInModal
-        isOpen={showSignIn}
-        onClose={() => setShowSignIn(false)}
-        onSuccess={(newSession) => {
-          localStorage.setItem('nh_session', newSession);
-          setSession(newSession);
-          setShowSignIn(false);
-          window.location.reload();
-        }}
-      />
-    </>
+          <details style={{ marginTop: 12 }}>
+            <summary>Raw response (debug)</summary>
+            <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, maxHeight: 400, overflow: 'auto', background: '#f7f7f7', padding: 8 }}>
+              {JSON.stringify(results.raw, null, 2)}
+            </pre>
+          </details>
+        </div>
+      )}
+    </div>
   );
 }
