@@ -1,4 +1,4 @@
-import { getUserByEmail, verifyPasswordForUser } from '../../lib/user-store';
+import { verifyPasswordForUser } from '../../lib/user-store';
 import { createSessionForUser } from '../../lib/session';
 
 function makeSessionString(token) {
