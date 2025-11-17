@@ -5,17 +5,27 @@ export default function Document() {
     <Html>
       <Head />
       <body>
-        {/* Pre-hydration script: ensure a model preference exists and default to "Copilot" */}
+        {/* Pre-hydration script: ensure a model preference exists and migrate any 'Grok' value to 'Copilot' */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                // If no persisted model preference, set the default to Copilot before React loads.
-                if (typeof window !== 'undefined' && window.localStorage && !localStorage.getItem('nh_model')) {
-                  localStorage.setItem('nh_model', 'Copilot');
+                if (typeof window !== 'undefined' && window.localStorage) {
+                  try {
+                    const cur = localStorage.getItem('nh_model');
+                    // If not set, default to Copilot
+                    if (!cur) {
+                      localStorage.setItem('nh_model', 'Copilot');
+                    } else if (cur === 'Grok') {
+                      // Migrate legacy Grok preference to Copilot
+                      localStorage.setItem('nh_model', 'Copilot');
+                    }
+                  } catch (e) {
+                    // ignore localStorage permission errors
+                  }
                 }
               } catch (e) {
-                /* ignore localStorage errors in restricted environments */
+                /* ignore any unexpected errors */
               }
             `,
           }}
