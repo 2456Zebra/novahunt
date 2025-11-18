@@ -1,5 +1,7 @@
 // Reveal endpoint — require signed-in session and enforce plan limits.
 // Replace or merge with your existing reveal logic as appropriate.
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "./auth/[...nextauth]";
 import { getKV } from './_kv-wrapper';
 const kv = getKV();
 
@@ -10,16 +12,6 @@ const PLAN_LIMITS = {
   pro: { searches: 2000, reveals: 500 },
   team: { searches: 10000, reveals: 2000 },
 };
-
-function safeParseSession(header) {
-  if (!header) return null;
-  try {
-    return JSON.parse(header);
-  } catch (e) {
-    if (typeof header === 'string' && header.includes('@')) return { email: header };
-    return null;
-  }
-}
 
 function planFromSubscription(subscription) {
   if (!subscription) return 'free';
@@ -38,9 +30,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const sessionHeader = req.headers['x-nh-session'] || '';
-    const parsed = safeParseSession(sessionHeader);
-    const email = parsed?.email || null;
+    const session = await getServerSession(req, res, authOptions);
+    const email = session?.user?.email || null;
     if (!email) {
       return res.status(401).json({ ok: false, error: 'Authentication required to reveal' });
     }
