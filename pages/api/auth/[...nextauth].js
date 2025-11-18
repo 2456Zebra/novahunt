@@ -42,7 +42,6 @@ export default NextAuth({
     }
   },
   pages: {
-    // optional: point to a custom signin page (we add /signin below)
     signin: "/signin"
   },
   secret: process.env.NEXTAUTH_SECRET
