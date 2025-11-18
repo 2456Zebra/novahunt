@@ -1,16 +1,10 @@
-import dynamic from 'next/dynamic';
-import Head from 'next/head';
-import '../styles/globals.css';
-
-// Load header client-side to avoid SSR/hydration mismatches
-const Header = dynamic(() => import('../components/Header'), { ssr: false });
+import Header from '../components/Header';
+// import '../styles/globals.css'; // uncomment if you use a global CSS file
 
 export default function MyApp({ Component, pageProps }) {
+  // Keep the header simple and predictable. Removed the capture-phase redirect hack.
   return (
     <>
-      <Head>
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-      </Head>
       <Header />
       <Component {...pageProps} />
     </>
