@@ -18,3 +18,4 @@ if (found) {
   }
 }
 console.log('Model check passed:', found ? `${found.key}=${found.value}` : 'no model env var found');
+process.exit(0);
