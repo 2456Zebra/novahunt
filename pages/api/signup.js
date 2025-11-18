@@ -1,42 +1,71 @@
-import { getUserByEmail, createUserWithPassword, createSessionForUser } from '../../lib/user-store';
+// Minimal, clear signup endpoint. Normalizes email and uses lib/user-store helpers when available.
+import { json } from 'micro';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import * as userStore from '../../../lib/user-store';
+
+function normalizeEmail(e) {
+  return String(e || '').trim().toLowerCase();
+}
 
 export default async function handler(req, res) {
-  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST, OPTIONS');
-    return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  let body;
+  try {
+    body = req.body || (await json(req));
+  } catch (err) {
+    res.status(400).json({ error: 'Invalid JSON' });
+    return;
+  }
+
+  const email = normalizeEmail(body.email);
+  const password = body.password;
+
+  if (!email || !password) {
+    res.status(400).json({ error: 'email and password required' });
+    return;
   }
 
   try {
-    if (!req.body || typeof req.body !== 'object') {
-      return res.status(400).json({ ok: false, error: 'Invalid JSON' });
+    // If getUserByEmail exists, check for existing account
+    if (typeof userStore.getUserByEmail === 'function') {
+      const existing = await userStore.getUserByEmail(email);
+      if (existing) {
+        res.status(409).json({ error: 'An account with this email already exists. Sign in instead.', code: 'exists' });
+        return;
+      }
     }
 
-    const { email, password } = req.body;
-    const e = typeof email === 'string' ? email.trim() : '';
-    const p = typeof password === 'string' ? password : '';
-
-    if (!e || !EMAIL_RE.test(e)) {
-      return res.status(400).json({ ok: false, error: 'Valid email is required' });
+    // Require a createUser helper; if not present surface a clear error
+    if (typeof userStore.createUser !== 'function') {
+      res.status(501).json({
+        error: 'Server not configured: createUser not implemented in lib/user-store. Implement createUser({email,password}) to persist users.',
+      });
+      return;
     }
 
-    if (!p || p.length < 8) {
-      return res.status(400).json({ ok: false, error: 'Password must be at least 8 characters' });
+    const created = await userStore.createUser({ email, password });
+
+    // If createSessionForUser exists, create a session and set cookie
+    if (typeof userStore.createSessionForUser === 'function') {
+      try {
+        const session = await userStore.createSessionForUser(created);
+        if (session && session.token) {
+          // Basic cookie; adjust flags to your security requirements
+          res.setHeader('Set-Cookie', `nh_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Secure`);
+        }
+      } catch (e) {
+        // ignore session creation errors, but log server-side
+        console.error('createSessionForUser failed', e);
+      }
     }
 
-    const existing = await getUserByEmail(e);
-    if (existing) {
-      return res.status(409).json({ ok: false, error: 'Account already exists' });
-    }
-
-    const user = await createUserWithPassword(e, p);
-    const session = await createSessionForUser(e);
-
-    return res.status(201).json({ ok: true, message: 'Account created', userId: user.id, session });
+    res.status(201).json({ ok: true, id: created?.id || created?._id || null });
   } catch (err) {
-    console.error('signup error', err && err.message ? err.message : err);
-    return res.status(500).json({ ok: false, error: 'Server error' });
+    console.error('signup error', err);
+    res.status(500).json({ error: String(err?.message || err) });
   }
 }
