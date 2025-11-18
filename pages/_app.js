@@ -1,12 +1,12 @@
+import React from "react";
+import { SessionProvider } from "next-auth/react";
 import Header from '../components/Header';
-// import '../styles/globals.css'; // uncomment if you use a global CSS file
 
-export default function MyApp({ Component, pageProps }) {
-  // Keep the header simple and predictable. Removed the capture-phase redirect hack.
+export default function App({ Component, pageProps: { session, ...pageProps } }) {
   return (
-    <>
+    <SessionProvider session={session}>
       <Header />
       <Component {...pageProps} />
-    </>
+    </SessionProvider>
   );
 }

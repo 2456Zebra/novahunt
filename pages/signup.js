@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { signIn } from 'next-auth/react';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -32,25 +33,20 @@ export default function SignUpPage() {
         return;
       }
 
-      // Optionally auto-signin after signup: call signin endpoint to get session
-      try {
-        const signin = await fetch('/api/signin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: String(email || '').trim(), password }),
-        });
-        const signinBody = await signin.json();
-        if (signin.ok) {
-          if (signinBody?.nh_session && typeof window !== 'undefined') {
-            localStorage.setItem('nh_session', signinBody.nh_session);
-          }
-        }
-      } catch (_) {
-        // ignore signin problems here; user can sign in manually
-      }
+      // Auto-signin after signup using NextAuth
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: String(email || '').trim().toLowerCase(),
+        password,
+      });
 
-      // Redirect to dashboard
-      router.replace('/');
+      if (result?.ok) {
+        // Redirect to dashboard
+        router.replace('/');
+      } else {
+        // Account created but signin failed - redirect to signin page
+        router.replace('/signin');
+      }
     } catch (err) {
       setError('Server error, please try again.');
       setLoading(false);

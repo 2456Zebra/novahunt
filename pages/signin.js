@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { signIn } from 'next-auth/react';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -20,34 +21,22 @@ export default function SignInPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: String(email || '').trim(), password }),
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: String(email || '').trim().toLowerCase(),
+        password,
       });
-      const body = await res.json();
-      if (!res.ok) {
-        // show helpful error to user; keep fields for correction
-        setError(body?.error || 'Signin failed. Please check your credentials.');
+
+      if (result?.error) {
+        setError('Invalid email or password');
         setLoading(false);
         return;
       }
 
-      // success: server returned nh_session token (and set cookie)
-      // store minimal client state and redirect to dashboard/home.
-      try {
-        if (body?.nh_session) {
-          // also store in localStorage for immediate client-side use if desired
-          if (typeof window !== 'undefined' && window.localStorage) {
-            localStorage.setItem('nh_session', body.nh_session);
-          }
-        }
-      } catch (err) {
-        // ignore localStorage errors
+      if (result?.ok) {
+        // Redirect to the main dashboard/home
+        router.replace('/');
       }
-
-      // Redirect to the main dashboard/home
-      router.replace('/');
     } catch (err) {
       setError('Network or server error. Try again.');
       setLoading(false);
