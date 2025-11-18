@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { findUserByEmail } from "../../../lib/user-store";
+import { findUserByEmail } from "../../../lib/user-store.js";
 import bcrypt from "bcryptjs";
 
 export default NextAuth({
@@ -42,8 +42,8 @@ export default NextAuth({
     }
   },
   pages: {
-    // optional: set to your custom page path if you add a custom signin UI
-    // signin: "/signin"
+    // optional: point to a custom signin page (we add /signin below)
+    signin: "/signin"
   },
   secret: process.env.NEXTAUTH_SECRET
 });
