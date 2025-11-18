@@ -1,71 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useSession, signOut } from 'next-auth/react';
 
-// Replace or import this component in your header layout.
-// Behavior: hide "Sign In" link when a local nh_session exists (localStorage or cookie).
 export default function HeaderAuth() {
-  const [session, setSession] = useState(null);
-  const router = useRouter();
+  const { data: session, status } = useSession();
+  const loading = status === 'loading';
 
-  useEffect(() => {
-    function readSession() {
-      try {
-        const ls = localStorage.getItem('nh_session');
-        if (ls) {
-          try {
-            const parsed = JSON.parse(ls);
-            setSession(parsed);
-            return;
-          } catch (_) {
-            setSession(ls);
-            return;
-          }
-        }
-      } catch (e) {
-        // ignore
-      }
-      try {
-        const match = document.cookie.match(/(?:^|; )nh_session=([^;]+)/);
-        if (match) {
-          try {
-            const parsed = JSON.parse(decodeURIComponent(match[1]));
-            setSession(parsed);
-            return;
-          } catch (_) {
-            setSession(decodeURIComponent(match[1]));
-            return;
-          }
-        }
-      } catch (e) {
-        // ignore
-      }
-      setSession(null);
-    }
+  function handleSignOut() {
+    signOut({ callbackUrl: '/' });
+  }
 
-    readSession();
-
-    function onUpdate() {
-      readSession();
-    }
-    window.addEventListener('account-usage-updated', onUpdate);
-    return () => window.removeEventListener('account-usage-updated', onUpdate);
-  }, []);
-
-  function signOut() {
-    try {
-      localStorage.removeItem('nh_session');
-      document.cookie = 'nh_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
-    } catch (e) { /* ignore */ }
-    router.reload();
+  if (loading) {
+    return <div className="header-auth">Loading...</div>;
   }
 
   return (
     <div className="header-auth">
       {session ? (
         <div className="signed-in">
-          <span className="email">{typeof session === 'object' ? session.email : String(session)}</span>
-          <button onClick={signOut} className="btn btn-link">Sign out</button>
+          <span className="email">{session.user?.email || 'User'}</span>
+          <button onClick={handleSignOut} className="btn btn-link">Sign out</button>
         </div>
       ) : (
         <div className="signed-out">
