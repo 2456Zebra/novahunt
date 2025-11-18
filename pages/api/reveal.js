@@ -1,5 +1,7 @@
 // Reveal endpoint — require signed-in session and enforce plan limits.
 // Replace or merge with your existing reveal logic as appropriate.
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from './auth/[...nextauth]';
 import { getKV } from './_kv-wrapper';
 const kv = getKV();
 
@@ -38,12 +40,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const sessionHeader = req.headers['x-nh-session'] || '';
-    const parsed = safeParseSession(sessionHeader);
-    const email = parsed?.email || null;
-    if (!email) {
-      return res.status(401).json({ ok: false, error: 'Authentication required to reveal' });
-    }
+    const session = await getServerSession(req, res, authOptions);
+    const email = session?.user?.email || null;
+    if (!email) return res.status(401).json({ ok: false, error: 'Authentication required to reveal' });
     const emailKey = String(email).toLowerCase();
 
     // read subscription from KV (fallbacks in account-usage will populate if missing)
