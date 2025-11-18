@@ -1,2 +1,35 @@
-"prebuild": "node ./scripts/check-model.js",
-"prestart": "node ./scripts/check-model.js"
+{
+  "name": "novahunt",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": "18.x"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prebuild": "node ./scripts/check-model.js",
+    "prestart": "node ./scripts/check-model.js"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.34.3",
+    "@vercel/kv": "^1.0.1",
+    "cheerio": "^1.0.0-rc.12",
+    "micro": "^10.0.1",
+    "next": "14.2.33",
+    "node-fetch": "^3.3.2",
+    "react": "^18",
+    "react-dom": "^18",
+    "robots-txt-parser": "^1.0.2",
+    "stripe": "^14.5.0",
+    "uuid": "^9.0.0",
+    "next-auth": "^4.22.1",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "eslint": "^8",
+    "eslint-config-next": "14.2.33"
+  }
+}
