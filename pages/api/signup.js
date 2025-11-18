@@ -1,42 +1,33 @@
-import { getUserByEmail, createUserWithPassword, createSessionForUser } from '../../lib/user-store';
+import bcrypt from "bcryptjs";
+import { findUserByEmail, createUser } from "../../lib/user-store.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default async function handler(req, res) {
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST, OPTIONS');
-    return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
-  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  const { email, password, name } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
 
   try {
-    if (!req.body || typeof req.body !== 'object') {
-      return res.status(400).json({ ok: false, error: 'Invalid JSON' });
+    const lower = email.toLowerCase().trim();
+    
+    // Validate email format
+    if (!EMAIL_RE.test(lower)) {
+      return res.status(400).json({ error: "Valid email is required" });
     }
-
-    const { email, password } = req.body;
-    const e = typeof email === 'string' ? email.trim() : '';
-    const p = typeof password === 'string' ? password : '';
-
-    if (!e || !EMAIL_RE.test(e)) {
-      return res.status(400).json({ ok: false, error: 'Valid email is required' });
+    
+    // Validate password strength
+    if (password.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters" });
     }
-
-    if (!p || p.length < 8) {
-      return res.status(400).json({ ok: false, error: 'Password must be at least 8 characters' });
-    }
-
-    const existing = await getUserByEmail(e);
-    if (existing) {
-      return res.status(409).json({ ok: false, error: 'Account already exists' });
-    }
-
-    const user = await createUserWithPassword(e, p);
-    const session = await createSessionForUser(e);
-
-    return res.status(201).json({ ok: true, message: 'Account created', userId: user.id, session });
+    
+    const existing = await findUserByEmail(lower);
+    if (existing) return res.status(409).json({ error: "User already exists" });
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await createUser(lower, passwordHash, name || "");
+    return res.status(201).json({ id: user.id, email: user.email });
   } catch (err) {
-    console.error('signup error', err && err.message ? err.message : err);
-    return res.status(500).json({ ok: false, error: 'Server error' });
+    console.error("Signup error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
