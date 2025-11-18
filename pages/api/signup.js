@@ -1,7 +1,7 @@
 // Minimal, clear signup endpoint. Normalizes email and uses lib/user-store helpers when available.
 import { json } from 'micro';
 
-import * as userStore from '../../../lib/user-store';
+import * as userStore from '../../lib/user-store';
 
 function normalizeEmail(e) {
   return String(e || '').trim().toLowerCase();
