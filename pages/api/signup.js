@@ -1,6 +1,6 @@
 // pages/api/signup.js
-import { createUser, getUserByEmail } from '../../lib/user-store.js';
-import { createSessionForUser } from '../../lib/session';
+const { createUser, getUserByEmail } = require('../../lib/user-store');
+const { createSessionForUser } = require('../../lib/session');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,12 +15,8 @@ export default async function handler(req, res) {
     const existing = await getUserByEmail(normalized);
     if (existing) return res.status(409).json({ ok: false, error: 'User already exists' });
 
-    if (typeof createUser !== 'function') {
-      return res.status(501).json({ ok: false, error: 'createUser not implemented in lib/user-store' });
-    }
-
     const user = await createUser({ email: normalized, password });
-    const session = await createSessionForUser(user.id);
+    const session = createSessionForUser(user.id);
 
     if (session && session.token) {
       const cookie = `nh_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
