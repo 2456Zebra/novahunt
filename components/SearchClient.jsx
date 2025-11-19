@@ -183,7 +183,7 @@ export default function SearchClient() {
       <div style={{ marginTop: 16 }}>
         {/* grouped collapsible results */}
         {Object.keys(groups).length === 0 ? (
-          <div style={{ color: '#6b7280', paddingTop: 12 }}>No results yet — try searching a company or 'Discover Leads' to get suggestions.</div>
+          <div style={{ color: '#6b7280', paddingTop: 12 }}>No results yet — try searching a company or Discover Leads to get suggestions.</div>
         ) : (
           Object.keys(groups).map(dept => (
             <DepartmentGroup key={dept} name={dept} items={groups[dept]} onRevealedFor={onRevealedFor} />
