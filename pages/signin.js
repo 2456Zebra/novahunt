@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { signIn } from 'next-auth/react';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -20,33 +21,20 @@ export default function SignInPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: String(email || '').trim(), password }),
+      const result = await signIn('credentials', {
+        email: String(email || '').trim(),
+        password,
+        redirect: false,
       });
-      const body = await res.json();
-      if (!res.ok) {
+
+      if (result?.error) {
         // show helpful error to user; keep fields for correction
-        setError(body?.error || 'Signin failed. Please check your credentials.');
+        setError('Signin failed. Please check your credentials.');
         setLoading(false);
         return;
       }
 
-      // success: server returned nh_session token (and set cookie)
-      // store minimal client state and redirect to dashboard/home.
-      try {
-        if (body?.nh_session) {
-          // also store in localStorage for immediate client-side use if desired
-          if (typeof window !== 'undefined' && window.localStorage) {
-            localStorage.setItem('nh_session', body.nh_session);
-          }
-        }
-      } catch (err) {
-        // ignore localStorage errors
-      }
-
-      // Redirect to the main dashboard/home
+      // success: redirect to the main dashboard/home
       router.replace('/');
     } catch (err) {
       setError('Network or server error. Try again.');
@@ -69,6 +57,8 @@ export default function SignInPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             required
             autoComplete="email"
           />
@@ -80,6 +70,8 @@ export default function SignInPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             required
             autoComplete="current-password"
           />

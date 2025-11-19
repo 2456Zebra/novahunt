@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { signIn } from 'next-auth/react';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -32,24 +33,23 @@ export default function SignUpPage() {
         return;
       }
 
-      // Optionally auto-signin after signup: call signin endpoint to get session
+      // Auto-signin after signup using NextAuth
       try {
-        const signin = await fetch('/api/signin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: String(email || '').trim(), password }),
+        const result = await signIn('credentials', {
+          email: String(email || '').trim(),
+          password,
+          redirect: false,
         });
-        const signinBody = await signin.json();
-        if (signin.ok) {
-          if (signinBody?.nh_session && typeof window !== 'undefined') {
-            localStorage.setItem('nh_session', signinBody.nh_session);
-          }
+        if (!result?.error) {
+          // Successfully signed in, redirect to dashboard
+          router.replace('/');
+          return;
         }
       } catch (_) {
         // ignore signin problems here; user can sign in manually
       }
 
-      // Redirect to dashboard
+      // Redirect to dashboard even if auto-signin failed
       router.replace('/');
     } catch (err) {
       setError('Server error, please try again.');
@@ -67,6 +67,8 @@ export default function SignUpPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             required
             autoComplete="email"
           />
@@ -78,6 +80,8 @@ export default function SignUpPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             required
             autoComplete="new-password"
           />
