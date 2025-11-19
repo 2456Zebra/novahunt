@@ -1,0 +1,138 @@
+/*
+ * Reveal endpoint with anonymous reveal support
+ * 
+ * INSTRUCTIONS:
+ * This is a code snippet to integrate into your existing pages/api/reveal.js handler.
+ * It provides anonymous reveal tracking via cookies (up to 2 free reveals) and 
+ * authenticated reveal tracking using NextAuth and lib/user-store.js.
+ * 
+ * INTEGRATION STEPS:
+ * 1. Add the imports at the top of your reveal.js file
+ * 2. Replace or merge the authentication logic with your existing handler
+ * 3. Adjust the reveal provider integration to match your implementation
+ * 4. Keep your existing plan limits and subscription logic
+ */
+
+// === IMPORTS (add to top of reveal.js) ===
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from './auth/[...nextauth]';
+import { getUserByEmail, incrementUsage } from '../../lib/user-store';
+
+// === COOKIE HELPERS ===
+function parseCookies(cookieHeader) {
+  if (!cookieHeader) return {};
+  return Object.fromEntries(
+    cookieHeader.split(';').map(c => {
+      const [key, ...val] = c.trim().split('=');
+      return [key, val.join('=')];
+    })
+  );
+}
+
+function setCookie(res, name, value, options = {}) {
+  const opts = {
+    httpOnly: true,
+    path: '/',
+    maxAge: options.maxAge || 86400 * 30, // 30 days default
+    sameSite: 'lax',
+    ...options
+  };
+  const parts = [`${name}=${value}`];
+  if (opts.maxAge) parts.push(`Max-Age=${opts.maxAge}`);
+  if (opts.path) parts.push(`Path=${opts.path}`);
+  if (opts.httpOnly) parts.push('HttpOnly');
+  if (opts.sameSite) parts.push(`SameSite=${opts.sameSite}`);
+  res.setHeader('Set-Cookie', parts.join('; '));
+}
+
+// === ANONYMOUS REVEAL LIMIT ===
+// TODO: Consider making this configurable via environment variable (e.g., process.env.ANONYMOUS_REVEAL_LIMIT)
+const ANONYMOUS_REVEAL_LIMIT = 2;
+
+// === HANDLER (replace or merge with existing logic) ===
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
+  }
+
+  try {
+    // Check for authenticated session
+    const session = await getServerSession(req, res, authOptions);
+    const isAuthenticated = !!session?.user?.email;
+
+    if (isAuthenticated) {
+      // === AUTHENTICATED USER FLOW ===
+      const email = session.user.email.toLowerCase();
+      const user = await getUserByEmail(email);
+
+      if (!user) {
+        return res.status(404).json({ ok: false, error: 'User not found' });
+      }
+
+      // TODO: Add your plan limits check here if needed
+      // Example: check user.usage.reveals against plan limits
+      
+      // === YOUR REVEAL PROVIDER LOGIC HERE ===
+      // Replace this placeholder with your actual reveal implementation
+      let revealed = null;
+      try {
+        // Example placeholder result for testing:
+        revealed = { message: 'Revealed for authenticated user', payload: req.body };
+        // If you have doReveal(payload) function, replace above line with:
+        // revealed = await doReveal(req.body);
+      } catch (e) {
+        console.error('Reveal provider error', e?.message || e);
+        return res.status(500).json({ ok: false, error: 'Reveal provider error' });
+      }
+
+      // Increment usage in user-store
+      const usage = await incrementUsage(email, 'reveal', 1);
+
+      return res.status(200).json({ 
+        ok: true, 
+        revealed,
+        usage: usage || user.usage
+      });
+
+    } else {
+      // === ANONYMOUS USER FLOW ===
+      const cookies = parseCookies(req.headers.cookie || '');
+      const freeReveals = parseInt(cookies.nh_free_reveals || '0', 10);
+
+      if (freeReveals >= ANONYMOUS_REVEAL_LIMIT) {
+        return res.status(401).json({ 
+          ok: false, 
+          error: 'Anonymous reveal limit reached. Please sign in to continue.',
+          requiresAuth: true 
+        });
+      }
+
+      // === YOUR REVEAL PROVIDER LOGIC HERE ===
+      // Replace this placeholder with your actual reveal implementation
+      let revealed = null;
+      try {
+        // Example placeholder result for testing:
+        revealed = { message: 'Revealed for anonymous user', payload: req.body };
+        // If you have doReveal(payload) function, replace above line with:
+        // revealed = await doReveal(req.body);
+      } catch (e) {
+        console.error('Reveal provider error', e?.message || e);
+        return res.status(500).json({ ok: false, error: 'Reveal provider error' });
+      }
+
+      // Increment anonymous reveal counter
+      const newCount = freeReveals + 1;
+      setCookie(res, 'nh_free_reveals', String(newCount), { maxAge: 86400 * 365 }); // 1 year
+
+      return res.status(200).json({ 
+        ok: true, 
+        revealed,
+        remainingFreeReveals: ANONYMOUS_REVEAL_LIMIT - newCount
+      });
+    }
+  } catch (err) {
+    console.error('reveal error', err?.message || err);
+    return res.status(500).json({ ok: false, error: 'Server error' });
+  }
+}
