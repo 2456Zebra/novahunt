@@ -15,7 +15,12 @@ export default function HeaderAuth() {
   }, []);
 
   if (!session) {
-    return <button onClick={() => window.location.href = '/signin'} className="btn">Sign In</button>;
+    return (
+      <>
+        <button onClick={() => (window.location.href = '/signin')} className="btn">Sign in</button>
+        <button onClick={() => (window.location.href = '/signup')} className="btn btn-primary">Sign up</button>
+      </>
+    );
   }
 
   return (
