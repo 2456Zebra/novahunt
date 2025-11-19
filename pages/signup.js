@@ -16,7 +16,6 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       await signUp({ email, password });
-      // on success, redirect home
       window.location.href = '/';
     } catch (e) {
       setErr(e.message || 'Signup failed');
