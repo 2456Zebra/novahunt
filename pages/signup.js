@@ -40,7 +40,7 @@ export default function SignUpPage() {
           password,
           redirect: false,
         });
-        if (!result?.error) {
+        if (result?.ok || !result?.error) {
           // Successfully signed in, redirect to dashboard
           router.replace('/');
           return;

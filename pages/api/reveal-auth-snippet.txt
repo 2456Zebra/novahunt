@@ -46,6 +46,7 @@ function setCookie(res, name, value, options = {}) {
 }
 
 // === ANONYMOUS REVEAL LIMIT ===
+// TODO: Consider making this configurable via environment variable (e.g., process.env.ANONYMOUS_REVEAL_LIMIT)
 const ANONYMOUS_REVEAL_LIMIT = 2;
 
 // === HANDLER (replace or merge with existing logic) ===

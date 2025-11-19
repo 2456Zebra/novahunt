@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { getUserByEmail, verifyPasswordForUser } from "../../../lib/user-store.js";
+import { getUserByEmail, verifyPasswordForUser } from "../../../lib/user-store";
 
 export const authOptions = {
   session: {

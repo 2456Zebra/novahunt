@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     }
 
     // Increment usage
-    const incrementAmount = amount || 1;
+    const incrementAmount = amount ?? 1;
     const usage = await incrementUsage(email, type, incrementAmount);
 
     if (!usage) {
