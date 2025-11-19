@@ -16,7 +16,6 @@ export default function SignInPage() {
     setLoading(true);
     try {
       await signIn({ email, password });
-      // on success, redirect home
       window.location.href = '/';
     } catch (e) {
       setErr(e.message || 'Signin failed');
