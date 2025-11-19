@@ -5,18 +5,23 @@ export default function Document() {
     <Html>
       <Head />
       <body>
-        {/* Pre-hydration script: ensure a model preference exists and default to "Copilot" */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                if (typeof window !== 'undefined' && window.localStorage && !localStorage.getItem('nh_model')) {
-                  localStorage.setItem('nh_model', 'Copilot');
+                if (typeof window !== 'undefined' && window.localStorage) {
+                  try {
+                    var cur = localStorage.getItem('nh_model');
+                    // If not set or legacy Grok, default to Copilot
+                    if (!cur || cur === 'Grok') {
+                      localStorage.setItem('nh_model', 'Copilot');
+                    }
+                  } catch (e) {
+                    // ignore localStorage errors in restricted environments
+                  }
                 }
-              } catch (e) {
-                /* ignore localStorage errors in restricted environments */
-              }
-            `,
+              } catch (e) {}
+            `
           }}
         />
         <Main />
