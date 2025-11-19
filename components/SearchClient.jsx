@@ -3,6 +3,14 @@
 import { useEffect, useState } from 'react';
 import RevealButton from './RevealButton';
 
+/**
+ * SearchClient
+ * - Departments visually distinct from result rows
+ * - First department expanded by default; others collapsed
+ * - Clickable "Sign in to see all results" hint (opens sign-in modal)
+ * - Upgrade button/link goes to /plans
+ */
+
 // Small inline hint used when anonymous
 function SignInHintInline() {
   if (typeof window === 'undefined') return null;
@@ -12,7 +20,9 @@ function SignInHintInline() {
   } catch (e) {}
   return (
     <div style={{ color: '#f97316', marginTop: 8, fontWeight: 600 }}>
-      Sign in to see all results
+      <a href="#" onClick={(e) => { e.preventDefault(); try { window.dispatchEvent(new CustomEvent('open-signin-modal')); } catch (err) {} }} style={{ color: '#f97316', textDecoration: 'underline' }}>
+        Sign in to see all results
+      </a>
     </div>
   );
 }
@@ -42,12 +52,6 @@ function sampleLeadsFor(domain, mode) {
       { email: `partnerships@${base}`, name: '', title: 'Partnerships', confidence: 0.70, source: '' },
       { email: `bizdev@${base}`, name: '', title: 'Business Development', confidence: 0.65, source: '' }
     ];
-  } else if (mode === 'import') {
-    return [
-      { email: `imported.user1@${base}`, name: 'Imported User 1', title: 'Marketing Manager', confidence: 0.78, source: '' },
-      { email: `imported.user2@${base}`, name: 'Imported User 2', title: 'Sales Lead', confidence: 0.72, source: '' },
-      { email: `imported.user3@${base}`, name: 'Imported User 3', title: 'Director', confidence: 0.68, source: '' }
-    ];
   }
 
   return [
@@ -59,7 +63,7 @@ function sampleLeadsFor(domain, mode) {
   ];
 }
 
-// Very small heuristic to map title -> department
+// Heuristic title -> department
 function departmentForTitle(title = '') {
   const t = (title || '').toLowerCase();
   if (!t) return 'General';
@@ -101,22 +105,21 @@ export default function SearchClient() {
     setShowAll(false);
     try {
       if (mode === 'ai') {
-        // Discover Leads: AI-powered suggestion list (still demo until backend)
+        // Discover Leads: AI-powered suggestion list (demo until backend)
         const samples = sampleLeadsFor(q, 'ai');
         setResults(samples);
-        setTotalCount(samples.length); // demo
+        setTotalCount(samples.length);
       } else {
         // email hunt - call /api/find-emails if available
         const resp = await fetch(`/api/find-emails?domain=${encodeURIComponent(q)}`);
         if (!resp.ok) {
           // fallback to sample results if server not implemented
           setResults(sampleLeadsFor(q, 'emails'));
-          setTotalCount( sampleLeadsFor(q, 'emails').length );
+          setTotalCount(sampleLeadsFor(q, 'emails').length);
           setLoading(false);
           return;
         }
         const body = await resp.json();
-        // body expected: { items: [...], total: N } or an array
         const items = Array.isArray(body) ? body.map(it => ({ ...it, revealed: false })) : (body.items || []);
         setResults(items);
         setTotalCount(body.total || items.length);
@@ -142,6 +145,9 @@ export default function SearchClient() {
     (acc[dept] = acc[dept] || []).push({ ...it, __idx: idx });
     return acc;
   }, {});
+
+  // keys in deterministic order
+  const deptKeys = Object.keys(groups);
 
   return (
     <div style={{ padding: '2rem', maxWidth: 980, margin: '0 auto' }}>
@@ -172,25 +178,39 @@ export default function SearchClient() {
 
       {/* counts */}
       <div style={{ marginTop: 12, color: '#374151' }}>
-        Showing {Math.min( results.length, showAll ? results.length : 3 )} {results.length === 1 ? 'result' : 'results'}
+        Showing {Math.min(results.length, showAll ? results.length : 3)} {results.length === 1 ? 'result' : 'results'}
         {totalCount ? ` of ${totalCount}` : ''}
-        {totalCount ? <span style={{ marginLeft: 8, color: '#6b7280' }}>{!localStorage.getItem || !localStorage.getItem('nh_session') ? '• Sign in or upgrade to see all' : ''}</span> : null}
+        {totalCount ? (
+          <span style={{ marginLeft: 8, color: '#6b7280' }}>
+            {(!localStorage.getItem || !localStorage.getItem('nh_session')) ? '• ' : ''}
+            {!localStorage.getItem || !localStorage.getItem('nh_session') ? (
+              <>
+                <a href="/plans" style={{ color: '#2563eb', marginLeft: 6, textDecoration: 'underline' }}>Upgrade to see all</a>
+              </>
+            ) : null}
+          </span>
+        ) : null}
       </div>
 
-      {/* inline hint */}
+      {/* inline hint clickable */}
       <SignInHintInline />
 
       <div style={{ marginTop: 16 }}>
-        {/* grouped collapsible results */}
-        {Object.keys(groups).length === 0 ? (
-          <div style={{ color: '#6b7280', paddingTop: 12 }}>No results yet — try searching a company or Discover Leads to get suggestions.</div>
+        {deptKeys.length === 0 ? (
+          <div style={{ color: '#6b7280', paddingTop: 12 }}>No results yet — try searching a company or use Discover Leads to get suggestions.</div>
         ) : (
-          Object.keys(groups).map(dept => (
-            <DepartmentGroup key={dept} name={dept} items={groups[dept]} onRevealedFor={onRevealedFor} />
+          deptKeys.map((dept, idx) => (
+            <DepartmentGroup
+              key={dept}
+              name={dept}
+              items={groups[dept]}
+              onRevealedFor={onRevealedFor}
+              initialOpen={idx === 0} // only first open by default
+            />
           ))
         )}
 
-        {/* show more / upgrade (only visible when there are more results) */}
+        {/* show more / upgrade */}
         {results.length > 3 && !showAll && (
           <div style={{ marginTop: 12 }}>
             <button onClick={() => {
@@ -198,8 +218,7 @@ export default function SearchClient() {
               if (session) {
                 setShowAll(true);
               } else {
-                // anonymous users go to the upgrade page to see full results
-                window.location.href = '/upgrade';
+                window.location.href = '/plans';
               }
             }} style={{ padding: '.5rem .75rem', borderRadius: 6, background: '#007bff', color: '#fff', border: 'none' }}>
               {localStorage.getItem && localStorage.getItem('nh_session') ? `Show ${results.length - 3} more` : `Upgrade to see all ${totalCount || results.length}`}
@@ -211,27 +230,42 @@ export default function SearchClient() {
   );
 }
 
-// Collapsible department group component
-function DepartmentGroup({ name, items, onRevealedFor }) {
-  const [open, setOpen] = useState(true);
+// Department group with clearer visual differences
+function DepartmentGroup({ name, items, onRevealedFor, initialOpen = false }) {
+  const [open, setOpen] = useState(Boolean(initialOpen));
   return (
-    <section style={{ border: '1px solid #eee', borderRadius: 8, marginBottom: 12, overflow: 'hidden' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#fafafa', cursor: 'pointer' }} onClick={() => setOpen(!open)}>
-        <div style={{ fontWeight: 700 }}>{name} <span style={{ marginLeft: 8, color: '#6b7280', fontWeight: 400 }}>{items.length}</span></div>
+    <section style={{ border: '1px solid #eee', borderRadius: 8, marginBottom: 12, overflow: 'hidden', boxShadow: 'rgba(15,23,42,0.02) 0px 1px 2px' }}>
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 14px',
+          background: '#fff7ed', // pale orange header to separate department visually
+          cursor: 'pointer',
+          borderBottom: '1px solid #f3e8d1'
+        }}
+        onClick={() => setOpen(!open)}
+      >
+        <div style={{ fontWeight: 800, fontSize: 15, color: '#92400e' }}>
+          {name}
+          <span style={{ marginLeft: 8, color: '#6b7280', fontWeight: 600, fontSize: 13 }}>{items.length}</span>
+        </div>
         <div style={{ color: '#6b7280' }}>{open ? '▾' : '▸'}</div>
       </header>
+
       {open && (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, background: '#ffffff' }}>
           {items.map((r) => (
-            <li key={`${r.email}-${r.__idx}`} style={{ padding: '10px 12px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <li key={`${r.email}-${r.__idx}`} style={{ padding: '12px 14px', borderTop: '1px solid #f5f5f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontWeight: 700 }}>{r.revealed ? (r.email || '(no email)') : maskEmail(r.email || '(no email)')}</div>
-                <div style={{ color: '#666', fontSize: 13 }}>{(r.name || '—')}{r.title ? ' • ' + r.title : ''}</div>
+                <div style={{ fontWeight: 700, color: '#111' }}>{r.revealed ? (r.email || '(no email)') : maskEmail(r.email || '(no email)')}</div>
+                <div style={{ color: '#6b7280', fontSize: 13 }}>{(r.name || '—')}{r.title ? ' • ' + r.title : ''}</div>
               </div>
 
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 600, color: '#007bff' }}>{Math.round((r.confidence || 0) * 100)}%</div>
-                <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <div style={{ textAlign: 'right', minWidth: 160 }}>
+                <div style={{ fontWeight: 700, color: '#0ea5b7' }}>{Math.round((r.confidence || 0) * 100)}%</div>
+                <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
                   {r.source ? <a href={r.source} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#6b7280', textDecoration: 'underline' }}>Source</a> : null}
                   <RevealButton contactId={r.email || r.__idx} payload={r} onRevealed={(revealed) => onRevealedFor(r.__idx, revealed)} />
                 </div>
