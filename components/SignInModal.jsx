@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { signIn } from '../utils/auth';
-import Link from 'next/link';
 
 /**
- * SignInModal — lightweight client-side modal to sign users in inline.
- * Opens when parent sets open={true}. On success dispatches `account-usage-updated`.
- * If props.prefillEmail provided, prefill the email field (used for retry-after-signin).
+ * SignInModal now accepts a prefillEmail prop via Header's event detail,
+ * and emits an 'nh-signed-in' event (in addition to account-usage-updated)
+ * so components (like RevealButton) can auto-retry pending actions.
  */
+
 export default function SignInModal({ open, onClose, prefillEmail = '' }) {
   const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
@@ -20,6 +20,7 @@ export default function SignInModal({ open, onClose, prefillEmail = '' }) {
       setEmail(prefillEmail || '');
       setPassword('');
       setErr('');
+      // focus might be added later with a ref
     }
   }, [open, prefillEmail]);
 
@@ -32,6 +33,7 @@ export default function SignInModal({ open, onClose, prefillEmail = '' }) {
     try {
       await signIn({ email, password });
       try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) {}
+      try { window.dispatchEvent(new Event('nh-signed-in')); } catch (e) {}
       onClose && onClose();
     } catch (er) {
       setErr(er?.message || 'Signin failed');
@@ -62,9 +64,8 @@ export default function SignInModal({ open, onClose, prefillEmail = '' }) {
             </button>
           </div>
         </form>
-
-        <div style={{ marginTop: 12, fontSize: 13, color: '#666' }}>
-          No account? <a href="/signup" style={{ color: '#007bff', textDecoration: 'underline' }}>Create one</a> or <a href="/upgrade" style={{ color: '#007bff', textDecoration: 'underline' }}>view plans</a>.
+        <div style={{ marginTop: 10, fontSize: 13, color: '#666' }}>
+          No account? <a href="/signup" style={{ color: '#007bff', textDecoration: 'underline' }}>Create one</a> or <a href="/plans" style={{ color: '#007bff', textDecoration: 'underline' }}>view plans</a>.
         </div>
       </div>
     </div>
