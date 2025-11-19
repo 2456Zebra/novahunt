@@ -1,6 +1,6 @@
 // pages/api/signin.js
-import { getUserByEmail, verifyPasswordForUser } from '../../lib/user-store.js';
-import { createSessionForUser } from '../../lib/session';
+const { getUserByEmail, verifyPasswordForUser } = require('../../lib/user-store');
+const { createSessionForUser } = require('../../lib/session');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const valid = await verifyPasswordForUser(normalized, password);
     if (!valid) return res.status(401).json({ ok: false, error: 'Invalid credentials' });
 
-    const session = await createSessionForUser(user.id);
+    const session = createSessionForUser(user.id);
 
     if (session && session.token) {
       const cookie = `nh_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
