@@ -1,17 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { signIn } from '../utils/auth';
+import Link from 'next/link';
 
 /**
  * SignInModal — lightweight client-side modal to sign users in inline.
  * Opens when parent sets open={true}. On success dispatches `account-usage-updated`.
+ * If props.prefillEmail provided, prefill the email field (used for retry-after-signin).
  */
-export default function SignInModal({ open, onClose }) {
-  const [email, setEmail] = useState('');
+export default function SignInModal({ open, onClose, prefillEmail = '' }) {
+  const [email, setEmail] = useState(prefillEmail || '');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setEmail(prefillEmail || '');
+      setPassword('');
+      setErr('');
+    }
+  }, [open, prefillEmail]);
 
   if (!open) return null;
 
@@ -52,8 +62,9 @@ export default function SignInModal({ open, onClose }) {
             </button>
           </div>
         </form>
-        <div style={{ marginTop: 10, fontSize: 13, color: '#666' }}>
-          No account? You can create one on the Sign up page.
+
+        <div style={{ marginTop: 12, fontSize: 13, color: '#666' }}>
+          No account? <a href="/signup" style={{ color: '#007bff', textDecoration: 'underline' }}>Create one</a> or <a href="/upgrade" style={{ color: '#007bff', textDecoration: 'underline' }}>view plans</a>.
         </div>
       </div>
     </div>
