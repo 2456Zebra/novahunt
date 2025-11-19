@@ -1,78 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+'use client';
 
-// Replace or import this component in your header layout.
-// Behavior: hide "Sign In" link when a local nh_session exists (localStorage or cookie).
+import { useEffect, useState } from 'react';
+import { signOut, getLocalSession } from '../utils/auth';
+
 export default function HeaderAuth() {
-  const [session, setSession] = useState(null);
-  const router = useRouter();
+  const [session, setSession] = useState(getLocalSession());
 
   useEffect(() => {
-    function readSession() {
-      try {
-        const ls = localStorage.getItem('nh_session');
-        if (ls) {
-          try {
-            const parsed = JSON.parse(ls);
-            setSession(parsed);
-            return;
-          } catch (_) {
-            setSession(ls);
-            return;
-          }
-        }
-      } catch (e) {
-        // ignore
-      }
-      try {
-        const match = document.cookie.match(/(?:^|; )nh_session=([^;]+)/);
-        if (match) {
-          try {
-            const parsed = JSON.parse(decodeURIComponent(match[1]));
-            setSession(parsed);
-            return;
-          } catch (_) {
-            setSession(decodeURIComponent(match[1]));
-            return;
-          }
-        }
-      } catch (e) {
-        // ignore
-      }
-      setSession(null);
+    function update() {
+      setSession(getLocalSession());
     }
-
-    readSession();
-
-    function onUpdate() {
-      readSession();
-    }
-    window.addEventListener('account-usage-updated', onUpdate);
-    return () => window.removeEventListener('account-usage-updated', onUpdate);
+    window.addEventListener('account-usage-updated', update);
+    return () => window.removeEventListener('account-usage-updated', update);
   }, []);
 
-  function signOut() {
-    try {
-      localStorage.removeItem('nh_session');
-      document.cookie = 'nh_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
-    } catch (e) { /* ignore */ }
-    router.reload();
+  if (!session) {
+    return <button onClick={() => window.location.href = '/signin'} className="btn">Sign In</button>;
   }
 
   return (
-    <div className="header-auth">
-      {session ? (
-        <div className="signed-in">
-          <span className="email">{typeof session === 'object' ? session.email : String(session)}</span>
-          <button onClick={signOut} className="btn btn-link">Sign out</button>
-        </div>
-      ) : (
-        <div className="signed-out">
-          <Link href="/signup"><a className="btn">Create account</a></Link>
-          <Link href="/signin"><a className="btn btn-primary">Sign in</a></Link>
-        </div>
-      )}
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div>{session.email}</div>
+      <button onClick={() => signOut()} className="btn">Sign out</button>
     </div>
   );
 }
