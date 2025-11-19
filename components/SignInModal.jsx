@@ -1,87 +1,63 @@
 'use client';
 
 import { useState } from 'react';
+import { signIn } from '../utils/auth';
 
-export default function SignInModal({ isOpen, onClose, onSuccess }) {
+/**
+ * Lightweight sign-in modal used by Header to sign users in without a full-page redirect.
+ * Opens when the header receives a 'open-signin-modal' window event.
+ *
+ * Usage: <SignInModal open={open} onClose={() => setOpen(false)} />
+ */
+export default function SignInModal({ open, onClose }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
 
-  if (!isOpen) return null;
+  if (!open) return null;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+  async function submit(e) {
+    e && e.preventDefault();
+    setErr('');
     setLoading(true);
-
     try {
-      const res = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Invalid email or password');
-      } else {
-        onSuccess(data.session);
-      }
-    } catch (err) {
-      setError('Network error. Try again.');
+      await signIn({ email, password });
+      // Notify other UI pieces that session changed
+      try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) {}
+      onClose && onClose();
+    } catch (er) {
+      setErr(er?.message || 'Signin failed');
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg max-w-md w-full">
-        <h2 className="text-2xl font-bold mb-4">Sign In</h2>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3 border rounded mb-3"
-            required
-            disabled={loading}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 border rounded mb-3"
-            required
-            disabled={loading}
-          />
-          {error && <p className="text-red-600 mb-3">{error}</p>}
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-2 rounded disabled:bg-blue-400"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+    }}>
+      <div style={{ width: 420, maxWidth: '94%', background: '#fff', padding: 20, borderRadius: 8 }}>
+        <h3 style={{ marginTop: 0 }}>Sign in to reveal full emails</h3>
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input required type="email" placeholder="Email" value={email}
+            onChange={e => setEmail(e.target.value)} style={{ padding: '10px', borderRadius: 6, border: '1px solid #ddd' }} />
+          <input required type="password" placeholder="Password" value={password}
+            onChange={e => setPassword(e.target.value)} style={{ padding: '10px', borderRadius: 6, border: '1px solid #ddd' }} />
+          {err && <div style={{ color: 'crimson' }}>{err}</div>}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button type="submit" disabled={loading} style={{ flex: 1, padding: 10, background: '#f97316', color: '#fff', border: 'none', borderRadius: 6 }}>
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="flex-1 bg-gray-200 py-2 rounded"
-            >
+            <button type="button" onClick={() => onClose && onClose()} style={{ padding: 10, borderRadius: 6 }}>
               Cancel
             </button>
           </div>
         </form>
-        <p className="mt-4 text-center">
-          <a href="/forgot-password" className="text-blue-600 hover:underline">
-            Forgot password?
-          </a>
-        </p>
+        <div style={{ marginTop: 10, fontSize: 13, color: '#666' }}>
+          No account? You can create one on the Sign up page.
+        </div>
       </div>
     </div>
   );
