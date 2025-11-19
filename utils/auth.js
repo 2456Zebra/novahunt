@@ -1,4 +1,4 @@
-// utils/auth.js
+// utils/auth.js — client helpers to call the auth endpoints and manage local session
 export async function signIn({ email, password }) {
   const res = await fetch('/api/signin', {
     method: 'POST',
