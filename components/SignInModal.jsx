@@ -4,10 +4,8 @@ import { useState } from 'react';
 import { signIn } from '../utils/auth';
 
 /**
- * Lightweight sign-in modal used by Header to sign users in without a full-page redirect.
- * Opens when the header receives a 'open-signin-modal' window event.
- *
- * Usage: <SignInModal open={open} onClose={() => setOpen(false)} />
+ * SignInModal — lightweight client-side modal to sign users in inline.
+ * Opens when parent sets open={true}. On success dispatches `account-usage-updated`.
  */
 export default function SignInModal({ open, onClose }) {
   const [email, setEmail] = useState('');
@@ -23,7 +21,6 @@ export default function SignInModal({ open, onClose }) {
     setLoading(true);
     try {
       await signIn({ email, password });
-      // Notify other UI pieces that session changed
       try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) {}
       onClose && onClose();
     } catch (er) {
