@@ -1,15 +1,21 @@
-import React, { useState } from 'react';
+// components/RevealButton.jsx
+import { useState } from 'react';
 
-export default function RevealButton({ contactId, payload }) {
+export default function RevealButton({ contactId, payload, onRevealed }) {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
   async function doReveal() {
     setLoading(true);
     setError(null);
     try {
-      const nh = localStorage.getItem('nh_session') || '';
+      const nh = typeof window !== 'undefined' ? localStorage.getItem('nh_session') || '' : '';
+      if (!nh) {
+        try { window.dispatchEvent(new CustomEvent('open-signin-modal')); } catch (e) {}
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch('/api/reveal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-nh-session': nh },
@@ -19,9 +25,8 @@ export default function RevealButton({ contactId, payload }) {
       if (!res.ok) {
         setError(json?.error || 'Reveal failed');
       } else {
-        setResult(json.revealed);
-        // Notify app to refresh account-usage/header
-        try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) { /* ignore */ }
+        onRevealed && onRevealed(json.revealed);
+        try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) {}
       }
     } catch (e) {
       setError(String(e?.message || e));
@@ -31,12 +36,17 @@ export default function RevealButton({ contactId, payload }) {
   }
 
   return (
-    <div className="reveal-button">
-      <button onClick={doReveal} disabled={loading} className="btn btn-reveal">
-        {loading ? 'Revealing…' : 'Reveal'}
+    <div>
+      <button onClick={doReveal} disabled={loading} style={{
+        padding: '6px 8px',
+        borderRadius: 6,
+        border: '1px solid #ddd',
+        background: loading ? '#f3f4f6' : '#fff',
+        cursor: 'pointer'
+      }}>
+        {loading ? 'Revealing…' : 'Reveal Full Email'}
       </button>
-      {error && <div className="error">{error}</div>}
-      {result && <div className="reveal-result">{JSON.stringify(result)}</div>}
+      {error && <div style={{ color: 'crimson', marginTop: 6 }}>{error}</div>}
     </div>
   );
 }
