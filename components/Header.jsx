@@ -1,35 +1,23 @@
+'use client';
+
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import HeaderAuth from './HeaderAuth';
 
 export default function Header() {
-  const router = useRouter();
-
   return (
-    <header className="site-header">
-      <div className="logo">
+    <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid #e6e6e6' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <Link href="/">
-          <a>NovaHunt</a>
+          <a style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+            <img src="/logo.svg" alt="NovaHunt" style={{ height: 28 }} />
+            <strong style={{ color: '#111' }}>NovaHunt</strong>
+          </a>
         </Link>
       </div>
-      <nav>
-        <Link href="/search">
-          <a>Search</a>
-        </Link>
-        <Link href="/about">
-          <a>About</a>
-        </Link>
 
-        {/* Make the CTA a real navigation link */}
-        <a
-          href="/signin"
-          onClick={(e) => {
-            e.preventDefault();
-            router.push('/signin');
-          }}
-        >
-          Sign in to see all
-        </a>
-      </nav>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <HeaderAuth />
+      </div>
     </header>
   );
 }
