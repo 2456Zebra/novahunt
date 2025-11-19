@@ -1,10 +1,14 @@
-import Header from '../components/Header';
-// import '../styles/globals.css'; // uncomment if you use a global CSS file
+import dynamic from 'next/dynamic';
+import Head from 'next/head';
+import '../styles/globals.css';
+import Header from '../components/Header'; // ensures header is shown on every page
 
 export default function MyApp({ Component, pageProps }) {
-  // Keep the header simple and predictable. Removed the capture-phase redirect hook.
   return (
     <>
+      <Head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+      </Head>
       <Header />
       <Component {...pageProps} />
     </>
