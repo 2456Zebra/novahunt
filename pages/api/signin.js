@@ -1,51 +1,43 @@
-import { verifyPasswordForUser } from '../../lib/user-store';
-import { createSessionForUser } from '../../lib/session';
-
-function makeSessionString(token) {
-  return token;
-}
+// File-based signin handler — uses lib/user-store.js for user lookup and session creation.
+// This preserves the file-based backend behavior while integrating with the Copilot frontend.
+import { getUserByEmail, verifyPasswordForUser, createSessionForUser } from '../../lib/user-store.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST, OPTIONS');
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
 
   try {
     const { email, password } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'email and password required' });
-
-    const emailKey = String(email).toLowerCase().trim();
-
-    // verify password using file-store helper
-    let ok = false;
-    let verifyError = null;
-    try {
-      ok = await verifyPasswordForUser(emailKey, password);
-    } catch (e) {
-      verifyError = String(e?.message || e);
-      ok = false;
+    if (!email || !password) {
+      return res.status(400).json({ ok: false, error: 'Missing email or password' });
     }
 
-    if (!ok) {
-      // In non-debug mode return generic error to avoid user enumeration
-      if (process.env.DEBUG_SIGNIN === 'true') {
-        return res.status(400).json({ error: 'Invalid email or password', detail: verifyError || 'invalid' });
-      }
-      return res.status(400).json({ error: 'Invalid email or password' });
+    const normalized = String(email).toLowerCase().trim();
+    const user = await getUserByEmail(normalized);
+    if (!user) {
+      return res.status(401).json({ ok: false, error: 'Invalid credentials' });
     }
 
-    // create a stateless signed session token
-    const token = await createSessionForUser(emailKey);
-    const nhSession = makeSessionString(token);
+    const valid = await verifyPasswordForUser(normalized, password);
+    if (!valid) {
+      return res.status(401).json({ ok: false, error: 'Invalid credentials' });
+    }
 
-    // Set a cookie (optional) and return session in body
-    const cookie = `nh_session=${encodeURIComponent(nhSession)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
-    res.setHeader('Set-Cookie', cookie);
+    // createSessionForUser should return a session token / id that can be used by other APIs.
+    const session = await createSessionForUser(user.id);
 
-    return res.status(200).json({ ok: true, email: emailKey, nh_session: nhSession });
+    // Optionally set a cookie if session.token exists
+    if (session?.token) {
+      const cookie = `nh_session=${session.token}; Path=/; HttpOnly; SameSite=Lax`;
+      // add ; Secure in production HTTPS if desired
+      res.setHeader('Set-Cookie', cookie);
+    }
+
+    return res.status(200).json({ ok: true, email: user.email, session: session || null });
   } catch (err) {
     console.error('signin error', err?.message || err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ ok: false, error: 'Server error' });
   }
 }
