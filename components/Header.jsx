@@ -6,13 +6,21 @@ import { useEffect, useState } from 'react';
 import SignInModal from './SignInModal';
 
 /**
- * Header hosts the SignInModal and listens for global event 'open-signin-modal'.
+ * Header listens for open-signin-modal events and forwards prefillEmail (if provided)
+ * in the event detail down to SignInModal.
  */
+
 export default function Header() {
   const [showSignIn, setShowSignIn] = useState(false);
+  const [prefillEmail, setPrefillEmail] = useState('');
 
   useEffect(() => {
-    function onOpen() { setShowSignIn(true); }
+    function onOpen(e) {
+      const detail = e && e.detail;
+      const pref = detail && detail.prefillEmail ? String(detail.prefillEmail) : '';
+      setPrefillEmail(pref || (window.__nh_prefill_email || ''));
+      setShowSignIn(true);
+    }
     window.addEventListener('open-signin-modal', onOpen);
     return () => window.removeEventListener('open-signin-modal', onOpen);
   }, []);
@@ -34,7 +42,7 @@ export default function Header() {
         </div>
       </header>
 
-      <SignInModal open={showSignIn} onClose={() => setShowSignIn(false)} />
+      <SignInModal open={showSignIn} onClose={() => setShowSignIn(false)} prefillEmail={prefillEmail} />
     </>
   );
 }
