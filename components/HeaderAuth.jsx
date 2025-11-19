@@ -17,7 +17,7 @@ export default function HeaderAuth() {
   if (!session) {
     return (
       <>
-        <button onClick={() => (window.location.href = '/signin')} className="btn">Sign in</button>
+        <button onClick={() => (window.dispatchEvent(new CustomEvent('open-signin-modal')))} className="btn">Sign in</button>
         <button onClick={() => (window.location.href = '/signup')} className="btn btn-primary">Sign up</button>
       </>
     );
@@ -26,7 +26,7 @@ export default function HeaderAuth() {
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       <div>{session.email}</div>
-      <button onClick={() => signOut()} className="btn">Sign out</button>
+      <button onClick={() => { signOut(); }} className="btn">Sign out</button>
     </div>
   );
 }
