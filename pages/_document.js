@@ -12,12 +12,12 @@ export default function Document() {
                 if (typeof window !== 'undefined' && window.localStorage) {
                   try {
                     var cur = localStorage.getItem('nh_model');
-                    // If not set or legacy Grok, default to Copilot
+                    // Default to Copilot and migrate legacy Grok
                     if (!cur || cur === 'Grok') {
                       localStorage.setItem('nh_model', 'Copilot');
                     }
                   } catch (e) {
-                    // ignore localStorage errors in restricted environments
+                    // ignore localStorage permission errors
                   }
                 }
               } catch (e) {}
