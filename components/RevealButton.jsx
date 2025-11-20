@@ -99,7 +99,7 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
         border: '1px solid #ddd',
         background: loading ? '#f3f4f6' : '#fff',
         cursor: 'pointer'
-      }}>
+      }} aria-label="Reveal full email">
         {loading ? 'Revealing…' : 'Reveal Full Email'}
       </button>
       {error && <div style={{ color: 'crimson', marginTop: 6 }}>{error}</div>}
