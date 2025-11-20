@@ -1,6 +1,10 @@
 // pages/api/find-emails.js
-// Uses global fetch (Node 18+). No node-fetch required.
-// Returns Hunter domain-search results normalized. Caches per-function-instance.
+// Hunter domain search + optional authenticated usage increment and usage return
+// Uses global fetch. Requires HUNTER_API_KEY for Hunter lookups.
+// This version will increment searches for an authenticated user and return updated usage.
+
+const { getUserBySession } = require('../../lib/session');
+const { incrementUsage, getUsageForUser } = require('../../lib/user-store');
 
 const HUNTER_KEY = process.env.HUNTER_API_KEY || '';
 const CACHE = new Map();
@@ -42,21 +46,63 @@ function normalizeHunterItems(json) {
   }
 }
 
+function extractSessionToken(req) {
+  const header = req.headers && (req.headers['x-nh-session'] || req.headers['x-nh-session'.toLowerCase()]);
+  if (header) return (typeof header === 'string') ? header : String(header);
+  const cookie = req.headers && req.headers.cookie ? req.headers.cookie : '';
+  const m = cookie.match(/nh_session=([^;]+)/);
+  return m ? m[1] : '';
+}
+
 export default async function handler(req, res) {
   const domain = String((req.query && req.query.domain) || '').trim();
   if (!domain) return res.status(400).json({ ok: false, error: 'Missing domain' });
 
   const key = `hunter:${domain}`;
   const cached = cacheGet(key);
-  if (cached) return res.status(200).json({ ok: true, items: cached.items, total: cached.total });
+  if (cached) {
+    // If cached and user is authenticated we still want to return usage (so client updates)
+    try {
+      const session = extractSessionToken(req);
+      if (session) {
+        const payload = getUserBySession(session);
+        if (payload && payload.sub) {
+          // increment searches for authenticated user (best-effort, no-throw)
+          await incrementUsage(payload.sub, { searches: 1 });
+          const usage = await getUsageForUser(payload.sub);
+          return res.status(200).json({ ok: true, items: cached.items, total: cached.total, usage });
+        }
+      }
+    } catch (e) { /* ignore usage increment failures for cache hits */ }
+    return res.status(200).json({ ok: true, items: cached.items, total: cached.total });
+  }
 
   if (!HUNTER_KEY) return res.status(500).json({ ok: false, error: 'HUNTER_API_KEY missing in env' });
 
   try {
+    // call Hunter
     const json = await callHunterDomainSearch(domain);
     const items = normalizeHunterItems(json);
     const total = items.length;
     cacheSet(key, { items, total });
+
+    // If user authenticated, increment usage and include it in response
+    const session = extractSessionToken(req);
+    if (session) {
+      try {
+        const payload = getUserBySession(session);
+        if (payload && payload.sub) {
+          const usage = await incrementUsage(payload.sub, { searches: 1 });
+          return res.status(200).json({ ok: true, items, total, usage });
+        }
+      } catch (e) {
+        console.error('find-emails increment usage error', e && (e.message || e));
+        // fallback to returning results without usage
+        return res.status(200).json({ ok: true, items, total });
+      }
+    }
+
+    // unauthenticated response (no usage)
     return res.status(200).json({ ok: true, items, total });
   } catch (err) {
     console.error('find-emails hunter error', err && err.message);
