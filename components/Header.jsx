@@ -6,8 +6,8 @@ import { useEffect, useState } from 'react';
 import SignInModal from './SignInModal';
 
 /**
- * Neutral header: use simple text logo with smaller accent color (less teal).
- * If you have an older logo, upload public/logo-old.svg and switch the img src accordingly.
+ * Simple text-only header: show a bold NovaHunt wordmark (no logo image).
+ * Keeps the same nav and auth area.
  */
 
 export default function Header() {
@@ -28,18 +28,18 @@ export default function Header() {
   return (
     <>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid #e6e6e6', background: '#ffffff' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <Link href="/">
-            <a style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: '#111' }}>
-              {/* Prefer using a neutral monochrome logo or plain text */}
-              <img src="/logo.svg" alt="NovaHunt" style={{ height: 28, filter: 'grayscale(20%)' }} onError={(e)=>{ e.currentTarget.src='/favicon.svg'; }} />
-              <strong style={{ color: '#111', fontWeight: 800, letterSpacing: '-0.2px' }}>NovaHunt</strong>
+            <a aria-label="NovaHunt home" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: '#111' }}>
+              {/* Text-only wordmark */}
+              <span style={{ fontSize: 20, fontWeight: 800, color: '#111', letterSpacing: '-0.2px' }}>NovaHunt</span>
             </a>
           </Link>
-          <nav>
-            <Link href="/"><a style={{ marginLeft: 12, color: '#374151', textDecoration: 'none' }}>Home</a></Link>
-            <Link href="/plans"><a style={{ marginLeft: 12, color: '#374151', textDecoration: 'none' }}>Plans</a></Link>
-            <Link href="/about"><a style={{ marginLeft: 12, color: '#374151', textDecoration: 'none' }}>About</a></Link>
+
+          <nav style={{ display: 'flex', gap: 12 }}>
+            <Link href="/"><a style={{ color: '#374151', textDecoration: 'none' }}>Home</a></Link>
+            <Link href="/plans"><a style={{ color: '#374151', textDecoration: 'none' }}>Plans</a></Link>
+            <Link href="/about"><a style={{ color: '#374151', textDecoration: 'none' }}>About</a></Link>
           </nav>
         </div>
 
