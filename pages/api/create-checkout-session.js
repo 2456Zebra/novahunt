@@ -1,74 +1,65 @@
-// Create a Stripe Checkout session. Expects POST { priceId } and header x-nh-session containing the nh_session string.
-// Returns { url } to redirect the browser to Stripe Checkout.
-import Stripe from 'stripe';
-import { getKV } from './_kv-wrapper';
-const kv = getKV();
+// pages/api/create-checkout-session.js
+// Creates a Stripe Checkout session for the requested plan and returns the hosted session URL.
+// Uses server-side PRICE_ID_* env vars and STRIPE_SECRET_KEY.
 
-// Use default Stripe initialization without explicit apiVersion to avoid mismatch issues.
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+const querystring = require('querystring');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).end('Method Not Allowed');
+    return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
 
   try {
-    const { priceId } = req.body || {};
-    const successEnv = process.env.SUCCESS_URL || 'https://www.novahunt.ai/checkout-success';
-    const cancelEnv = process.env.CANCEL_URL || 'https://www.novahunt.ai/checkout-cancel';
+    const { plan } = req.body || {};
+    if (!plan) return res.status(400).json({ ok: false, error: 'Missing plan' });
 
-    if (!priceId) return res.status(400).json({ error: 'priceId required in request body' });
-    if (!process.env.STRIPE_SECRET_KEY) return res.status(500).json({ error: 'STRIPE_SECRET_KEY not configured' });
+    const stripeKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET;
+    if (!stripeKey) return res.status(500).json({ ok: false, error: 'Stripe secret key not configured' });
 
-    // Ensure the success_url contains the Stripe placeholder so Stripe appends the session id on redirect
-    let successUrl = successEnv;
-    if (!successUrl.includes('{CHECKOUT_SESSION_ID}')) {
-      // Add the placeholder safely (handle existing querystring)
-      const sep = successUrl.includes('?') ? '&' : '?';
-      successUrl = `${successUrl}${sep}session_id={CHECKOUT_SESSION_ID}`;
-    }
+    // Map plan -> PRICE_ID env var. Use server-side PRICE_ID_* variables.
+    const prices = {
+      starter: process.env.PRICE_ID_STARTER_MONTHLY || process.env.NEXT_PUBLIC_PRICE_ID_STARTER_MONTHLY,
+      pro: process.env.PRICE_ID_PRO_MONTHLY || process.env.NEXT_PUBLIC_PRICE_ID_PRO_MONTHLY,
+      team: process.env.PRICE_ID_TEAM_MONTHLY || process.env.NEXT_PUBLIC_PRICE_ID_TEAM_MONTHLY
+    };
 
-    const cancelUrl = cancelEnv;
+    const price = prices[plan];
+    if (!price) return res.status(400).json({ ok: false, error: 'Unknown plan' });
 
-    // Determine email from local session header (the client sends nh_session JSON string as header)
-    let sessionHeader = req.headers['x-nh-session'] || null;
-    let email = null;
-    if (sessionHeader) {
-      try {
-        const parsed = JSON.parse(sessionHeader);
-        email = parsed?.email || null;
-      } catch (e) {
-        if (typeof sessionHeader === 'string' && sessionHeader.includes('@')) email = sessionHeader;
-      }
-    }
+    // success/cancel urls from env (fall back to site root)
+    const successUrl = (process.env.SUCCESS_URL || process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || '';
+    const cancelUrl = (process.env.CANCEL_URL || process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || '';
 
-    const session = await stripe.checkout.sessions.create({
+    // Build Stripe Checkout Session via HTTP API (no stripe package required)
+    const body = {
       mode: 'subscription',
-      payment_method_types: ['card'],
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      allow_promotion_codes: true,
-      customer_email: email || undefined,
-      metadata: {
-        nh_session: sessionHeader || '',
+      success_url: successUrl || `${req.headers.origin || ''}/?checkout=success`,
+      cancel_url: cancelUrl || `${req.headers.origin || ''}/?checkout=cancel`,
+      'line_items[0][price]': price,
+      'line_items[0][quantity]': 1,
+      allow_promotion_codes: true
+    };
+
+    const resp = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${stripeKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
+      body: querystring.stringify(body)
     });
 
-    try {
-      if (kv && email) {
-        // save a short-lived mapping to help correlate checkout -> email if needed
-        await kv.set(`stripe:checkout:${session.id}`, { email, created_at: new Date().toISOString() }, { ex: 60 * 60 * 6 });
-      }
-    } catch (e) {
-      console.warn('KV write error (checkout mapping)', e?.message || e);
+    const data = await resp.json();
+    if (!resp.ok) {
+      console.error('create-checkout-session failed', { status: resp.status, body: data });
+      return res.status(500).json({ ok: false, error: 'Could not create checkout session' });
     }
 
-    return res.status(200).json({ url: session.url });
+    // Stripe returns session.url (hosted page). Return it to the client.
+    return res.status(200).json({ ok: true, url: data.url, sessionId: data.id });
   } catch (err) {
-    console.error('create-checkout-session error', err?.message || err);
-    // Surface Stripe error text where available
-    return res.status(500).json({ error: err?.message || 'Server error' });
+    console.error('create-checkout-session error', err && err.message ? err.message : err);
+    return res.status(500).json({ ok: false, error: 'Server error' });
   }
 }
