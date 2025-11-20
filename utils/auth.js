@@ -15,7 +15,6 @@ export async function signIn({ email, password }) {
   if (body.session && body.session.token) {
     try {
       localStorage.setItem('nh_session', JSON.stringify({ token: body.session.token, email: body.email }));
-      // if server returned usage, persist it; otherwise use default
       const serverUsage = body.usage || null;
       localStorage.setItem('nh_usage', JSON.stringify(serverUsage || DEFAULT_USAGE));
       window.dispatchEvent(new CustomEvent('account-usage-updated'));
@@ -49,7 +48,6 @@ export function signOut() {
   try {
     localStorage.removeItem('nh_session');
     localStorage.removeItem('nh_usage');
-    // call API to clear server cookie, but don't force a full page reload
     fetch('/api/signout', { method: 'POST' }).catch(() => {});
     window.dispatchEvent(new CustomEvent('account-usage-updated'));
   } catch (e) {}
