@@ -1,5 +1,5 @@
 // pages/api/signin.js
-const { getUserByEmail, verifyPasswordForUser } = require('../../lib/user-store');
+const { getUserByEmail, verifyPasswordForUser, getUsageForUser } = require('../../lib/user-store');
 const { createSessionForUser } = require('../../lib/session');
 
 export default async function handler(req, res) {
@@ -26,7 +26,9 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', cookie);
     }
 
-    return res.status(200).json({ ok: true, email: user.email, session: session || null });
+    const usage = await getUsageForUser(user.id);
+
+    return res.status(200).json({ ok: true, email: user.email, session: session || null, usage });
   } catch (err) {
     console.error('signin error', err?.message || err);
     return res.status(500).json({ ok: false, error: 'Server error' });
