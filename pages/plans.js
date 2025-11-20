@@ -27,7 +27,7 @@ export default function PlansPage() {
   }
 
   return (
-    <main style={{ maxWidth: 980, margin: '48px auto', padding: '0 16px' }}>
+    <main style={{ maxWidth: 980, margin: '48px auto', padding: '0 16px', paddingBottom: 64 }}>
       <h1>Plans & Pricing</h1>
       <p style={{ color: '#374151', marginTop: 8 }}>
         Try NovaHunt free, then upgrade for higher monthly quotas and faster results.
@@ -53,7 +53,10 @@ export default function PlansPage() {
           </div>
         </div>
 
-        <div style={{ border: '2px solid #f97316', padding: 16, borderRadius: 8, background: '#fffaf0' }}>
+        <div style={{ border: '2px solid #f97316', padding: 16, borderRadius: 8, background: '#fffaf0', position: 'relative' }}>
+          <div style={{ position: 'absolute', right: 12, top: 12, background: '#f97316', color: '#fff', padding: '6px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
+            Most Popular
+          </div>
           <h3 style={{ marginTop: 0 }}>Pro</h3>
           <div style={{ fontSize: 24, fontWeight: 800 }}>$49.99/mo</div>
           <p style={{ marginTop: 8 }}>1,000 searches / 500 reveals per month</p>
