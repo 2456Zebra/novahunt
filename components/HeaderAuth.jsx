@@ -9,7 +9,7 @@ import { signOut, getLocalSession } from '../utils/auth';
  *
  * Usage is read from localStorage key 'nh_usage' if present:
  * { searchesUsed, searchesTotal, revealsUsed, revealsTotal }
- * fallback demo: 2/5 searches, 1/2 reveals
+ * Default: zeros for a fresh account until the server authoritatively provides values.
  */
 
 function ProgressBar({ used = 0, total = 1 }) {
@@ -26,12 +26,21 @@ export default function HeaderAuth() {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
+  // usage defaults to zeros for a fresh account
+  const [usage, setUsage] = useState({ searchesUsed: 0, searchesTotal: 5, revealsUsed: 0, revealsTotal: 2 });
+
   useEffect(() => {
-    function update() {
+    function updateSession() {
       setSession(getLocalSession());
     }
-    window.addEventListener('account-usage-updated', update);
-    return () => window.removeEventListener('account-usage-updated', update);
+    window.addEventListener('account-usage-updated', onUsageUpdated);
+    window.addEventListener('account-usage-updated', updateSession);
+    window.addEventListener('nh-signed-in', updateSession);
+    return () => {
+      window.removeEventListener('account-usage-updated', onUsageUpdated);
+      window.removeEventListener('account-usage-updated', updateSession);
+      window.removeEventListener('nh-signed-in', updateSession);
+    };
   }, []);
 
   useEffect(() => {
@@ -43,6 +52,19 @@ export default function HeaderAuth() {
     return () => document.removeEventListener('click', onDoc);
   }, []);
 
+  // read usage from localStorage when this component mounts or when account-usage-updated fires
+  function onUsageUpdated() {
+    try {
+      const raw = localStorage.getItem('nh_usage');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setUsage(u => ({ ...u, ...parsed }));
+        return;
+      }
+    } catch (e) { /* ignore parse errors */ }
+    // fallback remains current usage state (initial zeros)
+  }
+
   if (!session) {
     return (
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -51,16 +73,6 @@ export default function HeaderAuth() {
       </div>
     );
   }
-
-  // get usage from localStorage (fallback demo)
-  let usage = { searchesUsed: 2, searchesTotal: 5, revealsUsed: 1, revealsTotal: 2 };
-  try {
-    const raw = localStorage.getItem('nh_usage');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      usage = { ...usage, ...parsed };
-    }
-  } catch (e) {}
 
   return (
     <div style={{ position: 'relative' }} ref={menuRef}>
