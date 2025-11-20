@@ -74,13 +74,11 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
       const session = getLocalSession();
       if (!session) {
         try {
+          // store pending reveal; when user completes sign-in the nh-signed-in handler will retry
           window.__nh_pending_reveal = { contactId, payload };
-          const prefill = (payload && payload.email) ? String(payload.email) : '';
-          try {
-            window.dispatchEvent(new CustomEvent('open-signin-modal', { detail: { prefillEmail: prefill } }));
-          } catch (e) {
-            window.dispatchEvent(new CustomEvent('open-signin-modal'));
-          }
+          // Do NOT prefill the sign-in email with the revealed name/email.
+          // This avoids the behavior where the revealed name is inserted into the email input.
+          window.dispatchEvent(new CustomEvent('open-signin-modal'));
         } catch (e) {}
         setLoading(false);
         return;
