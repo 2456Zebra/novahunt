@@ -4,7 +4,7 @@ const { getUserBySession } = require('../../lib/session');
 const { incrementUsage } = require('../../lib/user-store');
 
 async function extractSessionToken(req) {
-  const header = (req.headers && (req.headers['x-nh-session'] || req.headers['x-nh-session'.toLowerCase()])) || '';
+  const header = (req.headers && req.headers['x-nh-session']) || '';
   if (header) return (typeof header === 'string') ? header : String(header);
   // fallback to cookie header parse (minimal)
   const cookie = req.headers.cookie || '';

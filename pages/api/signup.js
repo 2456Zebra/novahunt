@@ -17,12 +17,13 @@ export default async function handler(req, res) {
 
     const user = await createUser({ email: normalized, password });
     const session = createSessionForUser(user.id);
-    const usage = await getUsageForUser(user.id);
 
     if (session && session.token) {
       const cookie = `nh_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
       res.setHeader('Set-Cookie', cookie);
     }
+
+    const usage = await getUsageForUser(user.id);
 
     return res.status(201).json({ ok: true, email: user.email, session: session || null, usage });
   } catch (err) {

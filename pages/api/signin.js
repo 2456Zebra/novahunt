@@ -20,12 +20,13 @@ export default async function handler(req, res) {
     if (!valid) return res.status(401).json({ ok: false, error: 'Invalid credentials' });
 
     const session = createSessionForUser(user.id);
-    const usage = await getUsageForUser(user.id);
 
     if (session && session.token) {
       const cookie = `nh_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
       res.setHeader('Set-Cookie', cookie);
     }
+
+    const usage = await getUsageForUser(user.id);
 
     return res.status(200).json({ ok: true, email: user.email, session: session || null, usage });
   } catch (err) {

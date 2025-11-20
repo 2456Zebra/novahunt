@@ -5,7 +5,7 @@ const { incrementUsage, getUsageForUser } = require('../../lib/user-store');
 // This file assumes other reveal logic below; the important part is session extraction and check.
 // Replace or merge into your existing reveal handler. Here we show how to extract/verify session:
 async function extractSessionToken(req) {
-  const header = (req.headers && (req.headers['x-nh-session'] || req.headers['x-nh-session'.toLowerCase()])) || '';
+  const header = (req.headers && req.headers['x-nh-session']) || '';
   if (header) return (typeof header === 'string') ? header : String(header);
   // fallback to cookie header parse (minimal)
   const cookie = req.headers.cookie || '';
