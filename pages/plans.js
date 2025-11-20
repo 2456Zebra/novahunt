@@ -27,7 +27,7 @@ export default function PlansPage() {
         <div style={{ border: '1px solid #e6e6e6', padding: 16, borderRadius: 8 }}>
           <h3 style={{ marginTop: 0 }}>Pro</h3>
           <div style={{ fontSize: 24, fontWeight: 800 }}>$49.99/mo</div>
-          <p style={{ marginTop: 8 }}>Pro — 200 searches / 100 reveals. Includes Discover Leads (AI) feature.</p>
+          <p style={{ marginTop: 8 }}>Pro — 200 searches / 100 reveals</p>
           <div style={{ marginTop: 12 }}>
             <a href="/checkout?plan=pro" style={{ padding: '8px 12px', background: '#f97316', color: '#fff', borderRadius: 6, textDecoration: 'none' }}>Choose Pro</a>
           </div>
@@ -36,7 +36,7 @@ export default function PlansPage() {
         <div style={{ border: '1px solid #e6e6e6', padding: 16, borderRadius: 8 }}>
           <h3 style={{ marginTop: 0 }}>Team</h3>
           <div style={{ fontSize: 24, fontWeight: 800 }}>$199/mo</div>
-          <p style={{ marginTop: 8 }}>Team — priority support and shared quotas (custom limits). Includes Discover Leads (AI) and bulk processing.</p>
+          <p style={{ marginTop: 8 }}>Team — priority support and shared quotas (custom limits).</p>
           <div style={{ marginTop: 12 }}>
             <a href="/contact-sales" style={{ padding: '8px 12px', background: '#111827', color: '#fff', borderRadius: 6, textDecoration: 'none' }}>Contact Sales</a>
           </div>
@@ -46,7 +46,7 @@ export default function PlansPage() {
       <section style={{ marginTop: 24, color: '#6b7280' }}>
         <h3>Need more?</h3>
         <p>
-          If you need higher limits or custom enterprise plans, contact us and we’ll help you set up volume pricing. Discover Leads (AI) is available on Pro and Team plans.
+          If you need higher limits or custom enterprise plans, contact us and we’ll help you set up volume pricing.
         </p>
       </section>
     </main>
