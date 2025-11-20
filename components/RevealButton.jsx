@@ -4,10 +4,20 @@ import { useEffect, useState } from 'react';
 import { getLocalSession } from '../utils/auth';
 
 /**
- * RevealButton (updated)
- * - On successful reveal, increment nh_usage.revealsUsed in localStorage and dispatch account-usage-updated
- * - If anonymous, opens modal with prefill and records pending reveal
+ * RevealButton
+ * - If user is not signed in, opens SignIn modal and records a pending reveal.
+ * - When the user signs in (nh-signed-in event), an automatic retry is attempted.
+ * - Uses getLocalSession() to find token (session.token).
+ * - If API responds with usage, persist it to localStorage (nh_usage).
  */
+
+function persistServerUsage(usage) {
+  try {
+    if (!usage) return;
+    localStorage.setItem('nh_usage', JSON.stringify(usage));
+    window.dispatchEvent(new CustomEvent('account-usage-updated'));
+  } catch (e) {}
+}
 
 export default function RevealButton({ contactId, payload, onRevealed }) {
   const [loading, setLoading] = useState(false);
@@ -27,22 +37,12 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
     return () => window.removeEventListener('nh-signed-in', onSignedIn);
   }, [contactId]);
 
-  function updateLocalUsageAfterReveal() {
-    try {
-      const raw = localStorage.getItem('nh_usage');
-      const current = raw ? JSON.parse(raw) : { searchesUsed: 0, searchesTotal: 5, revealsUsed: 0, revealsTotal: 2 };
-      const next = { ...current, revealsUsed: Math.min(current.revealsTotal, (current.revealsUsed || 0) + 1) };
-      localStorage.setItem('nh_usage', JSON.stringify(next));
-      window.dispatchEvent(new CustomEvent('account-usage-updated'));
-    } catch (e) {}
-  }
-
   async function doRevealInternal(cid, pl) {
     setLoading(true);
     setError('');
     try {
       const session = getLocalSession();
-      const token = session && session.token ? session.token : '';
+      const token = session && session.token ? session.token : (typeof session === 'string' ? session : '');
       const res = await fetch('/api/reveal', {
         method: 'POST',
         headers: {
@@ -56,8 +56,9 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
         setError(json?.error || `Reveal failed (${res.status})`);
       } else {
         onRevealed && onRevealed(json.revealed || {});
-        // update local usage so header & account dropdown reflect the reveal
-        updateLocalUsageAfterReveal();
+        // persist server usage if provided
+        if (json.usage) persistServerUsage(json.usage);
+        try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) {}
       }
     } catch (e) {
       setError(String(e?.message || e));
@@ -84,6 +85,7 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
         setLoading(false);
         return;
       }
+
       await doRevealInternal(contactId, payload);
     } catch (e) {
       setError(String(e?.message || e));
