@@ -1,5 +1,5 @@
 // pages/api/signup.js
-const { createUser, getUserByEmail } = require('../../lib/user-store');
+const { createUser, getUserByEmail, getUsageForUser } = require('../../lib/user-store');
 const { createSessionForUser } = require('../../lib/session');
 
 export default async function handler(req, res) {
@@ -23,7 +23,9 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', cookie);
     }
 
-    return res.status(201).json({ ok: true, email: user.email, session: session || null });
+    const usage = await getUsageForUser(user.id);
+
+    return res.status(201).json({ ok: true, email: user.email, session: session || null, usage });
   } catch (err) {
     console.error('signup error', err?.message || err);
     return res.status(500).json({ ok: false, error: 'Server error' });
