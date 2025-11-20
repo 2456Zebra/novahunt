@@ -5,9 +5,8 @@ import RevealButton from './RevealButton';
 
 /**
  * SearchClient — Hunt Emails only.
- * - Discover (AI) option removed/disabled to avoid unplanned LLM costs.
+ * - All Discover/AI UI removed to avoid LLM usage/costs.
  * - Keeps Hunter-backed domain search via /api/find-emails.
- * - Shows a clear "Discover (Coming soon)" CTA that links to /plans.
  */
 
 function SignInHintInline() {
@@ -133,10 +132,6 @@ export default function SearchClient() {
         <button type="submit" disabled={loading} style={{ padding: '.5rem 1rem', borderRadius: 8, background: '#007bff', color: '#fff', border: 'none' }}>
           {loading ? 'Searching…' : 'Hunt Emails'}
         </button>
-
-        <div style={{ marginLeft: 8 }}>
-          <a href="/plans" style={{ color: '#f97316', textDecoration: 'none', fontWeight: 700 }}>Discover (Coming soon)</a>
-        </div>
       </form>
 
       {error && <div style={{ color: 'crimson', marginTop: 12 }}>{error}</div>}
@@ -177,7 +172,7 @@ export default function SearchClient() {
               if (session) {
                 setShowAll(true);
               } else {
-                window.location.href = '/plans';
+                window.location.href = '/signup';
               }
             }} style={{ padding: '.5rem .75rem', borderRadius: 6, background: '#007bff', color: '#fff', border: 'none' }}>
               {localStorage.getItem && localStorage.getItem('nh_session') ? `Show ${results.length - 3} more` : `Upgrade to see all ${totalCount || results.length}`}
