@@ -4,7 +4,7 @@ export default function AboutPage() {
       <h1>About NovaHunt</h1>
 
       <p style={{ color: '#374151' }}>
-        NovaHunt helps creators and small teams find contact emails so you can turn likes into leads.
+        NovaHunt helps creators and individuals find contact emails so you can turn interest into opportunities.
         Whether you’re an influencer, a model, an actor, or a freelancer on Instagram, we make it easy to
         find the right person to pitch — casting directors, agency reps, or the next brand that needs you.
       </p>
@@ -19,12 +19,12 @@ export default function AboutPage() {
       <ul style={{ color: '#374151' }}>
         <li>Enter a website (like example.com) to find public contact emails</li>
         <li>See confidence scores and sources (LinkedIn, public pages)</li>
-        <li>Reveal full emails inline — no extra forms or contact pages</li>
+        <li>Reveal full emails inline — no extra forms</li>
       </ul>
 
-      <h3 style={{ marginTop: 20 }}>No contact forms</h3>
+      <h3 style={{ marginTop: 20 }}>Contact</h3>
       <p style={{ color: '#374151' }}>
-        We do not use a “Contact Us” form. If you need help or billing questions, email support@novahunt.ai.
+        For issues or billing questions, email support@novahunt.ai.
       </p>
 
       <div style={{ height: 48 }} />
