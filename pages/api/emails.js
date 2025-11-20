@@ -1,5 +1,7 @@
 // pages/api/emails.js
 import { createClient } from '@upstash/redis';
+const { getUserBySession } = require('../../lib/session');
+const { incrementUsage } = require('../../lib/user-store');
 
 const redis = createClient({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -7,6 +9,15 @@ const redis = createClient({
 });
 
 const HUNTER_API_KEY = process.env.HUNTER_API_KEY;
+
+async function extractSessionToken(req) {
+  const header = (req.headers && (req.headers['x-nh-session'] || req.headers['x-nh-session'.toLowerCase()])) || '';
+  if (header) return (typeof header === 'string') ? header : String(header);
+  // fallback to cookie header parse (minimal)
+  const cookie = req.headers.cookie || '';
+  const m = cookie.match(/nh_session=([^;]+)/);
+  return m ? m[1] : '';
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -23,11 +34,23 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server misconfigured' });
   }
 
+  // Extract session and increment usage if authenticated
+  let usage = null;
+  try {
+    const sessionToken = await extractSessionToken(req);
+    const payload = sessionToken ? getUserBySession(sessionToken) : null;
+    if (payload && payload.sub) {
+      usage = await incrementUsage(payload.sub, { searches: 1 });
+    }
+  } catch (err) {
+    console.warn('Usage tracking error:', err?.message || err);
+  }
+
   // Cache key
   const cacheKey = `hunter:${domain}`;
   const cached = await redis.get(cacheKey);
   if (cached) {
-    return res.json(cached);
+    return res.json({ ...cached, usage });
   }
 
   try {
@@ -62,9 +85,9 @@ export default async function handler(req, res) {
     // Cache for 24h
     await redis.set(cacheKey, result, { ex: 86400 });
 
-    return res.json(result);
+    return res.json({ ...result, usage });
   } catch (err) {
     console.error('Hunter error:', err.message);
-    return res.status(500).json({ error: 'Search failed. Try again.' });
+    return res.status(500).json({ error: 'Search failed. Try again.', usage });
   }
 }

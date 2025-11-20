@@ -27,12 +27,17 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
     return () => window.removeEventListener('nh-signed-in', onSignedIn);
   }, [contactId]);
 
-  function updateLocalUsageAfterReveal() {
+  function updateLocalUsageAfterReveal(serverUsage) {
     try {
-      const raw = localStorage.getItem('nh_usage');
-      const current = raw ? JSON.parse(raw) : { searchesUsed: 0, searchesTotal: 5, revealsUsed: 0, revealsTotal: 2 };
-      const next = { ...current, revealsUsed: Math.min(current.revealsTotal, (current.revealsUsed || 0) + 1) };
-      localStorage.setItem('nh_usage', JSON.stringify(next));
+      // Prefer server usage if provided, otherwise increment local
+      if (serverUsage) {
+        localStorage.setItem('nh_usage', JSON.stringify(serverUsage));
+      } else {
+        const raw = localStorage.getItem('nh_usage');
+        const current = raw ? JSON.parse(raw) : { searchesUsed: 0, searchesTotal: 5, revealsUsed: 0, revealsTotal: 2 };
+        const next = { ...current, revealsUsed: Math.min(current.revealsTotal, (current.revealsUsed || 0) + 1) };
+        localStorage.setItem('nh_usage', JSON.stringify(next));
+      }
       window.dispatchEvent(new CustomEvent('account-usage-updated'));
     } catch (e) {}
   }
@@ -57,7 +62,7 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
       } else {
         onRevealed && onRevealed(json.revealed || {});
         // update local usage so header & account dropdown reflect the reveal
-        updateLocalUsageAfterReveal();
+        updateLocalUsageAfterReveal(json.usage);
       }
     } catch (e) {
       setError(String(e?.message || e));

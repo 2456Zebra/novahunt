@@ -1,5 +1,5 @@
 // pages/api/signin.js
-const { getUserByEmail, verifyPasswordForUser } = require('../../lib/user-store');
+const { getUserByEmail, verifyPasswordForUser, getUsageForUser } = require('../../lib/user-store');
 const { createSessionForUser } = require('../../lib/session');
 
 export default async function handler(req, res) {
@@ -20,13 +20,14 @@ export default async function handler(req, res) {
     if (!valid) return res.status(401).json({ ok: false, error: 'Invalid credentials' });
 
     const session = createSessionForUser(user.id);
+    const usage = await getUsageForUser(user.id);
 
     if (session && session.token) {
       const cookie = `nh_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
       res.setHeader('Set-Cookie', cookie);
     }
 
-    return res.status(200).json({ ok: true, email: user.email, session: session || null });
+    return res.status(200).json({ ok: true, email: user.email, session: session || null, usage });
   } catch (err) {
     console.error('signin error', err?.message || err);
     return res.status(500).json({ ok: false, error: 'Server error' });
