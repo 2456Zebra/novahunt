@@ -2,10 +2,13 @@
 // Returns { url } to redirect the browser to Stripe Checkout.
 import Stripe from 'stripe';
 import { getKV } from './_kv-wrapper';
+const { validateEmail, sanitizeLogData } = require('../../lib/validation');
 const kv = getKV();
 
-// Use default Stripe initialization without explicit apiVersion to avoid mismatch issues.
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+// Initialize Stripe with explicit API version for consistency
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-11-20.acacia' })
+  : null;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,12 +17,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { priceId } = req.body || {};
+    // Validate request body shape
+    if (!req.body || typeof req.body !== 'object') {
+      return res.status(400).json({ error: 'Invalid request body' });
+    }
+
+    const { priceId } = req.body;
     const successEnv = process.env.SUCCESS_URL || 'https://www.novahunt.ai/checkout-success';
     const cancelEnv = process.env.CANCEL_URL || 'https://www.novahunt.ai/checkout-cancel';
 
-    if (!priceId) return res.status(400).json({ error: 'priceId required in request body' });
-    if (!process.env.STRIPE_SECRET_KEY) return res.status(500).json({ error: 'STRIPE_SECRET_KEY not configured' });
+    if (!priceId || typeof priceId !== 'string') {
+      return res.status(400).json({ error: 'priceId required in request body' });
+    }
+
+    if (!process.env.STRIPE_SECRET_KEY || !stripe) {
+      return res.status(500).json({ error: 'STRIPE_SECRET_KEY not configured' });
+    }
 
     // Ensure the success_url contains the Stripe placeholder so Stripe appends the session id on redirect
     let successUrl = successEnv;
@@ -34,12 +47,26 @@ export default async function handler(req, res) {
     // Determine email from local session header (the client sends nh_session JSON string as header)
     let sessionHeader = req.headers['x-nh-session'] || null;
     let email = null;
+    
     if (sessionHeader) {
       try {
         const parsed = JSON.parse(sessionHeader);
         email = parsed?.email || null;
       } catch (e) {
-        if (typeof sessionHeader === 'string' && sessionHeader.includes('@')) email = sessionHeader;
+        if (typeof sessionHeader === 'string' && sessionHeader.includes('@')) {
+          email = sessionHeader;
+        }
+      }
+    }
+
+    // Validate email if provided
+    if (email) {
+      const emailValidation = validateEmail(email);
+      if (!emailValidation.valid) {
+        // Don't fail the request, just clear the invalid email
+        email = null;
+      } else {
+        email = emailValidation.normalized;
       }
     }
 
@@ -67,7 +94,11 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ url: session.url });
   } catch (err) {
-    console.error('create-checkout-session error', err?.message || err);
+    const sanitized = sanitizeLogData('create-checkout-session error', { 
+      priceId: req.body?.priceId,
+      error: err?.message 
+    });
+    console.error(sanitized);
     // Surface Stripe error text where available
     return res.status(500).json({ error: err?.message || 'Server error' });
   }
