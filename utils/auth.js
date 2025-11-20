@@ -1,5 +1,8 @@
 // utils/auth.js — client helpers to call the auth endpoints and manage local session
 // Keep the shape: localStorage item 'nh_session' === JSON.stringify({ token, email })
+// and localStorage 'nh_usage' === JSON.stringify({ searchesUsed, searchesTotal, revealsUsed, revealsTotal })
+
+const DEFAULT_USAGE = { searchesUsed: 0, searchesTotal: 5, revealsUsed: 0, revealsTotal: 2 };
 
 export async function signIn({ email, password }) {
   const res = await fetch('/api/signin', {
@@ -12,6 +15,9 @@ export async function signIn({ email, password }) {
   if (body.session && body.session.token) {
     try {
       localStorage.setItem('nh_session', JSON.stringify({ token: body.session.token, email: body.email }));
+      // if server returned usage, persist it; otherwise use default
+      const serverUsage = body.usage || null;
+      localStorage.setItem('nh_usage', JSON.stringify(serverUsage || DEFAULT_USAGE));
       window.dispatchEvent(new CustomEvent('account-usage-updated'));
       try { window.dispatchEvent(new CustomEvent('nh-signed-in')); } catch (e) {}
     } catch (e) {}
@@ -30,6 +36,8 @@ export async function signUp({ email, password }) {
   if (body.session && body.session.token) {
     try {
       localStorage.setItem('nh_session', JSON.stringify({ token: body.session.token, email: body.email }));
+      const serverUsage = body.usage || null;
+      localStorage.setItem('nh_usage', JSON.stringify(serverUsage || DEFAULT_USAGE));
       window.dispatchEvent(new CustomEvent('account-usage-updated'));
       try { window.dispatchEvent(new CustomEvent('nh-signed-in')); } catch (e) {}
     } catch (e) {}
@@ -40,6 +48,7 @@ export async function signUp({ email, password }) {
 export function signOut() {
   try {
     localStorage.removeItem('nh_session');
+    localStorage.removeItem('nh_usage');
     // call API to clear server cookie, but don't force a full page reload
     fetch('/api/signout', { method: 'POST' }).catch(() => {});
     window.dispatchEvent(new CustomEvent('account-usage-updated'));
