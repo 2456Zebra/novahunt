@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     // Don't leak password hashes unless you explicitly need them - we will show them only if DEBUG_SHOW_HASHES env var is true
     const showHashes = !!process.env.DEBUG_SHOW_HASHES;
     const users = (parsed.users || []).map(u => {
-      return showHashes ? u : { id: u.id, email: u.email, createdAt: u.createdAt, metadata: u.metadata || {} };
+      return showHashes ? u : { id: u.id, email: u.email, createdAt: u.createdAt, metadata: u.metadata || {}, usage: u.usage || null };
     });
     return res.status(200).json({ ok: true, users, storePath: STORE_PATH });
   } catch (err) {

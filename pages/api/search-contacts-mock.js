@@ -1,12 +1,36 @@
 // Mock search endpoint for local/testing UI (does NOT call Hunter).
 // Use this temporarily while we verify the real API key.
-export default function handler(req, res) {
+const { getUserBySession } = require('../../lib/session');
+const { incrementUsage } = require('../../lib/user-store');
+
+async function extractSessionToken(req) {
+  const header = (req.headers && (req.headers['x-nh-session'] || req.headers['x-nh-session'.toLowerCase()])) || '';
+  if (header) return (typeof header === 'string') ? header : String(header);
+  // fallback to cookie header parse (minimal)
+  const cookie = req.headers.cookie || '';
+  const m = cookie.match(/nh_session=([^;]+)/);
+  return m ? m[1] : '';
+}
+
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).end('Method Not Allowed');
   }
   const { domain } = req.body || {};
   if (!domain) return res.status(400).json({ error: 'domain required' });
+
+  // Extract session and increment usage if authenticated
+  let usage = null;
+  try {
+    const sessionToken = await extractSessionToken(req);
+    const payload = sessionToken ? getUserBySession(sessionToken) : null;
+    if (payload && payload.sub) {
+      usage = await incrementUsage(payload.sub, { searches: 1 });
+    }
+  } catch (err) {
+    console.warn('Usage tracking error:', err?.message || err);
+  }
 
   // Simple deterministic mock for testing
   const sample = {
@@ -42,5 +66,5 @@ export default function handler(req, res) {
     }
   };
 
-  return res.status(200).json(sample);
+  return res.status(200).json({ ...sample, usage });
 }

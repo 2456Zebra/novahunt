@@ -3,10 +3,17 @@ import { createClient } from '@upstash/redis';
 const { getUserBySession } = require('../../lib/session');
 const { incrementUsage } = require('../../lib/user-store');
 
-const redis = createClient({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+let redis;
+try {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    redis = createClient({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+} catch (e) {
+  console.warn('Redis initialization failed:', e?.message || e);
+}
 
 const HUNTER_API_KEY = process.env.HUNTER_API_KEY;
 
@@ -48,9 +55,11 @@ export default async function handler(req, res) {
 
   // Cache key
   const cacheKey = `hunter:${domain}`;
-  const cached = await redis.get(cacheKey);
-  if (cached) {
-    return res.json({ ...cached, usage });
+  if (redis) {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return res.json({ ...cached, usage });
+    }
   }
 
   try {
@@ -83,7 +92,9 @@ export default async function handler(req, res) {
     const result = { results, total: results.length };
 
     // Cache for 24h
-    await redis.set(cacheKey, result, { ex: 86400 });
+    if (redis) {
+      await redis.set(cacheKey, result, { ex: 86400 });
+    }
 
     return res.json({ ...result, usage });
   } catch (err) {
