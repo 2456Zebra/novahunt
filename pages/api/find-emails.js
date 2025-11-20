@@ -1,10 +1,8 @@
-// Server-side Hunter.io integration for domain search
-// Requires HUNTER_API_KEY in env vars: process.env.HUNTER_API_KEY
-// Example call: GET /api/find-emails?domain=example.com
-const fetch = require('node-fetch');
+// pages/api/find-emails.js
+// Uses global fetch (Node 18+). No node-fetch required.
+// Returns Hunter domain-search results normalized. Caches per-function-instance.
 
 const HUNTER_KEY = process.env.HUNTER_API_KEY || '';
-// Simple in-memory cache for the current function instance
 const CACHE = new Map();
 const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
 
@@ -19,11 +17,10 @@ function cacheGet(key) {
 }
 
 async function callHunterDomainSearch(domain) {
-  // Hunter API v2 Domain Search
   const url = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&api_key=${encodeURIComponent(HUNTER_KEY)}`;
-  const res = await fetch(url, { method: 'GET' });
+  const res = await global.fetch(url, { method: 'GET' });
   if (!res.ok) {
-    const text = await res.text().catch(()=>'');
+    const text = await res.text().catch(() => '');
     throw new Error(`Hunter domain-search failed ${res.status}: ${text}`);
   }
   const json = await res.json();
@@ -31,7 +28,6 @@ async function callHunterDomainSearch(domain) {
 }
 
 function normalizeHunterItems(json) {
-  // hunter returns data.emails[] with value, confidence, first_name, last_name, position, source, etc.
   try {
     const emails = (json && json.data && json.data.emails) ? json.data.emails : [];
     return emails.map(e => ({
