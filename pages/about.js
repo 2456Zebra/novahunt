@@ -1,30 +1,33 @@
 export default function AboutPage() {
   return (
-    <main style={{ maxWidth: 900, margin: '48px auto', padding: 24 }}>
+    <main style={{ maxWidth: 900, margin: '48px auto', padding: '24px', paddingBottom: 64 }}>
       <h1>About NovaHunt</h1>
 
       <p style={{ color: '#374151' }}>
-        NovaHunt helps teams discover and verify contact emails so they can reach the right people faster.
-        We combine trusted data sources, thoughtful UX, and team-aware billing so prospecting is painless.
+        NovaHunt helps creators and small teams find contact emails so you can turn likes into leads.
+        Whether you’re an influencer, a model, an actor, or a freelancer on Instagram, we make it easy to
+        find the right person to pitch — casting directors, agency reps, or the next brand that needs you.
       </p>
 
-      <h3 style={{ marginTop: 20 }}>Our mission</h3>
+      <h3 style={{ marginTop: 20 }}>Who we help</h3>
       <p style={{ color: '#374151' }}>
-        We believe finding the right contact should be simple, fast, and reliable. Our mission is to remove
-        the friction from outbound discovery so teams can focus on conversations, not data cleanup.
+        We focus on practical, actionable results for people who want to land bookings, gigs, sponsorships,
+        or sales: modelling agencies, talent agents, casting directors, and sales reps.
       </p>
 
-      <h3 style={{ marginTop: 20 }}>What we do</h3>
+      <h3 style={{ marginTop: 20 }}>How it works</h3>
       <ul style={{ color: '#374151' }}>
-        <li>Domain-based email hunting and confidence scoring</li>
-        <li>Per-contact reveals with usage tracking</li>
-        <li>Team features: shared quotas, admin controls, and SSO</li>
+        <li>Enter a website (like example.com) to find public contact emails</li>
+        <li>See confidence scores and sources (LinkedIn, public pages)</li>
+        <li>Reveal full emails inline — no extra forms or contact pages</li>
       </ul>
 
-      <h3 style={{ marginTop: 20 }}>Contact</h3>
+      <h3 style={{ marginTop: 20 }}>No contact forms</h3>
       <p style={{ color: '#374151' }}>
-        For issues or billing questions, email support@novahunt.ai (or use the in-app support button).
+        We do not use a “Contact Us” form. If you need help or billing questions, email support@novahunt.ai.
       </p>
+
+      <div style={{ height: 48 }} />
     </main>
   );
 }
