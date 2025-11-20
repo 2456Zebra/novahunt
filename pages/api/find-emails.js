@@ -1,6 +1,6 @@
 // pages/api/find-emails.js
 // Hunter domain search + authenticated usage increment and usage return
-// Enhanced: use Hunter's reported total if present so the UI shows accurate "of N" counts.
+// Enhanced: use Hunter's reported total when available so the UI shows accurate "of N" counts.
 
 const { getUserBySession } = require('../../lib/session');
 const { incrementUsage, getUsageForUser } = require('../../lib/user-store');
