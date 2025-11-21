@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import RevealButton from './RevealButton';
+import Renderings from './Renderings';
 
 /**
  * SearchClient — Hunt Emails only.
- * - All Discover/AI UI removed to avoid LLM usage/costs.
- * - Keeps Hunter-backed domain search via /api/find-emails.
+ * - Avoids LLM usage/costs.
+ * - Uses Hunter-backed domain search via /api/find-emails.
  */
 
 function SignInHintInline() {
@@ -21,9 +22,8 @@ function SignInHintInline() {
         href="#"
         onClick={(e) => {
           e.preventDefault();
-          try {
-            window.dispatchEvent(new CustomEvent('open-signin-modal'));
-          } catch (err) {}
+          // Open plans so users can choose Free or upgrade
+          window.location.href = '/plans';
         }}
         style={{ color: '#f97316', textDecoration: 'underline' }}
       >
@@ -38,9 +38,9 @@ function maskEmail(email) {
     if (!email) return '';
     const [local, domain] = (email || '').split('@');
     if (!local || !domain) return email || '';
-    const keep = 2;
-    const maskedLocal = local.length <= keep ? '*'.repeat(local.length) : '*'.repeat(Math.max(0, local.length - keep)) + local.slice(-keep);
-    return `${maskedLocal}@${domain}`;
+    // Show first and last char with asterisks in between for consistent look
+    if (local.length <= 2) return '*'.repeat(local.length) + '@' + domain;
+    return `${local[0]}${'*'.repeat(Math.max(3, local.length - 2))}${local.slice(-1)}@${domain}`;
   } catch (e) {
     return email || '';
   }
@@ -53,8 +53,6 @@ function sampleLeadsFor(domain) {
     { email: `john.doe@${base}`, name: 'John Doe', title: 'Head of Marketing', confidence: 0.92, source: '' },
     { email: `jane.smith@${base}`, name: 'Jane Smith', title: 'VP Sales', confidence: 0.87, source: '' },
     { email: `marketing@${base}`, name: '', title: 'Marketing', confidence: 0.80, source: '' },
-    { email: `press@${base}`, name: '', title: 'Press', confidence: 0.66, source: '' },
-    { email: `info@${base}`, name: '', title: 'Info', confidence: 0.55, source: '' },
   ];
 }
 
@@ -66,10 +64,8 @@ export default function SearchClient() {
   const [showAll, setShowAll] = useState(false);
   const [totalCount, setTotalCount] = useState(null);
 
-  // Remove demo prefill — start with empty input
-  useEffect(() => {
-    // Intentionally left blank so the input starts empty on load
-  }, []);
+  // Start with an empty input (no demo prefill)
+  useEffect(() => {}, []);
 
   function persistServerUsage(usage) {
     try {
@@ -92,22 +88,29 @@ export default function SearchClient() {
     setShowAll(false);
     setTotalCount(null);
     try {
-      // Call Hunter-backed endpoint (demo or real depending on HUNTER_API_KEY)
       const resp = await fetch(`/api/find-emails?domain=${encodeURIComponent(q)}`);
+      const bodyText = await resp.text().catch(() => '');
+      let body = {};
+      try { body = bodyText ? JSON.parse(bodyText) : {}; } catch (err) { body = { raw: bodyText }; }
+
       if (!resp.ok) {
-        // fallback to sample results
-        const fallback = sampleLeadsFor(q);
-        setResults(fallback);
-        setTotalCount(fallback.length);
+        console.error('find-emails failed', resp.status, body);
+        // Surface server-side message if available, otherwise generic
+        const msg = body && body.error ? body.error : `Server returned ${resp.status}`;
+        setError(`Search failed: ${msg}`);
+        // show minimal sample results so user sees instant feedback (optional)
+        // setResults(sampleLeadsFor(q));
+        setTotalCount(0);
         setLoading(false);
         return;
       }
-      const body = await resp.json();
+
       const items = Array.isArray(body.items) ? body.items.map(it => ({ ...it, revealed: false })) : (body.items || []);
       setResults(items);
       setTotalCount(typeof body.total === 'number' ? body.total : items.length);
       if (body.usage) persistServerUsage(body.usage);
     } catch (err) {
+      console.error('network error', err);
       setError(err?.message || 'Network error');
     } finally {
       setLoading(false);
@@ -122,35 +125,26 @@ export default function SearchClient() {
     });
   }
 
-  function openSigninModal() {
-    try {
-      window.dispatchEvent(new CustomEvent('open-signin-modal'));
-    } catch (e) {
-      // ignore
-    }
+  function openPlans() {
+    window.location.href = '/plans';
   }
 
   return (
     <div style={{ padding: '2rem', maxWidth: 980, margin: '0 auto' }}>
       <h2 style={{ marginTop: 0 }}>Find Business Emails</h2>
       <p style={{ color: '#374151' }}>
-        Confidence scores <strong>0–100%</strong>.
+        Confidence scores <strong>85%–100%</strong>.
       </p>
 
-      <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ width: '100%', maxWidth: 760, marginBottom: 8 }}>
-          <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 6 }}>
-            Enter a domain like <code>example.com</code> (no https:// or www)
-          </div>
-          <input
-            value={domain}
-            onChange={e => setDomain(e.target.value)}
-            placeholder="e.g. fordmodels.com"
-            style={{ padding: '.5rem', border: '1px solid #ddd', borderRadius: 6, minWidth: 280, width: '100%' }}
-          />
-        </div>
+      <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          value={domain}
+          onChange={e => setDomain(e.target.value)}
+          placeholder="e.g. fordmodels.com"
+          style={{ padding: '.5rem', border: '1px solid #ddd', borderRadius: 6, minWidth: 280, flex: '1 1 360px' }}
+        />
 
-        <button type="submit" disabled={loading} style={{ padding: '.5rem 1rem', borderRadius: 8, background: '#007bff', color: '#fff', border: 'none' }}>
+        <button type="submit" disabled={loading} style={{ padding: '.5rem 1rem', borderRadius: 8, background: '#007bff', color: '#fff', border: 'none', flex: '0 0 auto' }}>
           {loading ? 'Searching…' : 'Hunt Emails'}
         </button>
       </form>
@@ -203,14 +197,17 @@ export default function SearchClient() {
               if (session) {
                 setShowAll(true);
               } else {
-                openSigninModal();
+                openPlans();
               }
             }} style={{ padding: '.5rem .75rem', borderRadius: 6, background: '#007bff', color: '#fff', border: 'none' }}>
-              {localStorage.getItem && localStorage.getItem('nh_session') ? `Show ${results.length - 3} more` : `Sign in to see all ${totalCount || results.length}`}
+              {localStorage.getItem && localStorage.getItem('nh_session') ? `Show ${results.length - 3} more` : `Sign in / upgrade to see all ${totalCount || results.length}`}
             </button>
           </div>
         )}
       </div>
+
+      {/* Render illustrative cards below results */}
+      <Renderings />
     </div>
   );
 }
