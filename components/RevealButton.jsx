@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { getLocalSession } from '../utils/auth';
+import Link from 'next/link';
 
 /**
  * RevealButton
@@ -21,21 +22,7 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    function onSignedIn() {
-      try {
-        const pending = window.__nh_pending_reveal;
-        if (pending && pending.contactId === contactId) {
-          doRevealInternal(pending.contactId, pending.payload);
-          delete window.__nh_pending_reveal;
-        }
-      } catch (e) {}
-    }
-    window.addEventListener('nh-signed-in', onSignedIn);
-    return () => window.removeEventListener('nh-signed-in', onSignedIn);
-  }, [contactId]);
-
-  async function doRevealInternal(cid, pl) {
+  const doRevealInternal = useCallback(async (cid, pl) => {
     setLoading(true);
     setError('');
     try {
@@ -62,7 +49,21 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [onRevealed]);
+
+  useEffect(() => {
+    function onSignedIn() {
+      try {
+        const pending = window.__nh_pending_reveal;
+        if (pending && pending.contactId === contactId) {
+          doRevealInternal(pending.contactId, pending.payload);
+          delete window.__nh_pending_reveal;
+        }
+      } catch (e) {}
+    }
+    window.addEventListener('nh-signed-in', onSignedIn);
+    return () => window.removeEventListener('nh-signed-in', onSignedIn);
+  }, [contactId, doRevealInternal]);
 
   async function doReveal() {
     setError('');
@@ -72,7 +73,10 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
       if (!session) {
         // Not signed in — send user to plans page to choose Free or upgrade
         try { window.__nh_pending_reveal = { contactId, payload }; } catch (e) {}
-        window.location.href = '/plans';
+        // Use Next.js router for internal navigation
+        if (typeof window !== 'undefined') {
+          window.location.href = '/plans';
+        }
         setLoading(false);
         return;
       }
