@@ -1,16 +1,24 @@
 // pages/api/find-emails.js
-// Hunter domain search + authenticated usage increment and usage return
-// Adds a short server-side info log to help diagnose counts vs UI.
+// Robust synchronous paging: fetch multiple pages from Hunter until we've collected hunterTotal
+// or reached a safety cap. Includes exponential backoff handling for 429s and simple in-memory caching.
+//
+// WARNING: This performs multiple HTTP requests during a single invocation. It is safe for QA
+// and moderate use but for production under load consider the background job approach.
 
 const { getUserBySession } = require('../../lib/session');
 const { incrementUsage, getUsageForUser } = require('../../lib/user-store');
 
 const HUNTER_KEY = process.env.HUNTER_API_KEY || '';
+const HUNTER_PAGE_SIZE = Number(process.env.HUNTER_PAGE_SIZE || 100); // per-page request size
+const HUNTER_MAX_COLLECT = Number(process.env.HUNTER_MAX_COLLECT || 5000); // safety cap
+const CACHE_TTL_MS = Number(process.env.FIND_EMAILS_CACHE_TTL_MS || 1000 * 60 * 5); // default 5m
+
 const CACHE = new Map();
-const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
 
 function cacheSet(key, value) {
-  CACHE.set(key, { value, t: Date.now() });
+  try {
+    CACHE.set(key, { value, t: Date.now() });
+  } catch (e) {}
 }
 function cacheGet(key) {
   const rec = CACHE.get(key);
@@ -19,23 +27,22 @@ function cacheGet(key) {
   return rec.value;
 }
 
-async function callHunterDomainSearch(domain) {
-  const url = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&api_key=${encodeURIComponent(HUNTER_KEY)}`;
-  const res = await global.fetch(url, { method: 'GET' });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    const err = new Error(`Hunter domain-search failed ${res.status}`);
-    err.hunter = { status: res.status, url, body: text };
-    throw err;
-  }
-  const json = await res.json();
-  return json;
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
-function normalizeHunterItems(json) {
+async function fetchHunterPage(domain, page, perPage) {
+  const url = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&api_key=${encodeURIComponent(HUNTER_KEY)}&limit=${perPage}&page=${page}`;
+  const res = await global.fetch(url, { method: 'GET' });
+  const text = await res.text().catch(() => '');
+  let json = null;
+  try { json = text ? JSON.parse(text) : {}; } catch (e) { json = { raw: text }; }
+  return { status: res.status, json, bodyText: text };
+}
+
+function normalizeHunterItemsFromEmails(emails) {
   try {
-    const emails = (json && json.data && json.data.emails) ? json.data.emails : [];
-    return emails.map(e => ({
+    return (emails || []).map(e => ({
       email: e.value,
       name: [e.first_name, e.last_name].filter(Boolean).join(' ') || '',
       title: e.position || '',
@@ -45,6 +52,88 @@ function normalizeHunterItems(json) {
   } catch (e) {
     return [];
   }
+}
+
+async function callHunterDomainSearch(domain) {
+  // Return cached if present
+  const cacheKey = `hunter_full:${domain}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+
+  if (!HUNTER_KEY) {
+    const err = new Error('HUNTER_API_KEY missing in env');
+    err.hunter = { status: 500, url: null, body: 'HUNTER_API_KEY missing' };
+    throw err;
+  }
+
+  let page = 1;
+  const perPage = Math.min(500, Math.max(10, HUNTER_PAGE_SIZE));
+  const maxCollect = Math.max(100, Math.min(20000, HUNTER_MAX_COLLECT));
+  let allEmailsRaw = [];
+  let hunterTotal = null;
+  let consecutive429s = 0;
+
+  while (true) {
+    const { status, json, bodyText } = await (async () => {
+      try {
+        const res = await fetchHunterPage(domain, page, perPage);
+        return { status: res.status, json: res.json, bodyText: res.bodyText };
+      } catch (err) {
+        return { status: 500, json: null, bodyText: String(err?.message || err) };
+      }
+    })();
+
+    if (status === 429) {
+      // Rate limited: exponential backoff
+      consecutive429s += 1;
+      const backoffMs = Math.min(1000 * Math.pow(2, consecutive429s), 30000); // cap 30s
+      console.warn(`hunter rate limited, backing off ${backoffMs}ms for domain=${domain} page=${page}`);
+      await sleep(backoffMs);
+      continue;
+    }
+
+    if (!json) {
+      console.error('hunter unexpected non-json response', { domain, page, status, preview: (bodyText || '').slice(0, 400) });
+      break;
+    }
+
+    if (hunterTotal === null) {
+      hunterTotal = (json && json.data && (json.data.total || (json.data.meta && json.data.meta.total))) || null;
+    }
+
+    const emails = (json && json.data && json.data.emails) ? json.data.emails : [];
+    if (!emails || emails.length === 0) {
+      break;
+    }
+
+    allEmailsRaw = allEmailsRaw.concat(emails);
+
+    // stop if collected enough items
+    if (hunterTotal && allEmailsRaw.length >= hunterTotal) break;
+    if (allEmailsRaw.length >= maxCollect) {
+      console.warn('Reached HUNTER_MAX_COLLECT safety cap', { domain, collected: allEmailsRaw.length, cap: maxCollect });
+      break;
+    }
+
+    page += 1;
+    consecutive429s = 0; // reset backoff counter after a successful page
+    await sleep(150); // small delay between pages
+  }
+
+  // Normalize and dedupe by email (case-insensitive)
+  const normalized = normalizeHunterItemsFromEmails(allEmailsRaw);
+  const map = new Map();
+  normalized.forEach(it => {
+    if (it.email) map.set(it.email.toLowerCase(), it);
+  });
+  const uniqueItems = Array.from(map.values());
+
+  const result = { items: uniqueItems, total: Number.isFinite(hunterTotal) ? hunterTotal : uniqueItems.length };
+
+  // Cache result briefly
+  try { cacheSet(cacheKey, result); } catch (e) {}
+
+  return result;
 }
 
 function extractSessionToken(req) {
@@ -59,10 +148,11 @@ export default async function handler(req, res) {
   const domain = String((req.query && req.query.domain) || '').trim();
   if (!domain) return res.status(400).json({ ok: false, error: 'Missing domain' });
 
-  const key = `hunter:${domain}`;
-  const cached = cacheGet(key);
   const session = extractSessionToken(req);
+  const cacheKey = `hunter_full:${domain}`;
+  const cached = cacheGet(cacheKey);
 
+  // If cached, return cached (and include usage if user authenticated)
   if (cached) {
     try {
       if (session) {
@@ -79,7 +169,7 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true, items: cached.items, total: cached.total, usage });
         }
       }
-    } catch (e) { /* ignore usage increment failures for cache hits */ }
+    } catch (e) { /* ignore usage increment failures */ }
     return res.status(200).json({ ok: true, items: cached.items, total: cached.total });
   }
 
@@ -89,6 +179,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    // quota pre-check for authenticated users
     if (session) {
       try {
         const payload = getUserBySession(session);
@@ -105,34 +196,30 @@ export default async function handler(req, res) {
       }
     }
 
-    const json = await callHunterDomainSearch(domain);
-    const items = normalizeHunterItems(json);
+    // Fetch full (paged) results from Hunter
+    const result = await callHunterDomainSearch(domain);
 
-    // Prefer the Hunter-reported total when available
-    const hunterTotal = (json && json.data && (json.data.total || (json.data.meta && json.data.meta.total))) || null;
-    const total = Number.isFinite(hunterTotal) && hunterTotal >= 0 ? hunterTotal : items.length;
-
-    // server-side debug/info log so you can inspect counts in Vercel logs
+    // server-side info log to inspect counts in Vercel logs
     try {
-      console.info('find-emails success', { domain, normalizedItems: items.length, hunterTotal });
+      console.info('find-emails success', { domain, normalizedItems: result.items.length, hunterTotal: result.total });
     } catch (e) {}
 
-    cacheSet(key, { items, total });
+    cacheSet(cacheKey, result);
 
     if (session) {
       try {
         const payload = getUserBySession(session);
         if (payload && payload.sub) {
           const usage = await incrementUsage(payload.sub, { searches: 1 });
-          return res.status(200).json({ ok: true, items, total, usage });
+          return res.status(200).json({ ok: true, items: result.items, total: result.total, usage });
         }
       } catch (e) {
         console.error('find-emails increment usage error', e && (e.message || e));
-        return res.status(200).json({ ok: true, items, total });
+        return res.status(200).json({ ok: true, items: result.items, total: result.total });
       }
     }
 
-    return res.status(200).json({ ok: true, items, total });
+    return res.status(200).json({ ok: true, items: result.items, total: result.total });
   } catch (err) {
     if (err && err.hunter) {
       console.error('find-emails hunter error:', {
