@@ -89,11 +89,54 @@ async function callHunterDomainSearch(domain) {
       continue;
     }
 
-    // If Hunter returns a non-OK HTTP status (except 429), treat as an error and surface
+    // Special-case: Hunter returns 400 when the user plan limits per-page results.
+    // Detect the pagination_error and gracefully attempt a smaller fetch (limit=10).
+    if (status === 400) {
+      const errors = (json && json.errors) ? json.errors : null;
+      const isPaginationError = Array.isArray(errors) && errors.some(e => {
+        if (!e) return false;
+        const id = String(e.id || '').toLowerCase();
+        const details = String(e.details || '').toLowerCase();
+        return id.includes('pagination') || details.includes('limited');
+      });
+
+      if (isPaginationError) {
+        console.warn('hunter pagination limit encountered; retrying with smaller page size', { domain, page, perPage });
+        try {
+          // Try a small page-size fetch (10) which is within many Hunter plan limits
+          const smallPerPage = Math.min(10, perPage);
+          const smallRes = await fetchHunterPage(domain, page, smallPerPage);
+          const sStatus = smallRes.status;
+          const sJson = smallRes.json;
+          const sBodyText = smallRes.bodyText;
+
+          if (sStatus === 200 && sJson) {
+            const sEmails = (sJson && sJson.data && sJson.data.emails) ? sJson.data.emails : [];
+            if (hunterTotal === null) {
+              hunterTotal = (sJson && sJson.data && (sJson.data.total || (sJson.data.meta && sJson.data.meta.total))) || null;
+            }
+            allEmailsRaw = allEmailsRaw.concat(sEmails);
+          } else {
+            console.warn('hunter small-page fetch failed', { domain, page, sStatus, preview: String(sBodyText || '').slice(0, 400) });
+          }
+        } catch (e) {
+          console.error('hunter small-page fetch exception', e && (e.message || e));
+        }
+        // We've either collected what this plan allows or nothing — stop paging further.
+        break;
+      }
+
+      // Non-pagination 400 — treat as an error
+      const err = new Error(`Hunter API returned HTTP ${status}`);
+      err.hunter = { status, url: `domain=${domain}&page=${page}&limit=${perPage}`, body: bodyText || json || '' };
+      console.error('hunter http error', { domain, page, status, preview: String(bodyText || '').slice(0, 1000) });
+      throw err;
+    }
+
+    // If other 4xx/5xx
     if (status >= 400) {
       const err = new Error(`Hunter API returned HTTP ${status}`);
       err.hunter = { status, url: `domain=${domain}&page=${page}&limit=${perPage}`, body: bodyText || json || '' };
-      // Log preview for easier debugging
       console.error('hunter http error', { domain, page, status, preview: String(bodyText || '').slice(0, 1000) });
       throw err;
     }
@@ -108,12 +151,7 @@ async function callHunterDomainSearch(domain) {
     }
 
     const emails = (json && json.data && json.data.emails) ? json.data.emails : [];
-    // If the response is valid but contains no emails, break (no further pages)
     if (!emails || emails.length === 0) {
-      // If hunterTotal exists and is >0 but response has no emails, log preview for diagnosis
-      if (hunterTotal && hunterTotal > 0) {
-        console.info('hunter reported total > 0 but this page returned 0 emails', { domain, page, hunterTotal, preview: (bodyText || '').slice(0, 400) });
-      }
       break;
     }
 
