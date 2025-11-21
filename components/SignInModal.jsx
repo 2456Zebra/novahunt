@@ -7,7 +7,7 @@ import Link from 'next/link';
  *  - onClose (function)
  *  - prefillEmail (string)
  *
- * Keeps internal links using next/link to satisfy the linter.
+ * This modal intentionally removes an internal "Sign up" call-to-action (we route Sign up -> Plans).
  */
 export default function SignInModal({ open = false, onClose = () => {}, prefillEmail = '' }) {
   const [email, setEmail] = useState(prefillEmail || '');
@@ -84,13 +84,7 @@ export default function SignInModal({ open = false, onClose = () => {}, prefillE
           </div>
 
           <div style={{ marginTop: 16, color: '#6b7280' }}>
-            <p style={{ margin: '6px 0' }}>
-              Don’t have an account?{' '}
-              <Link href="/signup/">
-                <a>Sign up</a>
-              </Link>
-            </p>
-
+            {/* Remove the 'Don’t have an account / Sign up' line here (Sign up links to Plans from header) */}
             <p style={{ margin: '6px 0' }}>
               Learn about plans:{' '}
               <Link href="/plans/">
