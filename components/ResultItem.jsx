@@ -2,38 +2,46 @@ import React from 'react';
 import RevealButton from './RevealButton';
 
 /**
- * ResultItem — renders name, title/department, email (masked or real),
- * and shows the source and Reveal button.
+ * ResultItem — renders name, department/title, trust percentage, email (masked or real),
+ * clickable 'Source' text, and Reveal button.
  */
 export default function ResultItem({ item = {}, isSignedIn = false }) {
+  // item.confidence may be 0-1 or 0-100 depending on upstream; normalize to 0-100 %
+  const rawConfidence = (typeof item.confidence === 'number') ? item.confidence : (typeof item.score === 'number' ? item.score : 0);
+  const confidencePct = rawConfidence > 1 ? Math.round(rawConfidence) : Math.round(rawConfidence * 100);
+
   const emailDisplay = item.email || item.maskedEmail || '—';
-  const department = item.department || item.title || '';
   const title = item.title || '';
   const source = item.source || '';
+  const department = item.department || '';
 
   return (
-    <div style={{ padding: 12, borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+    <div style={{ padding: 12, borderBottom: '1px solid #f3f4f6', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'baseline' }}>
           <div style={{ fontWeight: 700 }}>{item.name || (item.email || emailDisplay)}</div>
-          {department ? <div style={{ color: '#6b7280', fontSize: 13 }}>{department}</div> : null}
+
+          {/* Trust badge */}
+          <div style={{ background: '#f3f4f6', color: '#374151', borderRadius: 6, padding: '2px 8px', fontSize: 12 }}>
+            {confidencePct}% trust
+          </div>
         </div>
 
-        {title ? <div style={{ color: '#374151', marginTop: 6 }}>{title}</div> : null}
+        {department ? <div style={{ marginTop: 6, color: '#6b7280', fontSize: 13 }}>{title ? `${title}` : ''}</div> : (title ? <div style={{ marginTop: 6, color: '#6b7280', fontSize: 13 }}>{title}</div> : null)}
 
-        <div style={{ marginTop: 8, color: '#111' }}>{emailDisplay}</div>
+        <div style={{ marginTop: 8, color: '#111', wordBreak: 'break-word' }}>{emailDisplay}</div>
 
         {source ? (
           <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280' }}>
             Source:{' '}
             <a href={source} target="_blank" rel="noreferrer noopener" style={{ color: '#2563eb' }}>
-              {source.replace(/^https?:\/\//, '').slice(0, 80)}
+              Source
             </a>
           </div>
         ) : null}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <RevealButton to={isSignedIn ? '#' : '/plans?source=search'} className="reveal-btn">
           Reveal
         </RevealButton>
