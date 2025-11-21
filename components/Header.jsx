@@ -38,8 +38,8 @@ export default function Header() {
 
           <nav style={{ display: 'flex', gap: 12 }}>
             <Link href="/"><a style={{ color: '#374151', textDecoration: 'none' }}>Home</a></Link>
-            <Link href="/plans"><a style={{ color: '#374151', textDecoration: 'none' }}>Plans</a></Link>
-            <Link href="/about"><a style={{ color: '#374151', textDecoration: 'none' }}>About</a></Link>
+            <Link href="/plans/"><a style={{ color: '#374151', textDecoration: 'none' }}>Plans</a></Link>
+            <Link href="/about/"><a style={{ color: '#374151', textDecoration: 'none' }}>About</a></Link>
           </nav>
         </div>
 
