@@ -1,6 +1,9 @@
 import Head from 'next/head';
-import SearchClient from '../components/SearchClient';
+import dynamic from 'next/dynamic';
 import Renderings from '../components/Renderings';
+
+// Load SearchClient only on the client to avoid SSR/hydration errors.
+const SearchClient = dynamic(() => import('../components/SearchClient'), { ssr: false });
 
 export default function Home() {
   return (
