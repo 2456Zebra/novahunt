@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import Head from 'next/head';
+import Header from '../components/Header';
 
 /**
  * Global app wrapper:
+ * - Renders the site Header on every page.
  * - Listens for nh-signed-in and nh-signed-out events and redirects to homepage to avoid landing on broken pages.
- * - This is intentionally conservative: after sign-in/out we send the user to '/' so they land on a known-good page.
+ * - After sign-in/out we send the user to '/' so they land on a known-good page.
  */
 
 export default function App({ Component, pageProps }) {
@@ -43,6 +45,8 @@ export default function App({ Component, pageProps }) {
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
+
+      <Header />
       <Component {...pageProps} />
     </>
   );
