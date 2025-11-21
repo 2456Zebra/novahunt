@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import ResultItem from './ResultItem';
 
 /**
- * SearchClient — handles searching, grouping by department, prioritized ordering,
+ * SearchClient — handles searching, grouping by department with highlighted headers,
  * merging results when loading more pages, and showing counts per department.
  */
 export default function SearchClient() {
@@ -14,7 +14,6 @@ export default function SearchClient() {
   const [error, setError] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Priority order for departments (higher importance first)
   const DEPT_PRIORITY = [
     'Executive',
     'Executives',
@@ -30,7 +29,6 @@ export default function SearchClient() {
     'Other'
   ];
 
-  // Merge and dedupe items by email (email or maskedEmail key)
   function mergeItems(existing = [], incoming = []) {
     const map = new Map();
     existing.forEach(it => {
@@ -55,7 +53,6 @@ export default function SearchClient() {
       if (!json.ok) throw new Error(json.error || 'API error');
       if (append) {
         setResult(prev => {
-          // merge and keep API's reported total/public flag
           const merged = mergeItems(prev.items || [], json.items || []);
           return { items: merged, total: json.total || merged.length, public: json.public };
         });
@@ -82,7 +79,6 @@ export default function SearchClient() {
   function onLoadMore() {
     const next = pages + 1;
     setPages(next);
-    // append: true merges with existing items
     fetchResults(domain.trim(), next, true);
   }
 
@@ -94,7 +90,6 @@ export default function SearchClient() {
     }
   }, [domain]);
 
-  // Group items by department, normalized
   function groupByDepartment(items = []) {
     const groups = {};
     items.forEach(it => {
@@ -104,7 +99,6 @@ export default function SearchClient() {
       groups[key].push(it);
     });
 
-    // Order groups by DEPT_PRIORITY, then alphabetically for remaining
     const ordered = [];
     DEPT_PRIORITY.forEach(p => {
       if (groups[p]) {
@@ -112,7 +106,6 @@ export default function SearchClient() {
         delete groups[p];
       }
     });
-    // remaining keys
     Object.keys(groups).sort().forEach(k => {
       ordered.push({ name: k, items: groups[k] });
     });
@@ -147,9 +140,19 @@ export default function SearchClient() {
           <div style={{ marginTop: 8 }}>
             {grouped.map(group => (
               <div key={group.name} style={{ marginTop: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{group.name}{` (${group.items.length})`}</div>
+                {/* Peach bar department header */}
+                <div style={{
+                  display: 'inline-block',
+                  background: '#fff3ee',
+                  color: '#7a341f',
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  marginBottom: 8
+                }}>
+                  {group.name} <span style={{ fontWeight: 500, color: '#7a341f', marginLeft: 8 }}>({group.items.length})</span>
                 </div>
+
                 {group.items.map((it, idx) => (
                   <ResultItem key={(it.email || it.maskedEmail || `${group.name}_${idx}`)} item={it} isSignedIn={false} />
                 ))}
