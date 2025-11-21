@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { signIn } from '../utils/auth';
 
 /**
@@ -65,7 +66,7 @@ export default function SignInModal({ open, onClose, prefillEmail = '' }) {
           </div>
         </form>
         <div style={{ marginTop: 10, fontSize: 13, color: '#666' }}>
-          No account? <a href="/signup" style={{ color: '#007bff', textDecoration: 'underline' }}>Create one</a> or <a href="/plans" style={{ color: '#007bff', textDecoration: 'underline' }}>view plans</a>.
+          No account? <Link href="/signup"><a style={{ color: '#007bff', textDecoration: 'underline' }}>Create one</a></Link> or <Link href="/plans"><a style={{ color: '#007bff', textDecoration: 'underline' }}>view plans</a></Link>.
         </div>
       </div>
     </div>
