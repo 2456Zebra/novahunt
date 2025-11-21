@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { signIn } from '../utils/auth';
+import Link from 'next/link';
 
 /**
  * SignInModal now accepts a prefillEmail prop via Header's event detail,
@@ -65,7 +66,7 @@ export default function SignInModal({ open, onClose, prefillEmail = '' }) {
           </div>
         </form>
         <div style={{ marginTop: 10, fontSize: 13, color: '#666' }}>
-          No account? <a href="/signup" style={{ color: '#007bff', textDecoration: 'underline' }}>Create one</a> or <a href="/plans" style={{ color: '#007bff', textDecoration: 'underline' }}>view plans</a>.
+          No account? <Link href="/signup" style={{ color: '#007bff', textDecoration: 'underline' }}>Create one</Link> or <Link href="/plans" style={{ color: '#007bff', textDecoration: 'underline' }}>view plans</Link>.
         </div>
       </div>
     </div>
