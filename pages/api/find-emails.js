@@ -1,4 +1,5 @@
 // pages/api/find-emails.js
+// API endpoint for finding emails using Hunter.io with masking for unauthenticated users
 import { createClient } from '@upstash/redis';
 
 const redis = createClient({

@@ -39,7 +39,7 @@ export default function PlansPage() {
           <h3 style={{ marginTop: 0 }}>Free</h3>
           <p style={{ margin: 0 }}>5 searches / 2 reveals per month</p>
           <div style={{ marginTop: 12 }}>
-            <Link href="/signup" style={{ padding: '8px 12px', background: '#e5e7eb', color: '#111', borderRadius: 6, textDecoration: 'none', display: 'inline-block' }}>Create free account</Link>
+            <Link href="/signup" style={{ padding: '8px 12px', background: '#e5e7eb', color: '#111', borderRadius: 6, textDecoration: 'none' }}>Create free account</Link>
           </div>
         </div>
 

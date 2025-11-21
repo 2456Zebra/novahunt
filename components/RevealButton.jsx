@@ -73,10 +73,8 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
       if (!session) {
         // Not signed in — send user to plans page to choose Free or upgrade
         try { window.__nh_pending_reveal = { contactId, payload }; } catch (e) {}
-        // Use Next.js router for internal navigation
-        if (typeof window !== 'undefined') {
-          window.location.href = '/plans';
-        }
+        // Use full page navigation to ensure authentication flow works correctly
+        window.location.href = '/plans';
         setLoading(false);
         return;
       }
