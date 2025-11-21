@@ -1,13 +1,14 @@
 // pages/api/find-emails.js
-// Robust Hunter domain-search handler with paging, backoff, small-page fallback and in-memory caching.
+// Fast-first-page Hunter domain-search handler with paging cap and masking for public responses.
 
 const { getUserBySession } = require('../../lib/session');
 const { incrementUsage, getUsageForUser } = require('../../lib/user-store');
 
 const HUNTER_KEY = process.env.HUNTER_API_KEY || '';
-const HUNTER_PAGE_SIZE = Number(process.env.HUNTER_PAGE_SIZE || 100); // default per-page size
-const HUNTER_MAX_COLLECT = Number(process.env.HUNTER_MAX_COLLECT || 5000); // safety cap
-const CACHE_TTL_MS = Number(process.env.FIND_EMAILS_CACHE_TTL_MS || 1000 * 60 * 5); // default 5 minutes
+const HUNTER_PAGE_SIZE = Number(process.env.HUNTER_PAGE_SIZE || 50); // reasonable default
+const HUNTER_MAX_PAGES = Number(process.env.HUNTER_MAX_PAGES || 1); // default: return first page for responsiveness
+const HUNTER_MAX_COLLECT = Number(process.env.HUNTER_MAX_COLLECT || 5000);
+const CACHE_TTL_MS = Number(process.env.FIND_EMAILS_CACHE_TTL_MS || 1000 * 60 * 5);
 
 const CACHE = new Map();
 
@@ -21,9 +22,7 @@ function cacheGet(key) {
   return rec.value;
 }
 
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 async function fetchHunterPage(domain, page, perPage) {
   const url = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&api_key=${encodeURIComponent(HUNTER_KEY)}&limit=${perPage}&page=${page}`;
@@ -40,8 +39,8 @@ function normalizeHunterItemsFromEmails(emails) {
       email: e.value,
       name: [e.first_name, e.last_name].filter(Boolean).join(' ') || '',
       title: e.position || '',
-      confidence: (typeof e.confidence === 'number') ? (e.confidence / 100) : (e.score ? e.score : 0),
       department: e.department || '',
+      confidence: (typeof e.confidence === 'number') ? (e.confidence / 100) : (e.score ? e.score : 0),
       source: (e.sources && e.sources[0] && e.sources[0].uri) ? e.sources[0].uri : ''
     }));
   } catch (e) {
@@ -50,7 +49,7 @@ function normalizeHunterItemsFromEmails(emails) {
 }
 
 async function callHunterDomainSearch(domain) {
-  const cacheKey = `hunter_full:${domain}`;
+  const cacheKey = `hunter_full:${domain}:p${HUNTER_MAX_PAGES}:${HUNTER_PAGE_SIZE}`;
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
 
@@ -63,6 +62,7 @@ async function callHunterDomainSearch(domain) {
   let page = 1;
   const perPage = Math.min(500, Math.max(10, HUNTER_PAGE_SIZE));
   const maxCollect = Math.max(100, Math.min(20000, HUNTER_MAX_COLLECT));
+  const maxPages = Math.max(1, Math.min(50, HUNTER_MAX_PAGES));
   let allEmailsRaw = [];
   let hunterTotal = null;
   let consecutive429s = 0;
@@ -78,10 +78,8 @@ async function callHunterDomainSearch(domain) {
     })();
 
     if (status === 429) {
-      // Rate limited: exponential backoff
       consecutive429s += 1;
       const backoffMs = Math.min(1000 * Math.pow(2, consecutive429s), 30000);
-      console.warn(`hunter rate limited; backing off ${backoffMs}ms for domain=${domain} page=${page}`);
       await sleep(backoffMs);
       continue;
     }
@@ -96,47 +94,32 @@ async function callHunterDomainSearch(domain) {
       });
 
       if (isPaginationError) {
-        // Pagination error: retry a smaller per-page size (10) and stop paging further afterwards
-        console.warn('hunter pagination limit encountered; retrying with smaller page size', { domain, page, perPage });
+        // Try small page size once
         try {
-          const smallPerPage = Math.min(10, perPage);
-          const smallRes = await fetchHunterPage(domain, page, smallPerPage);
-          const sStatus = smallRes.status;
-          const sJson = smallRes.json;
-          const sBodyText = smallRes.bodyText;
-
-          if (sStatus === 200 && sJson) {
-            const sEmails = (sJson && sJson.data && sJson.data.emails) ? sJson.data.emails : [];
+          const smallRes = await fetchHunterPage(domain, page, Math.min(10, perPage));
+          if (smallRes.status === 200 && smallRes.json) {
+            const sEmails = (smallRes.json && smallRes.json.data && smallRes.json.data.emails) ? smallRes.json.data.emails : [];
             if (hunterTotal === null) {
-              hunterTotal = (sJson && sJson.data && (sJson.data.total || (sJson.data.meta && sJson.data.meta.total))) || null;
+              hunterTotal = (smallRes.json && smallRes.json.data && (smallRes.json.data.total || (smallRes.json.data.meta && smallRes.json.data.meta.total))) || null;
             }
             allEmailsRaw = allEmailsRaw.concat(sEmails);
-          } else {
-            console.warn('hunter small-page fetch failed', { domain, page, sStatus, preview: String(sBodyText || '').slice(0, 400) });
           }
-        } catch (e) {
-          console.error('hunter small-page fetch exception', e && (e.message || e));
-        }
+        } catch (e) {}
         break;
       }
 
       const err = new Error(`Hunter API returned HTTP ${status}`);
       err.hunter = { status, url: `domain=${domain}&page=${page}&limit=${perPage}`, body: bodyText || json || '' };
-      console.error('hunter http error', { domain, page, status, preview: String(bodyText || '').slice(0, 1000) });
       throw err;
     }
 
     if (status >= 400) {
       const err = new Error(`Hunter API returned HTTP ${status}`);
       err.hunter = { status, url: `domain=${domain}&page=${page}&limit=${perPage}`, body: bodyText || json || '' };
-      console.error('hunter http error', { domain, page, status, preview: String(bodyText || '').slice(0, 1000) });
       throw err;
     }
 
-    if (!json) {
-      console.error('hunter unexpected non-json response', { domain, page, status, preview: (bodyText || '').slice(0, 400) });
-      break;
-    }
+    if (!json) break;
 
     if (hunterTotal === null) {
       hunterTotal = (json && json.data && (json.data.total || (json.data.meta && json.data.meta.total))) || null;
@@ -144,14 +127,13 @@ async function callHunterDomainSearch(domain) {
 
     const emails = (json && json.data && json.data.emails) ? json.data.emails : [];
     if (!emails || emails.length === 0) break;
-
     allEmailsRaw = allEmailsRaw.concat(emails);
 
+    // Respect the quick-response pages cap
+    if (page >= maxPages) break;
+
     if (hunterTotal && allEmailsRaw.length >= hunterTotal) break;
-    if (allEmailsRaw.length >= maxCollect) {
-      console.warn('Reached HUNTER_MAX_COLLECT safety cap', { domain, collected: allEmailsRaw.length, cap: maxCollect });
-      break;
-    }
+    if (allEmailsRaw.length >= maxCollect) break;
 
     page += 1;
     consecutive429s = 0;
@@ -160,15 +142,11 @@ async function callHunterDomainSearch(domain) {
 
   const normalized = normalizeHunterItemsFromEmails(allEmailsRaw);
   const map = new Map();
-  normalized.forEach(it => {
-    if (it.email) map.set(it.email.toLowerCase(), it);
-  });
+  normalized.forEach(it => { if (it.email) map.set(it.email.toLowerCase(), it); });
   const uniqueItems = Array.from(map.values());
 
   const result = { items: uniqueItems, total: Number.isFinite(hunterTotal) ? hunterTotal : uniqueItems.length };
-
-  try { cacheSet(cacheKey, result); } catch (e) {} // cache result
-
+  try { cacheSet(cacheKey, result); } catch (e) {}
   return result;
 }
 
@@ -199,20 +177,9 @@ function maskResultForPublic(resultObj, session) {
       delete masked.email;
       return masked;
     });
-    return {
-      items: maskedItems,
-      total: resultObj.total,
-      public: true,
-      canReveal: false,
-      revealUrl: '/plans?source=search'
-    };
+    return { items: maskedItems, total: resultObj.total, public: true, canReveal: false, revealUrl: '/plans?source=search' };
   } else {
-    return {
-      items: resultObj.items,
-      total: resultObj.total,
-      public: false,
-      canReveal: true
-    };
+    return { items: resultObj.items, total: resultObj.total, public: false, canReveal: true };
   }
 }
 
@@ -221,7 +188,7 @@ export default async function handler(req, res) {
   if (!domain) return res.status(400).json({ ok: false, error: 'Missing domain' });
 
   const session = extractSessionToken(req);
-  const cacheKey = `hunter_full:${domain}`;
+  const cacheKey = `hunter_full:${domain}:p${HUNTER_MAX_PAGES}:${HUNTER_PAGE_SIZE}`;
   const cached = cacheGet(cacheKey);
 
   if (cached) {
@@ -241,7 +208,7 @@ export default async function handler(req, res) {
           return res.status(200).json(Object.assign({ ok: true }, publicResult, { usage }));
         }
       }
-    } catch (e) { /* ignore usage increment failures */ }
+    } catch (e) {}
     const publicResult = maskResultForPublic(cached, session);
     return res.status(200).json(Object.assign({ ok: true }, publicResult));
   }
@@ -263,14 +230,10 @@ export default async function handler(req, res) {
             return res.status(402).json({ ok: false, error: 'Search quota exceeded' });
           }
         }
-      } catch (e) {
-        console.error('find-emails usage check failed', e && (e.message || e));
-      }
+      } catch (e) {}
     }
 
     const result = await callHunterDomainSearch(domain);
-    try { console.info('find-emails success', { domain, normalizedItems: result.items.length, hunterTotal: result.total }); } catch (e) {}
-
     cacheSet(cacheKey, result);
 
     if (session) {
@@ -282,7 +245,6 @@ export default async function handler(req, res) {
           return res.status(200).json(Object.assign({ ok: true }, publicResult, { usage }));
         }
       } catch (e) {
-        console.error('find-emails increment usage error', e && (e.message || e));
         const publicResult = maskResultForPublic(result, session);
         return res.status(200).json(Object.assign({ ok: true }, publicResult));
       }
