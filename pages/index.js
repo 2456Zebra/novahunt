@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
+import ErrorBoundary from '../components/ErrorBoundary';
 import Renderings from '../components/Renderings';
 
 // Load SearchClient only on the client to avoid SSR/hydration errors.
@@ -17,9 +18,13 @@ export default function Home() {
         <h1 style={{ marginTop: 20 }}>Find business contacts from a domain</h1>
         <p style={{ color: '#6b7280' }}>Enter a company website (example: coca-cola.com) and NovaHunt will show public business contacts.</p>
 
-        <SearchClient />
+        <ErrorBoundary>
+          <SearchClient />
+        </ErrorBoundary>
 
-        <Renderings />
+        <ErrorBoundary>
+          <Renderings />
+        </ErrorBoundary>
       </main>
     </>
   );
