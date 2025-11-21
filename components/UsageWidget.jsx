@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 // Small usage widget you can include in the header or account area.
 // Fetches /api/account-usage and shows progress for searches and reveals.
@@ -64,7 +65,7 @@ export default function UsageWidget() {
       </div>
 
       <div style={{ marginTop: 8 }}>
-        <a href="/upgrade" style={{ color: '#2563eb', fontSize: 13 }}>Upgrade to add more</a>
+        <Link href="/upgrade"><a style={{ color: '#2563eb', fontSize: 13 }}>Upgrade to add more</a></Link>
       </div>
     </div>
   );
