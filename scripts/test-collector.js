@@ -55,7 +55,7 @@ async function testCollectionStore() {
 async function testWorkerFunctions() {
   console.log('Testing Worker functions...\n');
   
-  const { normalizeHunterItemsFromEmails } = require('../workers/collectorWorker');
+  const { normalizeHunterItemsFromEmails } = require('../lib/hunter-api');
   
   console.log('1. Testing normalizeHunterItemsFromEmails()...');
   const mockHunterEmails = [
