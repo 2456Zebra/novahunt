@@ -23,7 +23,7 @@ export default class ErrorBoundary extends React.Component {
       return (
         <div role="alert" style={{ padding: 20, background: '#fee2e2', color: '#b91c1c', borderRadius: 8 }}>
           <h3>Something went wrong.</h3>
-          <p>We're working on it. Please try again or contact support.</p>
+          <p>We&apos;re working on it. Please try again or contact support.</p>
           <details style={{ whiteSpace: 'pre-wrap' }}>
             {String(this.state.error)}
             {this.state.info ? `\n\n${JSON.stringify(this.state.info)}` : ''}
