@@ -5,10 +5,8 @@ import { getLocalSession } from '../utils/auth';
 
 /**
  * RevealButton
- * - If user is not signed in, opens SignIn modal and records a pending reveal.
- * - When the user signs in (nh-signed-in event), an automatic retry is attempted.
- * - Uses getLocalSession() to find token (session.token).
- * - If API responds with usage, persist it to localStorage (nh_usage).
+ * - If user is not signed in, send them to /plans to choose Free/Upgrade.
+ * - When signed-in, performs reveal via /api/reveal and persists usage.
  */
 
 function persistServerUsage(usage) {
@@ -56,7 +54,6 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
         setError(json?.error || `Reveal failed (${res.status})`);
       } else {
         onRevealed && onRevealed(json.revealed || {});
-        // persist server usage if provided
         if (json.usage) persistServerUsage(json.usage);
         try { window.dispatchEvent(new Event('account-usage-updated')); } catch (e) {}
       }
@@ -73,13 +70,9 @@ export default function RevealButton({ contactId, payload, onRevealed }) {
     try {
       const session = getLocalSession();
       if (!session) {
-        try {
-          // store pending reveal; when user completes sign-in the nh-signed-in handler will retry
-          window.__nh_pending_reveal = { contactId, payload };
-          // Do NOT prefill the sign-in email with the revealed name/email.
-          // This avoids the behavior where the revealed name is inserted into the email input.
-          window.dispatchEvent(new CustomEvent('open-signin-modal'));
-        } catch (e) {}
+        // Not signed in — send user to plans page to choose Free or upgrade
+        try { window.__nh_pending_reveal = { contactId, payload }; } catch (e) {}
+        window.location.href = '/plans';
         setLoading(false);
         return;
       }

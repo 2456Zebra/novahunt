@@ -46,16 +46,6 @@ function maskEmail(email) {
   }
 }
 
-function sampleLeadsFor(domain) {
-  const d = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0] || 'example.com';
-  const base = d.includes('.') ? d : `${d}.com`;
-  return [
-    { email: `john.doe@${base}`, name: 'John Doe', title: 'Head of Marketing', confidence: 0.92, source: '' },
-    { email: `jane.smith@${base}`, name: 'Jane Smith', title: 'VP Sales', confidence: 0.87, source: '' },
-    { email: `marketing@${base}`, name: '', title: 'Marketing', confidence: 0.80, source: '' },
-  ];
-}
-
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
   const [loading, setLoading] = useState(false);
@@ -95,11 +85,8 @@ export default function SearchClient() {
 
       if (!resp.ok) {
         console.error('find-emails failed', resp.status, body);
-        // Surface server-side message if available, otherwise generic
         const msg = body && body.error ? body.error : `Server returned ${resp.status}`;
         setError(`Search failed: ${msg}`);
-        // show minimal sample results so user sees instant feedback (optional)
-        // setResults(sampleLeadsFor(q));
         setTotalCount(0);
         setLoading(false);
         return;
