@@ -3,20 +3,48 @@ import React, { useState, useEffect } from 'react';
 import ResultItem from './ResultItem';
 
 /**
- * SearchClient — user-facing search UI.
- * - Only shows results area after a search is performed (hasSearched).
- * - Shows "Load more" only when there are more results to fetch.
- * - Fetches pages via ?pages=N (API supports pages param).
+ * SearchClient — handles searching, grouping by department, prioritized ordering,
+ * merging results when loading more pages, and showing counts per department.
  */
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
-  const [pages, setPages] = useState(1); // start with 1 page
+  const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState({ items: [], total: 0, public: true });
   const [error, setError] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
-  async function fetchResults(reqDomain, reqPages) {
+  // Priority order for departments (higher importance first)
+  const DEPT_PRIORITY = [
+    'Executive',
+    'Executives',
+    'C-Suite',
+    'Management',
+    'Leadership',
+    'Sales',
+    'Marketing',
+    'Product',
+    'Engineering',
+    'Operations',
+    'Support',
+    'Other'
+  ];
+
+  // Merge and dedupe items by email (email or maskedEmail key)
+  function mergeItems(existing = [], incoming = []) {
+    const map = new Map();
+    existing.forEach(it => {
+      const key = (it.email || it.maskedEmail || '').toLowerCase() || (`_i_${Math.random()}`);
+      map.set(key, it);
+    });
+    incoming.forEach(it => {
+      const key = (it.email || it.maskedEmail || '').toLowerCase() || (`_i_${Math.random()}`);
+      map.set(key, it);
+    });
+    return Array.from(map.values());
+  }
+
+  async function fetchResults(reqDomain, reqPages, append = false) {
     if (!reqDomain) return;
     setLoading(true);
     setError('');
@@ -25,7 +53,15 @@ export default function SearchClient() {
       const res = await fetch(`/api/find-emails?${q.toString()}`);
       const json = await res.json();
       if (!json.ok) throw new Error(json.error || 'API error');
-      setResult(json);
+      if (append) {
+        setResult(prev => {
+          // merge and keep API's reported total/public flag
+          const merged = mergeItems(prev.items || [], json.items || []);
+          return { items: merged, total: json.total || merged.length, public: json.public };
+        });
+      } else {
+        setResult({ items: json.items || [], total: json.total || 0, public: json.public });
+      }
     } catch (e) {
       setError(e.message || String(e));
       setResult({ items: [], total: 0, public: true });
@@ -38,26 +74,52 @@ export default function SearchClient() {
     e && e.preventDefault && e.preventDefault();
     const d = (domain || '').trim();
     if (!d) return;
-    // reset pages and perform search
     setPages(1);
     setHasSearched(true);
-    fetchResults(d, 1);
+    fetchResults(d, 1, false);
   }
 
   function onLoadMore() {
     const next = pages + 1;
     setPages(next);
-    fetchResults(domain.trim(), next);
+    // append: true merges with existing items
+    fetchResults(domain.trim(), next, true);
   }
 
   useEffect(() => {
-    // if domain cleared, hide results area
     if (!domain) {
       setHasSearched(false);
       setResult({ items: [], total: 0, public: true });
       setPages(1);
     }
   }, [domain]);
+
+  // Group items by department, normalized
+  function groupByDepartment(items = []) {
+    const groups = {};
+    items.forEach(it => {
+      const raw = (it.department || '').trim();
+      const key = raw ? raw : 'Other';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(it);
+    });
+
+    // Order groups by DEPT_PRIORITY, then alphabetically for remaining
+    const ordered = [];
+    DEPT_PRIORITY.forEach(p => {
+      if (groups[p]) {
+        ordered.push({ name: p, items: groups[p] });
+        delete groups[p];
+      }
+    });
+    // remaining keys
+    Object.keys(groups).sort().forEach(k => {
+      ordered.push({ name: k, items: groups[k] });
+    });
+    return ordered;
+  }
+
+  const grouped = groupByDepartment(result.items || []);
 
   return (
     <div style={{ marginTop: 20 }}>
@@ -76,7 +138,6 @@ export default function SearchClient() {
       {loading ? <div style={{ marginTop: 12 }}>Loading results...</div> : null}
       {error ? <div style={{ marginTop: 12, color: 'red' }}>Error: {error}</div> : null}
 
-      {/* Only show result summary and list after the user has searched at least once */}
       {hasSearched ? (
         <div style={{ marginTop: 12 }}>
           <div style={{ fontSize: 13, color: '#6b7280' }}>
@@ -84,26 +145,18 @@ export default function SearchClient() {
           </div>
 
           <div style={{ marginTop: 8 }}>
-            {/* Group by department if present */}
-            {(() => {
-              const groups = {};
-              (result.items || []).forEach(it => {
-                const key = (it.department && it.department.trim()) ? it.department.trim() : 'Other';
-                if (!groups[key]) groups[key] = [];
-                groups[key].push(it);
-              });
-              return Object.keys(groups).map((dept) => (
-                <div key={dept} style={{ marginTop: 12 }}>
-                  {dept !== 'Other' ? <div style={{ fontWeight: 700, marginBottom: 6 }}>{dept}</div> : null}
-                  {groups[dept].map((it, idx) => (
-                    <ResultItem key={(it.email || it.maskedEmail || idx)} item={it} isSignedIn={false} />
-                  ))}
+            {grouped.map(group => (
+              <div key={group.name} style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{group.name}{` (${group.items.length})`}</div>
                 </div>
-              ));
-            })()}
+                {group.items.map((it, idx) => (
+                  <ResultItem key={(it.email || it.maskedEmail || `${group.name}_${idx}`)} item={it} isSignedIn={false} />
+                ))}
+              </div>
+            ))}
           </div>
 
-          {/* Show Load more only when we actually have results and there are more to fetch */}
           {result.items.length > 0 && result.total > result.items.length ? (
             <div style={{ marginTop: 12 }}>
               <button onClick={onLoadMore} style={{ padding: '8px 12px' }} disabled={loading}>
