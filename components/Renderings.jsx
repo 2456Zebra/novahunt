@@ -13,6 +13,9 @@ export default function Renderings() {
     { emoji: '📸', title: 'Influencer → Sponsors', desc: 'Find brand contacts and PR reps to land sponsorships and collabs.' },
     { emoji: '💼', title: 'Freelancer → Clients', desc: 'Locate hiring managers and decision makers for contract work.' },
     { emoji: '🎵', title: 'Musician → Gigs', desc: 'Find booking agents, promoters, and venues to book shows.' },
+    { emoji: '📷', title: 'Photographer → Clients', desc: 'Find art directors, magazines, and brands who hire photographers.' },
+    { emoji: '🎉', title: 'Event Planner → Vendors', desc: 'Discover venue contacts, caterers, and vendor reps for events.' },
+    { emoji: '🚀', title: 'Founder → Investors', desc: 'Locate investor relations, VCs, and angel contacts for fundraising.' },
   ];
 
   return (
