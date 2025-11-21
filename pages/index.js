@@ -1,23 +1,25 @@
-import dynamic from 'next/dynamic';
 import Head from 'next/head';
-
-// Client-only search widget (avoids SSR/hydration mismatches)
-const SearchClient = dynamic(() => import('../components/SearchClient'), { ssr: false });
+import SearchClient from '../components/SearchClient';
+import Header from '../components/Header';
+import Renderings from '../components/Renderings';
 
 export default function Home() {
   return (
     <>
       <Head>
-        <title>NovaHunt — Find contacts</title>
+        <title>NovaHunt — Find business contacts</title>
+        <meta name="description" content="Search company domains to find contact emails, names and roles." />
       </Head>
 
-      <main style={{ padding: '2rem', maxWidth: 980, margin: '0 auto' }}>
-        <h1 style={{ marginTop: 0 }}>Find contacts</h1>
-        <p style={{ color: '#374151', maxWidth: 900 }}>
-          Enter a company website to find agency or company contacts. We show names, job titles and a trust score so you can decide who to reach out to.
-        </p>
+      <Header />
+
+      <main style={{ padding: '24px' }}>
+        <h1 style={{ marginTop: 20 }}>Find business contacts from a domain</h1>
+        <p style={{ color: '#6b7280' }}>Enter a company website (example: coca-cola.com) and NovaHunt will show public business contacts.</p>
 
         <SearchClient />
+
+        <Renderings />
       </main>
     </>
   );
