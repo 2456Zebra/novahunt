@@ -1,6 +1,6 @@
 // pages/api/find-emails.js
 // Hunter domain search + authenticated usage increment and usage return
-// Enforces per-user search quota (if the user's plan has a limit).
+// Adds a short server-side info log to help diagnose counts vs UI.
 
 const { getUserBySession } = require('../../lib/session');
 const { incrementUsage, getUsageForUser } = require('../../lib/user-store');
@@ -63,20 +63,17 @@ export default async function handler(req, res) {
   const cached = cacheGet(key);
   const session = extractSessionToken(req);
 
-  // If cached and user is authenticated we still want to return usage (so client updates)
   if (cached) {
     try {
       if (session) {
         const payload = getUserBySession(session);
         if (payload && payload.sub) {
           const usageBefore = await getUsageForUser(payload.sub);
-          // If the user has a limit and has reached it, block further searches
           const searchesUsed = usageBefore.searchesUsed || 0;
           const searchesTotal = usageBefore.searchesTotal || 0;
           if (searchesTotal > 0 && searchesUsed >= searchesTotal) {
             return res.status(402).json({ ok: false, error: 'Search quota exceeded' });
           }
-          // increment searches (best-effort)
           await incrementUsage(payload.sub, { searches: 1 });
           const usage = await getUsageForUser(payload.sub);
           return res.status(200).json({ ok: true, items: cached.items, total: cached.total, usage });
@@ -92,7 +89,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // If authenticated, check quota before hitting Hunter
     if (session) {
       try {
         const payload = getUserBySession(session);
@@ -109,7 +105,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // call Hunter
     const json = await callHunterDomainSearch(domain);
     const items = normalizeHunterItems(json);
 
@@ -117,9 +112,13 @@ export default async function handler(req, res) {
     const hunterTotal = (json && json.data && (json.data.total || (json.data.meta && json.data.meta.total))) || null;
     const total = Number.isFinite(hunterTotal) && hunterTotal >= 0 ? hunterTotal : items.length;
 
+    // server-side debug/info log so you can inspect counts in Vercel logs
+    try {
+      console.info('find-emails success', { domain, normalizedItems: items.length, hunterTotal });
+    } catch (e) {}
+
     cacheSet(key, { items, total });
 
-    // If user authenticated, increment usage and include it in response
     if (session) {
       try {
         const payload = getUserBySession(session);
@@ -133,7 +132,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // unauthenticated response (no usage)
     return res.status(200).json({ ok: true, items, total });
   } catch (err) {
     if (err && err.hunter) {

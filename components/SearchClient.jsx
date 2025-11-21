@@ -38,7 +38,6 @@ function maskEmail(email) {
     if (!email) return '';
     const [local, domain] = (email || '').split('@');
     if (!local || !domain) return email || '';
-    // Show first and last char with asterisks in between for consistent look
     if (local.length <= 2) return '*'.repeat(local.length) + '@' + domain;
     return `${local[0]}${'*'.repeat(Math.max(3, local.length - 2))}${local.slice(-1)}@${domain}`;
   } catch (e) {
@@ -82,6 +81,9 @@ export default function SearchClient() {
       const bodyText = await resp.text().catch(() => '');
       let body = {};
       try { body = bodyText ? JSON.parse(bodyText) : {}; } catch (err) { body = { raw: bodyText }; }
+
+      // Debugging help: log the raw API response in the browser console so you can see the Hunter payload
+      console.log('find-emails response (raw):', body);
 
       if (!resp.ok) {
         console.error('find-emails failed', resp.status, body);

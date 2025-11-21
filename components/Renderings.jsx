@@ -1,8 +1,8 @@
 import React from 'react';
 
 /**
- * Simple presentational cards to show example use-cases under search results.
- * Replace with real images when available.
+ * Presentational cards showing example use-cases under search results.
+ * These are intentionally light and use emoji placeholders — replace with images later.
  */
 
 export default function Renderings() {
@@ -10,6 +10,9 @@ export default function Renderings() {
     { emoji: '👗', title: 'Model → Agency', desc: 'Find modelling agencies and casting contacts to book your next shoot.' },
     { emoji: '🎭', title: 'Actor → Agent', desc: 'Locate talent agents and casting directors for auditions.' },
     { emoji: '📈', title: 'Seller → Leads', desc: 'Discover sales contacts to scale your outreach and win that next contract.' },
+    { emoji: '📸', title: 'Influencer → Sponsors', desc: 'Find brand contacts and PR reps to land sponsorships and collabs.' },
+    { emoji: '💼', title: 'Freelancer → Clients', desc: 'Locate hiring managers and decision makers for contract work.' },
+    { emoji: '🎵', title: 'Musician → Gigs', desc: 'Find booking agents, promoters, and venues to book shows.' },
   ];
 
   return (
