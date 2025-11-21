@@ -5,10 +5,14 @@ import ResultItem from './ResultItem';
 /**
  * SearchClient — handles searching, grouping by department with highlighted headers,
  * merging results when loading more pages, and showing counts per department.
+ *
+ * NOTE: this version requests 3 pages on the initial search to reduce the "only 10" problem.
+ * If you prefer fewer or more pages on first load, change INITIAL_PAGES below.
  */
 export default function SearchClient() {
+  const INITIAL_PAGES = 3; // <-- initial pages requested on first search
   const [domain, setDomain] = useState('');
-  const [pages, setPages] = useState(1);
+  const [pages, setPages] = useState(INITIAL_PAGES);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState({ items: [], total: 0, public: true });
   const [error, setError] = useState('');
@@ -71,9 +75,9 @@ export default function SearchClient() {
     e && e.preventDefault && e.preventDefault();
     const d = (domain || '').trim();
     if (!d) return;
-    setPages(1);
+    setPages(INITIAL_PAGES);
     setHasSearched(true);
-    fetchResults(d, 1, false);
+    fetchResults(d, INITIAL_PAGES, false);
   }
 
   function onLoadMore() {
@@ -86,7 +90,7 @@ export default function SearchClient() {
     if (!domain) {
       setHasSearched(false);
       setResult({ items: [], total: 0, public: true });
-      setPages(1);
+      setPages(INITIAL_PAGES);
     }
   }, [domain]);
 
