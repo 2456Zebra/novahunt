@@ -1,202 +1,201 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import RevealButton from './RevealButton';
-import Renderings from './Renderings';
+import React, { useState, useRef, useEffect } from 'react';
 
 /**
- * SearchClient — Hunt Emails only.
- * - Avoids LLM usage/costs.
- * - Uses Hunter-backed domain search via /api/find-emails.
+ * SearchClient
+ *
+ * Usage: <SearchClient />
+ *
+ * Notes:
+ * - Issues a GET to /api/find-emails?domain=<domain>
+ * - Works for unauthenticated users (shows results or errors).
+ * - Logs raw response for debugging: console.log('find-emails response (raw):', body)
  */
-
-function SignInHintInline() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const session = localStorage.getItem('nh_session');
-    if (session) return null;
-  } catch (e) {}
-  return (
-    <div style={{ color: '#f97316', marginTop: 8, fontWeight: 600 }}>
-      <a
-        href="#"
-        onClick={(e) => {
-          e.preventDefault();
-          // Open plans so users can choose Free or upgrade
-          window.location.href = '/plans';
-        }}
-        style={{ color: '#f97316', textDecoration: 'underline' }}
-      >
-        Sign in to see all results
-      </a>
-    </div>
-  );
-}
-
-function maskEmail(email) {
-  try {
-    if (!email) return '';
-    const [local, domain] = (email || '').split('@');
-    if (!local || !domain) return email || '';
-    if (local.length <= 2) return '*'.repeat(local.length) + '@' + domain;
-    return `${local[0]}${'*'.repeat(Math.max(3, local.length - 2))}${local.slice(-1)}@${domain}`;
-  } catch (e) {
-    return email || '';
-  }
-}
 
 export default function SearchClient() {
   const [domain, setDomain] = useState('');
+  const [submittedDomain, setSubmittedDomain] = useState('');
+  const [items, setItems] = useState([]);
+  const [total, setTotal] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState([]);
   const [error, setError] = useState('');
-  const [showAll, setShowAll] = useState(false);
-  const [totalCount, setTotalCount] = useState(null);
+  const abortRef = useRef(null);
+  const inputRef = useRef(null);
 
-  // Start with an empty input (no demo prefill)
-  useEffect(() => {}, []);
+  useEffect(() => {
+    // autofocus input on mount
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+    return () => {
+      // cleanup any inflight request
+      if (abortRef.current) {
+        try { abortRef.current.abort(); } catch (e) {}
+      }
+    };
+  }, []);
 
-  function persistServerUsage(usage) {
-    try {
-      if (!usage) return;
-      localStorage.setItem('nh_usage', JSON.stringify(usage));
-      window.dispatchEvent(new CustomEvent('account-usage-updated'));
-    } catch (e) {}
+  function normalizeDomain(input) {
+    if (!input) return '';
+    // remove protocol + whitespace
+    let d = input.trim().toLowerCase();
+    d = d.replace(/^https?:\/\//, '').replace(/^www\./, '');
+    // keep only host part
+    const parts = d.split('/');
+    return parts[0];
   }
 
-  async function handleSearch(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    setError('');
-    const q = (domain || '').trim();
-    if (!q) {
-      setError('Enter a domain (e.g. stripe.com)');
+  async function doSearch(nextDomain) {
+    const normalized = normalizeDomain(nextDomain);
+    if (!normalized) {
+      setError('Please enter a valid domain (example: coca-cola.com)');
+      setItems([]);
+      setTotal(null);
       return;
     }
-    setLoading(true);
-    setResults([]);
-    setShowAll(false);
-    setTotalCount(null);
-    try {
-      const resp = await fetch(`/api/find-emails?domain=${encodeURIComponent(q)}`);
-      const bodyText = await resp.text().catch(() => '');
-      let body = {};
-      try { body = bodyText ? JSON.parse(bodyText) : {}; } catch (err) { body = { raw: bodyText }; }
 
-      // Debugging help: log the raw API response in the browser console so you can see the Hunter payload
+    // cancel previous
+    if (abortRef.current) {
+      try { abortRef.current.abort(); } catch (e) {}
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    setError('');
+    setItems([]);
+    setTotal(null);
+
+    try {
+      const url = `/api/find-emails?domain=${encodeURIComponent(normalized)}`;
+      const res = await fetch(url, { signal: controller.signal, method: 'GET' });
+      const text = await res.text();
+      let body;
+      try { body = text ? JSON.parse(text) : {}; } catch (e) { body = { raw: text }; }
+
+      // Debug logging for quick inspection in browser console
       console.log('find-emails response (raw):', body);
 
-      if (!resp.ok) {
-        console.error('find-emails failed', resp.status, body);
-        const msg = body && body.error ? body.error : `Server returned ${resp.status}`;
-        setError(`Search failed: ${msg}`);
-        setTotalCount(0);
-        setLoading(false);
-        return;
+      if (!res.ok) {
+        // try to extract server-provided error
+        const errMsg = (body && body.error) ? body.error : `Server returned ${res.status}`;
+        throw new Error(errMsg);
       }
 
-      const items = Array.isArray(body.items) ? body.items.map(it => ({ ...it, revealed: false })) : (body.items || []);
-      setResults(items);
-      setTotalCount(typeof body.total === 'number' ? body.total : items.length);
-      if (body.usage) persistServerUsage(body.usage);
+      if (!body || !body.ok) {
+        const errMsg = (body && body.error) ? body.error : 'Unexpected response from server';
+        throw new Error(errMsg);
+      }
+
+      // Accept body.items and body.total; be defensive if missing
+      const returnedItems = Array.isArray(body.items) ? body.items : [];
+      const returnedTotal = (typeof body.total === 'number') ? body.total : (returnedItems.length || 0);
+
+      setItems(returnedItems);
+      setTotal(returnedTotal);
+      setSubmittedDomain(normalized);
     } catch (err) {
-      console.error('network error', err);
-      setError(err?.message || 'Network error');
+      if (err.name === 'AbortError') {
+        // ignore aborted requests
+        return;
+      }
+      console.error('SearchClient error', err);
+      setError(err.message || 'Search failed');
     } finally {
       setLoading(false);
+      abortRef.current = null;
     }
   }
 
-  function onRevealedFor(index, revealedData) {
-    setResults(prev => {
-      const copy = prev.slice();
-      copy[index] = { ...copy[index], revealed: true, email: revealedData?.email || copy[index].email };
-      return copy;
-    });
+  function onSubmit(e) {
+    e.preventDefault();
+    setError('');
+    doSearch(domain);
   }
 
-  function openPlans() {
-    window.location.href = '/plans';
+  function onQuickExample(d) {
+    setDomain(d);
+    doSearch(d);
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: 980, margin: '0 auto' }}>
-      <h2 style={{ marginTop: 0 }}>Find Business Emails</h2>
-      <p style={{ color: '#374151' }}>
-        Confidence scores <strong>85%–100%</strong>.
-      </p>
-
-      <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+    <section aria-label="Domain search" style={{ maxWidth: 960, margin: '0 auto', padding: '20px' }}>
+      <form onSubmit={onSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+        <label htmlFor="domain-input" style={{ display: 'none' }}>Company domain</label>
         <input
+          id="domain-input"
+          ref={inputRef}
           value={domain}
-          onChange={e => setDomain(e.target.value)}
-          placeholder="e.g. fordmodels.com"
-          style={{ padding: '.5rem', border: '1px solid #ddd', borderRadius: 6, minWidth: 280, flex: '1 1 360px' }}
+          onChange={(e) => setDomain(e.target.value)}
+          placeholder="Enter a website domain (example: coca-cola.com)"
+          aria-label="Enter a website domain"
+          style={{ flex: 1, padding: '10px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 16 }}
         />
-
-        <button type="submit" disabled={loading} style={{ padding: '.5rem 1rem', borderRadius: 8, background: '#007bff', color: '#fff', border: 'none', flex: '0 0 auto' }}>
-          {loading ? 'Searching…' : 'Hunt Emails'}
+        <button
+          type="submit"
+          disabled={loading}
+          aria-disabled={loading}
+          style={{
+            padding: '10px 14px',
+            borderRadius: 6,
+            background: loading ? '#9ca3af' : '#0ea5a4',
+            color: '#fff',
+            border: 'none',
+            cursor: loading ? 'default' : 'pointer'
+          }}
+        >
+          {loading ? 'Searching…' : 'Search'}
         </button>
       </form>
 
-      {error && <div style={{ color: 'crimson', marginTop: 12 }}>{error}</div>}
-
-      <div style={{ marginTop: 12, color: '#374151' }}>
-        Showing {Math.min(results.length, showAll ? results.length : 3)} of {typeof totalCount === 'number' ? totalCount : results.length} results
+      <div style={{ marginBottom: 12, color: '#6b7280' }}>
+        Quick examples:&nbsp;
+        <button onClick={() => onQuickExample('coca-cola.com')} style={{ marginRight: 8, border: 0, background: 'transparent', color: '#0ea5a4', cursor: 'pointer' }}>coca-cola.com</button>
+        <button onClick={() => onQuickExample('santamonica.gov')} style={{ border: 0, background: 'transparent', color: '#0ea5a4', cursor: 'pointer' }}>santamonica.gov</button>
       </div>
 
-      <SignInHintInline />
+      {error && (
+        <div role="alert" style={{ marginBottom: 12, color: '#b91c1c', background: '#fee2e2', padding: 12, borderRadius: 6 }}>
+          {error}
+        </div>
+      )}
 
-      <div style={{ marginTop: 16 }}>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {results.slice(0, showAll ? results.length : 3).map((r, idx) => (
-            <li key={(r.email || r.name || idx) + '-' + idx} style={{ padding: '10px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontWeight: 700, color: '#111' }}>
-                  {r.revealed ? (r.email || '(no email)') : maskEmail(r.email || '(no email)')}
-                </div>
-                <div style={{ color: '#666', fontSize: 13 }}>
-                  {(r.name || '—') + (r.title ? ' • ' + r.title : '')}
-                </div>
-                {r.source && (
-                  <div style={{ marginTop: 6 }}>
-                    <a href={r.source} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#6b7280' }}>
-                      Source
-                    </a>
-                  </div>
-                )}
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 600, color: '#007bff' }}>{Math.round((r.confidence || 0) * 100)}%</div>
-                <div style={{ marginTop: 8 }}>
-                  <RevealButton
-                    contactId={r.email || `idx-${idx}`}
-                    payload={r}
-                    onRevealed={(revealed) => onRevealedFor(idx, revealed)}
-                  />
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+      {submittedDomain && (
+        <div style={{ marginBottom: 12, color: '#374151' }}>
+          Results for <strong>{submittedDomain}</strong> {total !== null && <span>— showing {items.length} of {total}</span>}
+        </div>
+      )}
 
-        {results.length > 3 && !showAll && (
-          <div style={{ marginTop: 10 }}>
-            <button onClick={() => {
-              const session = typeof window !== 'undefined' ? localStorage.getItem('nh_session') : null;
-              if (session) {
-                setShowAll(true);
-              } else {
-                openPlans();
-              }
-            }} style={{ padding: '.5rem .75rem', borderRadius: 6, background: '#007bff', color: '#fff', border: 'none' }}>
-              {localStorage.getItem && localStorage.getItem('nh_session') ? `Show ${results.length - 3} more` : `Sign in / upgrade to see all ${totalCount || results.length}`}
-            </button>
+      <div>
+        {items.length === 0 && !loading && !error && submittedDomain && (
+          <div style={{ color: '#6b7280', padding: 16, borderRadius: 6, border: '1px dashed #e5e7eb' }}>
+            No results returned. If you expected more results, please sign in to reveal more or try again later.
           </div>
         )}
-      </div>
 
-      {/* Render illustrative cards below results */}
-      <Renderings />
-    </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+          {items.map((it, idx) => (
+            <article key={it.email || `${idx}`} style={{ padding: 12, border: '1px solid #e6e7ea', borderRadius: 8, background: '#fff' }}>
+              <div style={{ fontWeight: 700 }}>{it.name || it.email}</div>
+              <div style={{ color: '#6b7280', marginTop: 6 }}>{it.title || ''}</div>
+              <div style={{ marginTop: 8 }}>
+                <a href={`mailto:${it.email}`} style={{ color: '#0ea5a4', textDecoration: 'none' }} aria-label={`Email ${it.email}`}>
+                  {it.email}
+                </a>
+              </div>
+              <div style={{ marginTop: 8, color: '#9ca3af', fontSize: 13 }}>
+                Confidence: {it.confidence ? String(Math.round(it.confidence * 100)) + '%' : 'n/a'}
+              </div>
+              {it.source && (
+                <div style={{ marginTop: 8 }}>
+                  <a href={it.source} target="_blank" rel="noopener noreferrer" style={{ color: '#0ea5a4', fontSize: 13 }}>
+                    Source
+                  </a>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
