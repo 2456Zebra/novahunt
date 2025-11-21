@@ -1,9 +1,6 @@
 // pages/api/find-emails.js
 // Robust synchronous paging: fetch multiple pages from Hunter until we've collected hunterTotal
 // or reached a safety cap. Includes exponential backoff handling for 429s and simple in-memory caching.
-//
-// WARNING: This performs multiple HTTP requests during a single invocation. It is safe for QA
-// and moderate use but for production under load consider the background job approach.
 
 const { getUserBySession } = require('../../lib/session');
 const { incrementUsage, getUsageForUser } = require('../../lib/user-store');
@@ -92,6 +89,15 @@ async function callHunterDomainSearch(domain) {
       continue;
     }
 
+    // If Hunter returns a non-OK HTTP status (except 429), treat as an error and surface
+    if (status >= 400) {
+      const err = new Error(`Hunter API returned HTTP ${status}`);
+      err.hunter = { status, url: `domain=${domain}&page=${page}&limit=${perPage}`, body: bodyText || json || '' };
+      // Log preview for easier debugging
+      console.error('hunter http error', { domain, page, status, preview: String(bodyText || '').slice(0, 1000) });
+      throw err;
+    }
+
     if (!json) {
       console.error('hunter unexpected non-json response', { domain, page, status, preview: (bodyText || '').slice(0, 400) });
       break;
@@ -102,7 +108,12 @@ async function callHunterDomainSearch(domain) {
     }
 
     const emails = (json && json.data && json.data.emails) ? json.data.emails : [];
+    // If the response is valid but contains no emails, break (no further pages)
     if (!emails || emails.length === 0) {
+      // If hunterTotal exists and is >0 but response has no emails, log preview for diagnosis
+      if (hunterTotal && hunterTotal > 0) {
+        console.info('hunter reported total > 0 but this page returned 0 emails', { domain, page, hunterTotal, preview: (bodyText || '').slice(0, 400) });
+      }
       break;
     }
 
@@ -228,6 +239,8 @@ export default async function handler(req, res) {
         hunterUrl: err.hunter.url,
         hunterBodyPreview: String(err.hunter.body || '').slice(0, 200)
       });
+      // Surface a clearer message to the client about hunter HTTP failures
+      return res.status(502).json({ ok: false, error: 'Hunter API error', hunterStatus: err.hunter.status, hunterPreview: String(err.hunter.body || '').slice(0, 400) });
     } else {
       console.error('find-emails hunter error', err && (err.message || err));
     }
