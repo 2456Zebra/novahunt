@@ -1,44 +1,70 @@
-'use client';
-
-import { useState } from 'react';
-import { signUp } from '../utils/auth';
-import Link from 'next/link';
+import React, { useState } from 'react';
+import { useRouter } from 'next/router';
 
 export default function SignUpPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  async function submit(e) {
-    e.preventDefault();
-    setErr('');
-    setLoading(true);
+  async function onSubmit(e) {
+    e && e.preventDefault && e.preventDefault();
+    setBusy(true);
+    setError('');
     try {
-      await signUp({ email, password });
-      window.location.href = '/';
-    } catch (e) {
-      setErr(e.message || 'Signup failed');
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Signup failed');
+      // server sets nh_session cookie; redirect to account
+      router.replace('/account');
+    } catch (err) {
+      setError(err.message || 'Signup failed');
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
   return (
-    <main style={{ maxWidth: 640, margin: '56px auto', padding: '0 16px' }}>
-      <h1>Sign up</h1>
-      <div style={{ color: '#6b7280', marginBottom: 12 }}>
-        Free tier — 5 searches / 2 reveals. Need more? Choose a paid plan <a href="/plans" style={{ color: '#007bff', textDecoration: 'underline' }}>here</a>.
-      </div>
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <input required type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input required type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        {err && <div style={{ color: 'crimson' }}>{err}</div>}
-        <button disabled={loading} type="submit" className="btn btn-primary">{loading ? 'Creating…' : 'Create account'}</button>
+    <main style={{ padding: 24, maxWidth: 640, margin: '40px auto' }}>
+      <h1>Create an account</h1>
+      <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12 }}>
+        <label style={{ fontSize: 14 }}>Email</label>
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          type="email"
+          placeholder="you@example.com"
+          required
+          style={{ padding: '12px 14px', fontSize: 16, borderRadius: 8, border: '1px solid #e6e6e6' }}
+        />
+
+        <label style={{ fontSize: 14 }}>Password</label>
+        <input
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          type="password"
+          placeholder="Choose a strong password"
+          required
+          style={{ padding: '12px 14px', fontSize: 16, borderRadius: 8, border: '1px solid #e6e6e6' }}
+        />
+
+        {error ? <div style={{ color: 'red' }}>{error}</div> : null}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="submit" style={{ flex: 1, padding: '12px 14px', borderRadius: 8, background: '#111827', color: '#fff', border: 'none' }} disabled={busy}>
+            {busy ? 'Creating account…' : 'Create account'}
+          </button>
+        </div>
+
+        <div style={{ color: '#6b7280', fontSize: 13 }}>
+          By signing up you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy policy</a>.
+        </div>
       </form>
-      <p style={{ marginTop: 12 }}>
-        Already have a plan? <a href="/signin" style={{ color: '#007bff', textDecoration: 'underline' }}>Sign in</a>
-      </p>
     </main>
   );
 }
