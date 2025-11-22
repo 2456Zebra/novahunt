@@ -4,7 +4,7 @@ import HeaderUserSnippet from './HeaderUserSnippet';
 
 export default function HeaderAuth({ user, onSignOut }) {
   // If user present, show the UserSnippet (Account/Upgrade handled there).
-  // If not, show Sign in and Sign up (Sign up should go to Plans).
+  // If not, show Sign in and Sign up (Sign up routes to Plans).
   if (user && user.sub) {
     return <HeaderUserSnippet user={user} />;
   }
@@ -18,7 +18,7 @@ export default function HeaderAuth({ user, onSignOut }) {
         Sign in
       </button>
 
-      {/* Upper-right Sign up should go to Plans page (not /signup) */}
+      {/* Upper-right Sign up routes to Plans page */}
       <Link href="/plans/">
         <a style={{ padding: '6px 10px', borderRadius: 6, background: '#111827', color: '#fff', textDecoration: 'none' }}>Sign up</a>
       </Link>
