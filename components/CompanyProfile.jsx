@@ -1,145 +1,72 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 /**
  * CompanyProfile — decorative, read-only company info panel for the search results page.
- * - Props:
- *    - domain (string) — domain being searched (e.g. coca-cola.com)
- *    - result (object) — latest search result (optional; used to display counts)
+ * Props:
+ *  - domain (string) — searched domain
+ *  - result (object) — latest search result (optional)
  *
- * Behavior:
- * - When domain is provided, this component calls /api/company-info?domain=<domain>
- *   and displays logo, description/history, founded, location, employees, tags, website.
+ * This component is intentionally lightweight and SSR-safe (no network calls at module load).
  */
+
+const styles = {
+  container: { padding: 12, background: '#fff', borderRadius: 8, border: '1px solid #eee' },
+  title: { fontSize: 16, fontWeight: 800 },
+  summary: { color: '#444', marginTop: 8, lineHeight: 1.45 },
+  facts: { marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 },
+  fact: { background: '#fafafa', padding: 8, borderRadius: 6, fontSize: 13 },
+  subtle: { color: '#666', fontSize: 13 },
+};
+
+const safeHostFromDomain = (domain) => {
+  if (!domain) return null;
+  try {
+    return new URL(domain.startsWith('http') ? domain : `https://${domain}`).hostname.replace('www.', '');
+  } catch {
+    return domain;
+  }
+};
+
 export default function CompanyProfile({ domain = '', result = { items: [], total: 0 } }) {
-  const [info, setInfo] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
-
-  useEffect(() => {
-    if (!domain) {
-      setInfo(null);
-      setErr('');
-      return;
-    }
-
-    async function load() {
-      setLoading(true);
-      setErr('');
-      try {
-        const res = await fetch(`/api/company-info?domain=${encodeURIComponent(domain)}`);
-        const json = await res.json();
-        if (!json || !json.ok) {
-          setInfo(null);
-          setErr(json && json.error ? json.error : 'No company info');
-        } else {
-          setInfo(json.info || null);
-        }
-      } catch (e) {
-        setInfo(null);
-        setErr(e.message || 'Failed to fetch company info');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    load();
-  }, [domain]);
-
-  const logoStyle = { width: 88, height: 88, objectFit: 'contain', borderRadius: 6, background: '#fff' };
+  const host = safeHostFromDomain(domain);
+  const total = (result && (result.total ?? result.items?.length)) || 0;
 
   return (
-    <aside style={{ padding: 18, borderRadius: 10, background: '#fffaf8', border: '1px solid #ffefe6', minHeight: 360 }}>
-      {!domain ? (
-        <div style={{ color: '#6b7280' }}>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>Company profile</div>
-          <div style={{ marginTop: 10 }}>Search a company to see the profile and history here.</div>
+    <aside style={styles.container} aria-live="polite">
+      <div style={styles.title}>Company profile</div>
+
+      <div style={styles.subtle} aria-hidden>{host || 'No domain selected'}</div>
+
+      <div style={styles.summary}>
+        {host ? (
+          <>
+            This panel shows a short overview of the selected domain and search context. It is decorative and intended to add
+            contextual value next to the results.
+          </>
+        ) : (
+          <>Select a search result to see a conversational company profile here.</>
+        )}
+      </div>
+
+      <div style={styles.facts}>
+        <div style={styles.fact}>
+          <div style={styles.subtle}>Search results</div>
+          <div style={{ fontWeight: 700, marginTop: 6 }}>{total}</div>
         </div>
-      ) : (
-        <>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <div style={{ width: 88, height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', borderRadius: 8 }}>
-              <img
-                src={(info && info.logo) ? info.logo : `https://logo.clearbit.com/${domain}`}
-                alt={(info && info.name) ? `${info.name} logo` : `${domain} logo`}
-                style={logoStyle}
-                onError={(e) => { e.target.src = '/favicon.ico'; }}
-              />
-            </div>
 
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#7a341f' }}>{(info && info.name) ? info.name : domain}</div>
-              <div style={{ fontSize: 13, color: '#6b7280', marginTop: 6 }}>
-                {(info && info.tagline) ? info.tagline : (info && info.description) ? (info.description.split('.').slice(0,1).join('.') + '.') : ''}
-              </div>
-            </div>
-          </div>
+        <div style={styles.fact}>
+          <div style={styles.subtle}>Source</div>
+          <div style={{ fontWeight: 700, marginTop: 6 }}>{result.public ? 'Public' : 'Private'}</div>
+        </div>
+      </div>
 
-          <div style={{ marginTop: 14, display: 'flex', gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>Overview</div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div style={{ fontSize: 13 }}>
-                  <div style={{ color: '#374151', fontWeight: 700 }}>{(info && info.foundedYear) ? info.foundedYear : '—'}</div>
-                  <div style={{ color: '#6b7280', fontSize: 12 }}>Founded</div>
-                </div>
-
-                <div style={{ fontSize: 13 }}>
-                  <div style={{ color: '#374151', fontWeight: 700 }}>{(info && info.metrics && info.metrics.employees) ? info.metrics.employees : ((info && info.size) ? info.size : '—')}</div>
-                  <div style={{ color: '#6b7280', fontSize: 12 }}>Employees</div>
-                </div>
-
-                <div style={{ fontSize: 13 }}>
-                  <div style={{ color: '#374151', fontWeight: 700 }}>{(info && info.location) ? info.location : ((info && info.city) ? info.city : '—')}</div>
-                  <div style={{ color: '#6b7280', fontSize: 12 }}>Location</div>
-                </div>
-
-                <div style={{ fontSize: 13 }}>
-                  <div style={{ color: '#374151', fontWeight: 700 }}>{result.total || 0}</div>
-                  <div style={{ color: '#6b7280', fontSize: 12 }}>Contacts found</div>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ width: 140 }}>
-              <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>Website</div>
-              <div>
-                <a href={`https://${domain}`} target="_blank" rel="noreferrer noopener" style={{ color: '#2563eb', fontWeight: 700 }}>
-                  Visit site
-                </a>
-              </div>
-
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>Tags</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {(info && info.tags && info.tags.length) ? info.tags.slice(0,6).map((t,i) => (
-                    <div key={i} style={{ background: '#fff3ee', color: '#7a341f', padding: '4px 8px', borderRadius: 6, fontSize: 12 }}>{t}</div>
-                  )) : <div style={{ color: '#9ca3af' }}>—</div>}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 14 }}>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>History & profile</div>
-            {loading ? (
-              <div style={{ color: '#6b7280' }}>Loading company history…</div>
-            ) : err ? (
-              <div style={{ color: '#bb1b1b' }}>{err}</div>
-            ) : (info && info.description) ? (
-              <div style={{ color: '#374151', lineHeight: 1.45 }}>{info.description}</div>
-            ) : (
-              <div style={{ color: '#6b7280' }}>
-                We don’t have a full company history for this profile. Try enabling CLEARBIT_API_KEY to fetch an enriched company profile, or consult the company site.
-              </div>
-            )}
-          </div>
-
-          <div style={{ marginTop: 14, borderTop: '1px solid #fff1ea', paddingTop: 12, color: '#6b7280', fontSize: 13 }}>
-            <div>Profile sourced from public data. Use Reveal to view contact details listed on the left.</div>
-          </div>
-        </>
-      )}
+      <div style={{ marginTop: 12 }} className="company-profile-note">
+        <div style={styles.subtle}>Enrichment</div>
+        <div style={{ marginTop: 6, color: '#444' }}>
+          If you enable an enrichment provider (CLEARBIT_API_KEY or similar) this panel can show a richer profile (logo,
+          description, HQ, founded, website). No provider is called here by default to keep server builds stable.
+        </div>
+      </div>
     </aside>
   );
 }
