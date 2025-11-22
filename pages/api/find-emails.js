@@ -1,5 +1,6 @@
 // pages/api/find-emails.js
 // Fast-first-page Hunter domain-search handler with optional per-request pages override.
+// Includes a console.info log to show effective perPage and maxPages for debugging.
 
 const { getUserBySession } = require('../../lib/session');
 const { incrementUsage, getUsageForUser } = require('../../lib/user-store');
@@ -44,6 +45,9 @@ async function callHunterDomainSearch(domain, maxPages) {
   const cacheKey = `hunter_full:${domain}:p${maxPagesClamped}:${perPage}`;
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
+
+  // DEBUG LOG: show the effective perPage and pages the server will request
+  console.info(`find-emails: domain=${domain} perPage=${perPage} maxPages=${maxPagesClamped} env_max_pages=${HUNTER_MAX_PAGES_ENV}`);
 
   if (!HUNTER_KEY) {
     const err = new Error('HUNTER_API_KEY missing in env');
@@ -179,12 +183,10 @@ export default async function handler(req, res) {
   const domain = String((req.query && req.query.domain) || '').trim();
   if (!domain) return res.status(400).json({ ok: false, error: 'Missing domain' });
 
-  // allow per-request pages override: ?pages=3
   const reqPages = req.query && req.query.pages ? Number(req.query.pages) : null;
   const session = extractSessionToken(req);
 
   try {
-    // quota check for authenticated users
     if (session) {
       try {
         const payload = getUserBySession(session);
