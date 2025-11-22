@@ -1,33 +1,36 @@
+import React from 'react';
+
 export default function AboutPage() {
+  const who = [
+    { title: 'Agencies', img: '/images/who-agencies.png', desc: 'Find decision-makers at brands and publishers to pitch your services.' },
+    { title: 'Sales Teams', img: '/images/who-sales.png', desc: 'Locate contacts across target accounts, sorted by role and trust.' },
+    { title: 'Recruiters', img: '/images/who-recruiters.png', desc: 'Discover engineering and product leaders for hiring pipelines.' },
+    { title: 'Founders', img: '/images/who-founders.png', desc: 'Quickly find C-suite and executive contacts for partnerships.' }
+  ];
+
   return (
-    <main style={{ maxWidth: 900, margin: '48px auto', padding: '24px', paddingBottom: 64 }}>
+    <main style={{ padding: 24, maxWidth: 980, margin: '0 auto' }}>
       <h1>About NovaHunt</h1>
-
-      <p style={{ color: '#374151' }}>
-        NovaHunt helps creators and individuals find contact emails so you can turn interest into opportunities.
-        Whether you’re an influencer, a model, an actor, or a freelancer on Instagram, we make it easy to
-        find the right person to pitch — casting directors, agency reps, or the next brand that needs you.
+      <p style={{ color: '#374151', fontSize: 16 }}>
+        NovaHunt helps teams discover business contacts by company domain and organizes results with trust ratings, roles, and sources.
       </p>
 
-      <h3 style={{ marginTop: 20 }}>Who we help</h3>
-      <p style={{ color: '#374151' }}>
-        We focus on practical, actionable results for people who want to land bookings, gigs, sponsorships,
-        or sales: modelling agencies, talent agents, casting directors, and sales reps.
-      </p>
-
-      <h3 style={{ marginTop: 20 }}>How it works</h3>
-      <ul style={{ color: '#374151' }}>
-        <li>Enter a website (like example.com) to find public contact emails</li>
-        <li>See confidence scores and sources (LinkedIn, public pages)</li>
-        <li>Reveal full emails inline — no extra forms</li>
-      </ul>
-
-      <h3 style={{ marginTop: 20 }}>Contact</h3>
-      <p style={{ color: '#374151' }}>
-        For issues or billing questions, email support@novahunt.ai.
-      </p>
-
-      <div style={{ height: 48 }} />
+      <section style={{ marginTop: 28 }}>
+        <h2>Who we help</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginTop: 12 }}>
+          {who.map((w, i) => (
+            <div key={i} style={{ padding: 12, borderRadius: 8, border: '1px solid #eef2f7', background: '#fff' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <img src={w.img} alt={w.title} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8 }} />
+                <div>
+                  <div style={{ fontWeight: 700 }}>{w.title}</div>
+                  <div style={{ color: '#6b7280', fontSize: 13 }}>{w.desc}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }
