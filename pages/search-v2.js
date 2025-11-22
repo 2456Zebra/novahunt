@@ -1,48 +1,38 @@
 import React, { useState } from 'react';
 import SearchClient from '../components/SearchClient';
 import SearchResults from '../components/SearchResults';
-import CompanyProfile from '../components/CompanyProfile';
 
 /**
- * pages/search.js — feature-flagged switch between old and new search UI.
- * Set NEXT_PUBLIC_USE_NEW_SEARCH=true in Vercel to enable new SearchResults layout.
+ * Temporary preview page for the new search results UI.
+ * - Uses SearchClient only for input/requests (showResults={false})
+ * - Renders SearchResults (left results + company profile)
  */
 
-export default function SearchPage() {
+export default function SearchPageV2() {
   const [domain, setDomain] = useState('');
   const [result, setResult] = useState({ items: [], total: 0, public: true });
 
-  const useNew = typeof window !== 'undefined' ? window?.__USE_NEW_SEARCH : (process?.env?.NEXT_PUBLIC_USE_NEW_SEARCH === 'true');
-
-  // keep onResults behavior identical; SearchClient not changed
   return (
     <div style={{ padding: 20 }}>
-      <h1 style={{ marginTop: 0 }}>Search</h1>
+      <h1 style={{ marginTop: 0 }}>Search (preview)</h1>
 
+      {/* Tell SearchClient not to render its internal results UI */}
       <SearchClient
+        showResults={false}
         onResults={({ domain: d, result: r }) => {
           setDomain(d || '');
           setResult(r || { items: [], total: 0, public: true });
         }}
       />
 
-      {useNew ? (
-        // New consolidated layout (SearchResults handles left + right)
-        <div style={{ marginTop: 20 }}>
-          <SearchResults results={result.items || []} />
-        </div>
-      ) : (
-        // Existing / original layout (keeps current behavior)
-        <div style={{ display: 'flex', gap: 20, marginTop: 20, alignItems: 'flex-start' }}>
-          <div style={{ flex: '1 1 60%' }}>
-            {/* The existing results UI can be kept or the older components placed here */}
-            <SearchResults results={result.items || []} />
-          </div>
-          <div style={{ flex: '1 1 40%', minWidth: 280 }}>
-            <CompanyProfile domain={domain} result={result} />
-          </div>
-        </div>
-      )}
+      {/* Render the new SearchResults component (left results + company profile) */}
+      <div style={{ marginTop: 20 }}>
+        <SearchResults results={result.items || []} />
+      </div>
+
+      <div style={{ marginTop: 18, color: '#666', fontSize: 13 }}>
+        This is a preview page. If everything looks good here, we can integrate the same layout into the primary /search route.
+      </div>
     </div>
   );
 }
