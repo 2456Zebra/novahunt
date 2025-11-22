@@ -118,7 +118,7 @@ export default function SearchClient() {
   }
 
   return (
-    <section aria-label="Domain search" style={{ maxWidth: 960, margin: '0 auto', padding: '20px' }}>
+    <section aria-label="Domain search" style={{ maxWidth: 1200, margin: '0 auto', padding: '20px' }}>
       <form onSubmit={onSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
         <label htmlFor="domain-input" style={{ display: 'none' }}>Company domain</label>
         <input
@@ -160,42 +160,140 @@ export default function SearchClient() {
       )}
 
       {submittedDomain && (
-        <div style={{ marginBottom: 12, color: '#374151' }}>
-          Results for <strong>{submittedDomain}</strong> {total !== null && <span>— showing {items.length} of {total}</span>}
+        <div style={{ display: 'flex', gap: 20, marginTop: 20 }}>
+          {/* Left column: Search Results */}
+          <div style={{ flex: '0 0 60%' }}>
+            <div style={{ marginBottom: 16, color: '#374151', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button 
+                style={{ 
+                  padding: '6px 12px', 
+                  fontSize: 14,
+                  borderRadius: 6, 
+                  background: '#0ea5a4', 
+                  color: '#fff', 
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+                onClick={() => {/* Results action if needed */}}
+              >
+                Results
+              </button>
+              <span style={{ fontSize: 14, color: '#6b7280' }}>
+                for <strong>{submittedDomain}</strong> {total !== null && <span>— {items.length} of {total}</span>}
+              </span>
+            </div>
+
+            {items.length === 0 && !loading && !error && (
+              <div style={{ color: '#6b7280', padding: 16, borderRadius: 6, border: '1px dashed #e5e7eb' }}>
+                No results returned. If you expected more results, please sign in to reveal more or try again later.
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {items.map((it, idx) => (
+                <article key={it.email || `${idx}`} style={{ padding: 12, border: '1px solid #e6e7ea', borderRadius: 8, background: '#fff' }}>
+                  <div style={{ fontWeight: 700 }}>{it.name || it.email}</div>
+                  <div style={{ color: '#6b7280', marginTop: 6 }}>{it.title || ''}</div>
+                  <div style={{ marginTop: 8 }}>
+                    <a href={`mailto:${it.email}`} style={{ color: '#0ea5a4', textDecoration: 'none' }} aria-label={`Email ${it.email}`}>
+                      {it.email}
+                    </a>
+                  </div>
+                  <div style={{ marginTop: 8, color: '#9ca3af', fontSize: 13 }}>
+                    Confidence: {it.confidence ? String(Math.round(it.confidence * 100)) + '%' : 'n/a'}
+                  </div>
+                  {it.source && (
+                    <div style={{ marginTop: 8 }}>
+                      <a href={it.source} target="_blank" rel="noopener noreferrer" style={{ color: '#0ea5a4', fontSize: 13 }}>
+                        Source
+                      </a>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          </div>
+
+          {/* Right column: Company Profile */}
+          <div style={{ flex: '0 0 35%' }}>
+            <div style={{ position: 'sticky', top: 20, padding: 20, border: '1px solid #e6e7ea', borderRadius: 8, background: '#fff' }}>
+              <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: 18, fontWeight: 700 }}>Company Profile</h3>
+              
+              {/* Company Logo Placeholder */}
+              <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                <div style={{ width: 80, height: 80, background: '#0ea5a4', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 24, fontWeight: 700 }}>
+                  {submittedDomain.charAt(0).toUpperCase()}
+                </div>
+              </div>
+
+              {/* Company Name */}
+              <div style={{ marginBottom: 16 }}>
+                <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111827' }}>
+                  {submittedDomain.split('.')[0].charAt(0).toUpperCase() + submittedDomain.split('.')[0].slice(1)}
+                </h4>
+                <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{submittedDomain}</div>
+              </div>
+
+              {/* Company Details */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 8 }}>About</div>
+                <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6, margin: 0 }}>
+                  Company information and profile details for {submittedDomain}. This section provides an overview of the organization&apos;s business operations and contact information.
+                </p>
+              </div>
+
+              {/* Industry & Stats */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Details</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: '#6b7280' }}>Contacts Found:</span>
+                    <span style={{ color: '#111827', fontWeight: 600 }}>{items.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: '#6b7280' }}>Domain:</span>
+                    <span style={{ color: '#111827', fontWeight: 600 }}>{submittedDomain}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: '#6b7280' }}>Total Available:</span>
+                    <span style={{ color: '#111827', fontWeight: 600 }}>{total || items.length}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Visit Website */}
+              <div style={{ marginTop: 20 }}>
+                <a 
+                  href={`https://${submittedDomain}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ 
+                    display: 'block',
+                    textAlign: 'center',
+                    padding: '10px 16px', 
+                    background: '#f3f4f6', 
+                    color: '#374151', 
+                    borderRadius: 6, 
+                    textDecoration: 'none',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    border: '1px solid #e5e7eb'
+                  }}
+                >
+                  Visit Website →
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      <div>
-        {items.length === 0 && !loading && !error && submittedDomain && (
-          <div style={{ color: '#6b7280', padding: 16, borderRadius: 6, border: '1px dashed #e5e7eb' }}>
-            No results returned. If you expected more results, please sign in to reveal more or try again later.
-          </div>
-        )}
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
-          {items.map((it, idx) => (
-            <article key={it.email || `${idx}`} style={{ padding: 12, border: '1px solid #e6e7ea', borderRadius: 8, background: '#fff' }}>
-              <div style={{ fontWeight: 700 }}>{it.name || it.email}</div>
-              <div style={{ color: '#6b7280', marginTop: 6 }}>{it.title || ''}</div>
-              <div style={{ marginTop: 8 }}>
-                <a href={`mailto:${it.email}`} style={{ color: '#0ea5a4', textDecoration: 'none' }} aria-label={`Email ${it.email}`}>
-                  {it.email}
-                </a>
-              </div>
-              <div style={{ marginTop: 8, color: '#9ca3af', fontSize: 13 }}>
-                Confidence: {it.confidence ? String(Math.round(it.confidence * 100)) + '%' : 'n/a'}
-              </div>
-              {it.source && (
-                <div style={{ marginTop: 8 }}>
-                  <a href={it.source} target="_blank" rel="noopener noreferrer" style={{ color: '#0ea5a4', fontSize: 13 }}>
-                    Source
-                  </a>
-                </div>
-              )}
-            </article>
-          ))}
+      {/* Show this when no search has been performed */}
+      {!submittedDomain && !loading && (
+        <div style={{ marginTop: 20, textAlign: 'center', color: '#6b7280', padding: 40, border: '1px dashed #e5e7eb', borderRadius: 8 }}>
+          Enter a domain above to search for business contacts
         </div>
-      </div>
+      )}
     </section>
   );
 }
