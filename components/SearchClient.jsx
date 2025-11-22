@@ -3,14 +3,13 @@ import React, { useState, useEffect } from 'react';
 import ResultItem from './ResultItem';
 
 /**
- * SearchClient — handles searching, grouping by department with highlighted headers,
- * merging results when loading more pages, and showing counts per department.
+ * SearchClient — handles searching, grouping by department, merging results when loading more pages,
+ * and notifies parent via onResults({ domain, result }) so a RightPanel can show summary.
  *
- * NOTE: this version requests 3 pages on the initial search to reduce the "only 10" problem.
- * If you prefer fewer or more pages on first load, change INITIAL_PAGES below.
+ * Usage: <SearchClient onResults={({domain, result}) => setResult(result)} />
  */
-export default function SearchClient() {
-  const INITIAL_PAGES = 3; // <-- initial pages requested on first search
+export default function SearchClient({ onResults }) {
+  const INITIAL_PAGES = 3; // initial pages requested on first search
   const [domain, setDomain] = useState('');
   const [pages, setPages] = useState(INITIAL_PAGES);
   const [loading, setLoading] = useState(false);
@@ -55,17 +54,24 @@ export default function SearchClient() {
       const res = await fetch(`/api/find-emails?${q.toString()}`);
       const json = await res.json();
       if (!json.ok) throw new Error(json.error || 'API error');
+
       if (append) {
         setResult(prev => {
           const merged = mergeItems(prev.items || [], json.items || []);
-          return { items: merged, total: json.total || merged.length, public: json.public };
+          const newResult = { items: merged, total: json.total || merged.length, public: json.public };
+          if (typeof onResults === 'function') onResults({ domain: reqDomain, result: newResult });
+          return newResult;
         });
       } else {
-        setResult({ items: json.items || [], total: json.total || 0, public: json.public });
+        const newResult = { items: json.items || [], total: json.total || 0, public: json.public };
+        setResult(newResult);
+        if (typeof onResults === 'function') onResults({ domain: reqDomain, result: newResult });
       }
     } catch (e) {
       setError(e.message || String(e));
-      setResult({ items: [], total: 0, public: true });
+      const newResult = { items: [], total: 0, public: true };
+      setResult(newResult);
+      if (typeof onResults === 'function') onResults({ domain: reqDomain, result: newResult });
     } finally {
       setLoading(false);
     }
@@ -91,7 +97,9 @@ export default function SearchClient() {
       setHasSearched(false);
       setResult({ items: [], total: 0, public: true });
       setPages(INITIAL_PAGES);
+      if (typeof onResults === 'function') onResults({ domain: '', result: { items: [], total: 0, public: true } });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain]);
 
   function groupByDepartment(items = []) {
