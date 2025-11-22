@@ -66,7 +66,7 @@ export default function SignInModal({ open, onClose, prefillEmail = '' }) {
           </div>
         </form>
         <div style={{ marginTop: 10, fontSize: 13, color: '#666' }}>
-          No account? <Link href="/signup" style={{ color: '#007bff', textDecoration: 'underline' }}>Create one</Link> or <Link href="/plans" style={{ color: '#007bff', textDecoration: 'underline' }}>view plans</Link>.
+          No account? <Link href="/signup"><a style={{ color: '#007bff', textDecoration: 'underline' }}>Create one</a></Link> or <Link href="/plans"><a style={{ color: '#007bff', textDecoration: 'underline' }}>view plans</a></Link>.
         </div>
       </div>
     </div>

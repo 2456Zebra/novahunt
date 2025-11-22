@@ -103,8 +103,8 @@ export default function HeaderAuth() {
 
             <div style={{ height: 10 }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <Link href="/account" style={{ padding: '8px 10px', textDecoration: 'none', border: '1px solid #e5e7eb', borderRadius: 6, color: '#111' }}>Account</Link>
-              <Link href="/plans" style={{ padding: '8px 10px', textDecoration: 'none', background: '#f97316', color: '#fff', borderRadius: 6 }}>Upgrade</Link>
+              <Link href="/account"><a style={{ padding: '8px 10px', textDecoration: 'none', border: '1px solid #e5e7eb', borderRadius: 6, color: '#111' }}>Account</a></Link>
+              <Link href="/plans"><a style={{ padding: '8px 10px', textDecoration: 'none', background: '#f97316', color: '#fff', borderRadius: 6 }}>Upgrade</a></Link>
             </div>
 
             <div style={{ borderTop: '1px solid #f3f4f6', marginTop: 12, paddingTop: 10, display: 'flex', gap: 8 }}>

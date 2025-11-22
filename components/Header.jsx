@@ -29,15 +29,17 @@ export default function Header() {
     <>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid #e6e6e6', background: '#ffffff' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link href="/" aria-label="NovaHunt home" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: '#111' }}>
-            {/* Text-only wordmark */}
-            <span style={{ fontSize: 20, fontWeight: 800, color: '#111', letterSpacing: '-0.2px' }}>NovaHunt</span>
+          <Link href="/">
+            <a aria-label="NovaHunt home" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: '#111' }}>
+              {/* Text-only wordmark */}
+              <span style={{ fontSize: 20, fontWeight: 800, color: '#111', letterSpacing: '-0.2px' }}>NovaHunt</span>
+            </a>
           </Link>
 
           <nav style={{ display: 'flex', gap: 12 }}>
-            <Link href="/" style={{ color: '#374151', textDecoration: 'none' }}>Home</Link>
-            <Link href="/plans" style={{ color: '#374151', textDecoration: 'none' }}>Plans</Link>
-            <Link href="/about" style={{ color: '#374151', textDecoration: 'none' }}>About</Link>
+            <Link href="/"><a style={{ color: '#374151', textDecoration: 'none' }}>Home</a></Link>
+            <Link href="/plans"><a style={{ color: '#374151', textDecoration: 'none' }}>Plans</a></Link>
+            <Link href="/about"><a style={{ color: '#374151', textDecoration: 'none' }}>About</a></Link>
           </nav>
         </div>
 

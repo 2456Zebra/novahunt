@@ -34,7 +34,7 @@ export default function SignInPage() {
         <button disabled={loading} type="submit" className="btn btn-primary">{loading ? 'Signing in…' : 'Sign in'}</button>
       </form>
       <p style={{ marginTop: 12 }}>
-        Need an account? <Link href="/signup">Sign up</Link>
+        Need an account? <Link href="/signup"><a>Sign up</a></Link>
       </p>
     </main>
   );
