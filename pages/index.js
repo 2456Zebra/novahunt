@@ -1,31 +1,24 @@
-import Head from 'next/head';
-import dynamic from 'next/dynamic';
-import ErrorBoundary from '../components/ErrorBoundary';
-import Renderings from '../components/Renderings';
+import React, { useState } from 'react';
+import SearchClient from '../components/SearchClient';
+import RightPanel from '../components/RightPanel';
 
-// Load SearchClient only on the client to avoid SSR/hydration errors.
-const SearchClient = dynamic(() => import('../components/SearchClient'), { ssr: false });
+export default function HomePage() {
+  // Lifted state: domain & result from SearchClient via onResults callback
+  const [domain, setDomain] = useState('');
+  const [result, setResult] = useState({ items: [], total: 0, public: true });
 
-export default function Home() {
   return (
-    <>
-      <Head>
-        <title>NovaHunt — Find business contacts</title>
-        <meta name="description" content="Search company domains to find contact emails, names and roles." />
-      </Head>
+    <main style={{ padding: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20, alignItems: 'start' }}>
+        <div>
+          {/* Provide onResults so SearchClient can notify parent with domain/result */}
+          <SearchClient onResults={({ domain: d, result: r }) => { setDomain(d || ''); setResult(r || { items: [], total: 0 }); }} />
+        </div>
 
-      <main style={{ padding: '24px' }}>
-        <h1 style={{ marginTop: 20 }}>Find business contacts from a domain</h1>
-        <p style={{ color: '#6b7280' }}>Enter a company website (example: coca-cola.com) and NovaHunt will show public business contacts.</p>
-
-        <ErrorBoundary>
-          <SearchClient />
-        </ErrorBoundary>
-
-        <ErrorBoundary>
-          <Renderings />
-        </ErrorBoundary>
-      </main>
-    </>
+        <div>
+          <RightPanel domain={domain} result={result} />
+        </div>
+      </div>
+    </main>
   );
 }
