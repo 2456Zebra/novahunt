@@ -70,8 +70,8 @@ export default function HeaderUserSnippet() {
             <div>Reveals: {usage?.reveals || 0}/{usage?.limits.reveals || 500}</div>
           </div>
           <div className="border-t pt-3 space-y-2">
-            <Link href="/account"><a className="block text-blue-600 hover:underline">Account Settings</a></Link>
-            <Link href="/upgrade"><a className="block text-blue-600 hover:underline">Upgrade Plan</a></Link>
+            <Link href="/account" className="block text-blue-600 hover:underline">Account Settings</Link>
+            <Link href="/upgrade" className="block text-blue-600 hover:underline">Upgrade Plan</Link>
             <button onClick={handleLogout} className="w-full text-left text-red-600 hover:underline">
               Sign Out
             </button>

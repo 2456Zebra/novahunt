@@ -18,7 +18,7 @@ export default function CreateAccountSuccess({ email }) {
 
       <div className="actions">
         <button onClick={continueToDashboard} className="btn btn-primary">Continue to dashboard</button>
-        <Link href="/"><a className="btn btn-outline">Back to home</a></Link>
+        <Link href="/" className="btn btn-outline">Back to home</Link>
       </div>
     </div>
   );

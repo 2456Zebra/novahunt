@@ -5,7 +5,7 @@ export default function Cancel() {
     <main style={{ padding: 20 }}>
       <h1>Payment canceled</h1>
       <p>Payment was canceled. You can try again or contact support.</p>
-      <Link href="/"><a style={{ color: '#2563eb' }}>Back to dashboard</a></Link>
+      <Link href="/" style={{ color: '#2563eb' }}>Back to dashboard</Link>
     </main>
   );
 }
