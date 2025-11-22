@@ -20,7 +20,7 @@ export default function RevealButton({ onReveal, to = '/plans', children = 'Reve
         onClick={() => { try { doRevealInternal(); } catch (e) {} }}
         className={className}
         aria-label="Reveal"
-        style={{ display: 'inline-block', padding: '6px 10px', borderRadius: 6, background: '#2563eb', color: '#fff', textDecoration: 'none' }}
+        style={{ display: 'inline-block', padding: '6px 10px', borderRadius: 6, background: '#2563eb', color: '#fff', textDecoration: 'none', fontSize: 13 }}
       >
         {children}
       </a>
