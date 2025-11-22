@@ -100,3 +100,45 @@ export default function SearchResults({ domain, results = [], session }) {
                 <div className="animate-pulse">
                   <div className="w-32 h-32 bg-gray-200 rounded-full mx-auto mb-4"></div>
                   <div className="h-8 bg-gray-200 rounded w-48 mx-auto"></div>
+                </div>
+              </div>
+            ) : companyInfo ? (
+              <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
+                <div className="text-center">
+                  <Image
+                    src={companyInfo.logo}
+                    alt={companyInfo.name}
+                    width={160}
+                    height={160}
+                    className="rounded-xl mx-auto shadow-lg"
+                    unoptimized
+                  />
+                  <h2 className="text-2xl font-bold mt-6">{companyInfo.name}</h2>
+                  <p className="text-gray-600 mt-3 text-sm leading-relaxed max-w-xs mx-auto">
+                    {companyInfo.description}
+                  </p>
+
+                  <div className="mt-8 space-y-4 text-left text-sm">
+                    <div className="flex justify-between"><span className="text-gray-500">Founded</span><span className="font-medium">{companyInfo.founded}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Employees</span><span className="font-medium">{companyInfo.employees}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">HQ</span><span className="font-medium">{companyInfo.headquarters}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Industry</span><span className="font-medium">{companyInfo.industry}</span></div>
+                  </div>
+
+                  <a
+                    href={companyInfo.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-8 block w-full py-3 bg-gray-900 text-white text-center font-medium rounded-lg hover:bg-black transition"
+                  >
+                    Visit Website
+                  </a>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
