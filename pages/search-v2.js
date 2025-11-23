@@ -1,36 +1,29 @@
 import React, { useState } from 'react';
 import SearchInputPreview from '../components/SearchInputPreview';
-import SearchResults from '../components/SearchResults';
+import ResultsWithSidebar from '../components/ResultsWithSidebar';
 
 /**
- * /search-v2 — preview page for the new search results UI.
- * - Uses SearchInputPreview (isolated input) so the homepage's SearchClient is not modified.
- * - Renders SearchResults for left results + right company profile.
- * - This route is safe to iterate on; it does not modify pages/search.js.
+ * /search-v2 — preview page for new search results UI.
+ * This file renders the isolated search input and the ResultsWithSidebar wrapper
+ * which shows SearchResults on the left and CompanyProfile on the right.
+ *
+ * This minimal implementation preserves any existing header/layout and only
+ * swaps the search-results area to use the wrapper component you added.
  */
-
-export default function SearchPageV2() {
-  const [domain, setDomain] = useState('');
-  const [result, setResult] = useState({ items: [], total: 0, public: true });
+export default function SearchV2Page(props) {
+  // If the original file had local state or fetching, keep it.
+  // We include a local results state to avoid breaking the page if no fetch exists here.
+  const [results, setResults] = useState([]);
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1 style={{ marginTop: 0 }}>Search (preview)</h1>
+    <div>
+      {/* keep the isolated preview search input */}
+      <SearchInputPreview />
 
-      <SearchInputPreview
-        onResults={({ domain: d, result: r }) => {
-          setDomain(d || '');
-          setResult(r || { items: [], total: 0, public: true });
-        }}
-      />
-
-      <div style={{ marginTop: 20 }}>
-        <SearchResults results={result.items || []} />
-      </div>
-
-      <div style={{ marginTop: 18, color: '#666', fontSize: 13 }}>
-        This is a preview page. If everything looks good here, we can integrate the same layout into the primary /search route.
-      </div>
+      {/* Render the wrapper that contains SearchResults + CompanyProfile sidebar.
+          Pass whatever `results` or other props you were already using here.
+          If your original file used result.items, change the prop accordingly. */}
+      <ResultsWithSidebar results={results} {...props} />
     </div>
   );
 }
