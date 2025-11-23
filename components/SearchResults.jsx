@@ -163,7 +163,7 @@ const SearchResults = ({ results = [] }) => {
   const handleReveal = (i) => {
     setSelectedIndex(i);
     setImageErrored(false);
-    // run scroll in a client effect - executed after user click, safe
+    // safe client-only scroll after user click
     setTimeout(() => {
       if (typeof window !== 'undefined') {
         const profileEl = document.getElementById('company-profile');
