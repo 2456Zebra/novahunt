@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
+import CompanyProfile from '../src/components/CompanyProfile/CompanyProfile';
 
 /**
  * SearchResults
  * Left: compact list of results
- * Right: conversational Company Profile for the selected item
+ * Right: CompanyProfile sidebar for the selected item
  *
  * Usage: <SearchResults results={resultsArray} />
  * Each result may include fields like:
@@ -122,47 +123,9 @@ const QuickFact = ({ label, value }) => {
 const SearchResults = ({ results = [] }) => {
   const [selectedIndex, setSelectedIndex] = useState(results.length > 0 ? 0 : -1);
   const selected = useMemo(() => (selectedIndex >= 0 ? results[selectedIndex] : null), [results, selectedIndex]);
-  const [imageErrored, setImageErrored] = useState(false);
-
-  const computeLogoSrc = (item) => {
-    if (!item) return '';
-    if (item.logo) return item.logo;
-    if (item.logoUrl) return item.logoUrl;
-    if (item.website) {
-      try {
-        const origin = new URL(item.website).origin;
-        return origin + '/favicon.ico';
-      } catch {
-        try {
-          const origin = new URL('https://' + item.website).origin;
-          return origin + '/favicon.ico';
-        } catch {
-          return '';
-        }
-      }
-    }
-    return '';
-  };
-
-  const computeWebsiteHost = (item) => {
-    if (!item || !item.website) return null;
-    try {
-      return new URL(item.website).hostname.replace('www.', '');
-    } catch {
-      try {
-        return new URL('https://' + item.website).hostname.replace('www.', '');
-      } catch {
-        return item.website;
-      }
-    }
-  };
-
-  const logoSrc = computeLogoSrc(selected);
-  const websiteHost = computeWebsiteHost(selected);
 
   const handleReveal = (i) => {
     setSelectedIndex(i);
-    setImageErrored(false);
     // safe client-only scroll after user click
     setTimeout(() => {
       if (typeof window !== 'undefined') {
@@ -171,8 +134,6 @@ const SearchResults = ({ results = [] }) => {
       }
     }, 80);
   };
-
-  const hideProfile = () => setSelectedIndex(-1);
 
   return (
     <>
@@ -222,61 +183,7 @@ const SearchResults = ({ results = [] }) => {
         </div>
 
         <div id="company-profile" className="search-right" style={styles.right} aria-live="polite">
-          <h2 style={{ marginTop: 0 }}>Company Profile</h2>
-
-          {!selected && <div style={{ ...styles.noResults }}>Select a result on the left to see a modern, conversational company profile here.</div>}
-
-          {selected && (
-            <div>
-              <div style={styles.profileHeader}>
-                {!imageErrored && logoSrc ? (
-                  <img src={logoSrc} alt={`${selected.name || 'Company'} logo`} style={styles.logo} onError={() => setImageErrored(true)} />
-                ) : (
-                  <PlaceholderLogo name={selected.name} />
-                )}
-
-                <div style={{ flex: 1 }}>
-                  <h3 style={styles.profileTitle}>{selected.name}</h3>
-                  <div style={styles.subtle}>{selected.tagline || selected.shortDescription || (selected.industry ? `${selected.industry}` : '')}</div>
-
-                  <div style={{ marginTop: 8 }}>
-                    <a href={selected.website || '#'} rel="noopener noreferrer" target={selected.website ? '_blank' : '_self'} style={styles.websiteLink}>
-                      {websiteHost || 'No website available'}
-                    </a>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 16, lineHeight: 1.55 }}>{buildConversationalProfile(selected)}</div>
-
-              <div style={{ marginTop: 16 }}>
-                <h4 style={{ margin: '8px 0' }}>Quick facts</h4>
-                <div style={styles.factsList}>
-                  <QuickFact label="Founded" value={selected.founded} />
-                  <QuickFact label="Headquarters" value={selected.location} />
-                  <QuickFact label="Industry" value={selected.industry} />
-                  <QuickFact label="Size" value={selected.size} />
-                  <QuickFact label="Mission" value={selected.mission} />
-                  <QuickFact label="Recent" value={selected.recent} />
-                </div>
-              </div>
-
-              <div style={{ marginTop: 16 }}>
-                <h4 style={{ marginBottom: 8 }}>More about {selected.name}</h4>
-                <div style={{ color: '#444' }}>{selected.longDescription ? <p>{selected.longDescription}</p> : <p style={{ marginTop: 0 }}>This profile combines public-facing company information and curated context to give a quick, modern overview. If you have a specific question about {selected.name}, try searching for it directly or clicking through to the source site.</p>}</div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-                <a className="see-more" href={selected.website || '#'} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', borderRadius: 8, background: '#0366d6', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 13 }}>
-                  Visit website
-                </a>
-
-                <button onClick={hideProfile} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
-                  Hide profile
-                </button>
-              </div>
-            </div>
-          )}
+          <CompanyProfile company={selected} />
         </div>
       </div>
     </>
