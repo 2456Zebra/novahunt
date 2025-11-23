@@ -3,12 +3,14 @@ import React, { useState } from 'react';
 /**
  * SearchInputPreview
  *
- * A lightweight, self-contained search input used only by the preview page.
- * - Does NOT touch or replace the existing SearchClient component (keeps homepage safe).
+ * Lightweight search input that only lives in the search page.
+ * - Does NOT modify or replace the existing SearchClient component (keeps homepage safe).
  * - Calls the same server endpoints as the app (/api/search-contacts, falls back to /api/search-contacts-mock).
  * - Calls onResults({ domain, result }) with a normalized result object.
  *
  * Usage: <SearchInputPreview onResults={(payload) => { ... }} />
+ *
+ * SSR-safe: no top-level DOM/window usage or network calls at module init.
  */
 
 export default function SearchInputPreview({ onResults }) {
