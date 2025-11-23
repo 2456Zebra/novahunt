@@ -50,12 +50,12 @@ export default function CompanyProfile({ domain = '', result = { items: [], tota
 
       <div style={styles.facts}>
         <div style={styles.fact}>
-          <div style={styles.subtle}>Search results</div>
+          <div style={{ color: '#666', fontSize: 12 }}>Search results</div>
           <div style={{ fontWeight: 700, marginTop: 6 }}>{total}</div>
         </div>
 
         <div style={styles.fact}>
-          <div style={styles.subtle}>Source</div>
+          <div style={{ color: '#666', fontSize: 12 }}>Source</div>
           <div style={{ fontWeight: 700, marginTop: 6 }}>{result.public ? 'Public' : 'Private'}</div>
         </div>
       </div>
