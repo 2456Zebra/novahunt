@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 /**
  * SearchInputPreview
  *
- * Lightweight search input that only lives in the search page.
+ * Lightweight search input that only lives in the preview pages.
  * - Does NOT modify or replace the existing SearchClient component (keeps homepage safe).
  * - Calls the same server endpoints as the app (/api/search-contacts, falls back to /api/search-contacts-mock).
  * - Calls onResults({ domain, result }) with a normalized result object.
