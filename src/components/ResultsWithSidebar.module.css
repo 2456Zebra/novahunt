@@ -1,0 +1,25 @@
+.resultsRoot {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  align-items: start;
+  padding: 16px;
+}
+
+.resultsMain {
+  /* existing styles remain */
+}
+
+.resultsSide {
+  /* keep aside wrapping minimal; CompanyProfile is sticky itself */
+}
+
+/* Stack layout on small screens */
+@media (max-width: 900px) {
+  .resultsRoot {
+    grid-template-columns: 1fr;
+  }
+  .resultsSide {
+    order: 2;
+  }
+}
