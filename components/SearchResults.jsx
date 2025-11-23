@@ -8,6 +8,8 @@ import React, { useState, useMemo } from 'react';
  * Usage: <SearchResults results={resultsArray} />
  * Each result may include fields like:
  *  { name, industry, founded, size, location, description, logo, website }
+ *
+ * SSR-safe: any URL parsing is wrapped in try/catch; image onError falls back to placeholder.
  */
 
 const styles = {
@@ -161,9 +163,12 @@ const SearchResults = ({ results = [] }) => {
   const handleReveal = (i) => {
     setSelectedIndex(i);
     setImageErrored(false);
+    // run scroll in a client effect - executed after user click, safe
     setTimeout(() => {
-      const profileEl = document.getElementById('company-profile');
-      if (profileEl) profileEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (typeof window !== 'undefined') {
+        const profileEl = document.getElementById('company-profile');
+        if (profileEl) profileEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }, 80);
   };
 
