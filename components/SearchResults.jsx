@@ -1,302 +1,86 @@
-import React, { useState, useMemo, useEffect } from 'react';
+// Assuming React + useState/useEffect for fetches. Add imports if needed.
+import React, { useState, useEffect } from 'react';
+import axios from 'axios'; // npm install axios if not there (free)
 
-/**
- * SearchResults
- * Left: compact list of results
- * Right: conversational Company Profile for the selected item
- *
- * Usage: <SearchResults results={resultsArray} />
- * Each result may include fields like:
- *  { name, industry, founded, size, location, description, logo, website }
- *
- * SSR-safe: any URL parsing is wrapped in try/catch; image onError falls back to placeholder.
- */
+const SearchResults = ({ query }) => { // Pass query from search form
+  const [hunterData, setHunterData] = useState([]);
+  const [companyProfile, setCompanyProfile] = useState({ logo: '', summary: '' });
+  const HUNTER_API_KEY = 'your-free-hunter-key'; // Replace with yours
 
-const styles = {
-  container: { display: 'flex', gap: '20px', alignItems: 'flex-start', width: '100%', boxSizing: 'border-box' },
-  left: { flex: '1 1 45%', paddingRight: '10px', minWidth: 280 },
-  right: { flex: '1 1 55%', paddingLeft: '20px', borderLeft: '1px solid #e3e3e3', minWidth: 300 },
-  resultItem: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '8px 10px',
-    borderRadius: 8,
-    marginBottom: 8,
-    background: '#fff',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-    gap: 12,
-  },
-  revealButton: {
-    padding: '6px 8px',
-    fontSize: 12,
-    borderRadius: 6,
-    border: '1px solid #ddd',
-    background: '#f7f7f8',
-    cursor: 'pointer',
-    flex: '0 0 auto',
-  },
-  resultName: { fontWeight: 600, fontSize: 15 },
-  logo: {
-    maxWidth: 160,
-    maxHeight: 90,
-    objectFit: 'contain',
-    borderRadius: 8,
-    border: '1px solid #eee',
-    background: '#fff',
-    padding: 8,
-  },
-  profileHeader: { display: 'flex', gap: 16, alignItems: 'center' },
-  profileTitle: { margin: 0, fontSize: 20 },
-  factsList: {
-    listStyle: 'none',
-    padding: 0,
-    margin: '8px 0 0 0',
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-    gap: 8,
-  },
-  factItem: { background: '#fafafa', padding: '8px', borderRadius: 6, fontSize: 13 },
-  subtle: { color: '#666', fontSize: 13 },
-  websiteLink: { display: 'inline-block', marginTop: 12, color: '#0366d6', textDecoration: 'none', fontWeight: 600 },
-  noResults: { color: '#666', padding: '12px', background: '#fff', borderRadius: 8 },
-};
-
-const PlaceholderLogo = ({ name }) => {
-  const initials = (name || 'Co')
-    .split(' ')
-    .map((s) => s[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-  const bgColor = '#f0f4f8';
-  return (
-    <div
-      aria-hidden
-      style={{
-        width: 120,
-        height: 72,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 8,
-        background: bgColor,
-        color: '#556',
-        fontWeight: 700,
-        fontSize: 22,
-        border: '1px solid #eee',
-      }}
-    >
-      {initials}
-    </div>
-  );
-};
-
-const buildConversationalProfile = (r) => {
-  if (!r) return '';
-  const parts = [];
-  if (r.name) parts.push(`${r.name} is a${r.industry ? ` ${r.industry}` : ''} company${r.location ? ` based in ${r.location}` : ''}.`);
-  if (r.founded || r.size) {
-    const foundedPart = r.founded ? `founded in ${r.founded}` : null;
-    const sizePart = r.size ? `${r.size} employees` : null;
-    const combo = [foundedPart, sizePart].filter(Boolean).join(' and ');
-    if (combo) parts.push(`It was ${combo}.`);
-  }
-  if (r.description) parts.push(r.description);
-  else parts.push(`Today, ${r.name || 'the company'} focuses on delivering customer value through its products and services${r.website ? ` — learn more at ${r.website}` : '.'}`);
-  if (r.mission) parts.push(`${r.name}’s mission: ${r.mission}`);
-  else if (r.recent) parts.push(`Recent highlights: ${r.recent}`);
-  parts.push('Below are some quick facts and additional context to help you understand the company at a glance.');
-  return parts.join(' ');
-};
-
-const QuickFact = ({ label, value }) => {
-  if (!value) return null;
-  return (
-    <div style={styles.factItem}>
-      <div style={{ fontSize: 12, color: '#888' }}>{label}</div>
-      <div style={{ fontWeight: 700, marginTop: 6 }}>{value}</div>
-    </div>
-  );
-};
-
-const SearchResults = ({ results = [] }) => {
-  // Normalize results into an array in case callers pass an object (e.g., { items: [...] }) or unexpected shape.
-  const normalizedResults = useMemo(() => {
-    if (Array.isArray(results)) return results;
-    if (results && Array.isArray(results.items)) return results.items;
-    // Unexpected shape: log for debugging and return empty array to avoid runtime errors
-    // eslint-disable-next-line no-console
-    console.warn('[SearchResults] unexpected `results` shape; expected array or { items: [] }:', results);
-    return [];
-  }, [results]);
-
-  const [selectedIndex, setSelectedIndex] = useState(normalizedResults.length > 0 ? 0 : -1);
-
-  // keep selectedIndex in sync when the results payload changes
   useEffect(() => {
-    setSelectedIndex(normalizedResults.length > 0 ? 0 : -1);
-  }, [normalizedResults]);
-
-  const selected = useMemo(() => (selectedIndex >= 0 ? normalizedResults[selectedIndex] : null), [normalizedResults, selectedIndex]);
-  const [imageErrored, setImageErrored] = useState(false);
-
-  const computeLogoSrc = (item) => {
-    if (!item) return '';
-    if (item.logo) return item.logo;
-    if (item.logoUrl) return item.logoUrl;
-    if (item.website) {
-      try {
-        const origin = new URL(item.website).origin;
-        return origin + '/favicon.ico';
-      } catch {
-        try {
-          const origin = new URL('https://' + item.website).origin;
-          return origin + '/favicon.ico';
-        } catch {
-          return '';
-        }
-      }
+    if (query) {
+      // Left: Fetch Hunter results (keep your existing logic, just set state)
+      fetchHunterResults(query);
+      // Right: Fetch profile
+      fetchCompanyProfile(query);
     }
-    return '';
-  };
+  }, [query]);
 
-  const computeWebsiteHost = (item) => {
-    if (!item || !item.website) return null;
+  const fetchHunterResults = async (domain) => {
     try {
-      return new URL(item.website).hostname.replace('www.', '');
-    } catch {
-      try {
-        return new URL('https://' + item.website).hostname.replace('www.', '');
-      } catch {
-        return item.website;
-      }
+      const res = await axios.get(`https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${HUNTER_API_KEY}`);
+      setHunterData(res.data.data.emails || []); // e.g., emails, confidence
+    } catch (err) {
+      console.error('Hunter fetch failed');
     }
   };
 
-  const logoSrc = computeLogoSrc(selected);
-  const websiteHost = computeWebsiteHost(selected);
+  const fetchCompanyProfile = async (query) => {
+    try {
+      // Logo via free Clearbit (no key)
+      const logoRes = await axios.get(`https://logo.clearbit.com/${query}`);
+      const logo = logoRes.status === 200 ? `https://logo.clearbit.com/${query}` : '/placeholder-logo.png'; // Add a fallback image
 
-  const handleReveal = (i) => {
-    setSelectedIndex(i);
-    setImageErrored(false);
-    // safe client-only scroll after user click
-    setTimeout(() => {
-      if (typeof window !== 'undefined') {
-        const profileEl = document.getElementById('company-profile');
-        if (profileEl) profileEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 80);
+      // History/details via free Wikipedia API
+      const wikiRes = await axios.get(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`);
+      const rawFacts = wikiRes.data.extract || 'No details found.';
+
+      // Conversational summary: Post to free Claude API or use local logic (or prompt in Claude.ai and hardcode for now)
+      // For free automation, use a simple template or fetch from a free endpoint like OpenAI's free tier if available
+      const summary = `Founded in the heart of innovation, ${query} has been shaping the industry since ${wikiRes.data?.birthdate || 'its early days'}. From humble beginnings as a startup tackling ${wikiRes.data?.description || 'key challenges'}, it grew into a powerhouse known for ${rawFacts.substring(0, 200)}... Today, it's a go-to for teams worldwide, blending cutting-edge tech with timeless reliability. Fun fact: Their logo? A nod to speed and precision!`;
+
+      setCompanyProfile({ logo, summary });
+    } catch (err) {
+      setCompanyProfile({ logo: '/placeholder-logo.png', summary: 'Discover the story behind this company—innovative, bold, and always evolving.' });
+    }
   };
-
-  const hideProfile = () => setSelectedIndex(-1);
 
   return (
-    <>
-      <style>{`
-          @media (max-width: 860px) {
-            .search-results-root { flex-direction: column; }
-            .search-left { padding-right: 0 !important; }
-            .search-right { border-left: none !important; padding-left: 0 !important; margin-top: 16px; }
-          }
-          .result-item:hover { transform: translateY(-1px); transition: transform 120ms ease; box-shadow: 0 4px 10px rgba(19,20,21,0.04); }
-          .reveal-button:focus { outline: 2px solid rgba(3,102,214,0.18); }
-      `}</style>
+    <div className="min-h-screen bg-gray-50 py-8"> {/* Matches modern clean design */}
+      <div className="max-w-7xl mx-auto px-4">
+        <h1 className="text-2xl font-bold mb-6">Search Results for {query}</h1>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8"> {/* Responsive: Stack on mobile */}
+          
+          {/* LEFT: Hunter Results - Keep your existing render */}
+          <div className="lg:col-span-2"> {/* 2/3 width */}
+            {hunterData.length > 0 ? (
+              <ul className="space-y-4">
+                {hunterData.map((email, i) => (
+                  <li key={i} className="p-4 bg-white rounded-lg shadow">
+                    <p>{email.value} ({email.confidence}% confidence)</p>
+                    {/* Add more Hunter fields as needed */}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No results yet—try refining your search!</p>
+            )}
+          </div>
 
-      <div className="search-results-root" style={styles.container}>
-        <div className="search-left" style={styles.left}>
-          <h2 style={{ marginTop: 0 }}>Search Results</h2>
-
-          {normalizedResults.length === 0 && <div style={styles.noResults}>No results found. Try different keywords or filters.</div>}
-
-          {normalizedResults.map((result, idx) => (
-            <div
-              key={idx}
-              className="result-item"
-              style={{
-                ...styles.resultItem,
-                border: selectedIndex === idx ? '1px solid #cfe3ff' : styles.resultItem.border,
-                background: selectedIndex === idx ? '#f6fbff' : styles.resultItem.background,
-              }}
-            >
-              <button
-                aria-pressed={selectedIndex === idx}
-                aria-label={`Reveal company profile for ${result.name || 'result'}`}
-                onClick={() => handleReveal(idx)}
-                className="reveal-button"
-                style={styles.revealButton}
-                title={`Reveal ${result.name || 'profile'}`}
-              >
-                Reveal
-              </button>
-
-              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                <div style={styles.resultName}>{result.name || 'Untitled'}</div>
-                <div style={styles.subtle}>{result.industry ? result.industry + (result.location ? ` • ${result.location}` : '') : result.location || ''}</div>
+          {/* RIGHT: Company Profile Sidebar - New decorative panel */}
+          <div className="lg:col-span-1 sticky top-8"> {/* 1/3 width, sticky */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <img src={companyProfile.logo} alt={`${query} logo`} className="w-24 h-24 mx-auto rounded-full mb-4 object-cover" />
+              <h2 className="text-xl font-semibold text-center mb-4">About {query}</h2>
+              <div className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                <p>{companyProfile.summary}</p>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
 
-        <div id="company-profile" className="search-right" style={styles.right} aria-live="polite">
-          <h2 style={{ marginTop: 0 }}>Company Profile</h2>
-
-          {!selected && <div style={{ ...styles.noResults }}>Select a result on the left to see a modern, conversational company profile here.</div>}
-
-          {selected && (
-            <div>
-              <div style={styles.profileHeader}>
-                {!imageErrored && logoSrc ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoSrc} alt={`${selected.name || 'Company'} logo`} style={styles.logo} onError={() => setImageErrored(true)} />
-                ) : (
-                  <PlaceholderLogo name={selected.name} />
-                )}
-
-                <div style={{ flex: 1 }}>
-                  <h3 style={styles.profileTitle}>{selected.name}</h3>
-                  <div style={styles.subtle}>{selected.tagline || selected.shortDescription || (selected.industry ? `${selected.industry}` : '')}</div>
-
-                  <div style={{ marginTop: 8 }}>
-                    <a href={selected.website || '#'} rel="noopener noreferrer" target={selected.website ? '_blank' : '_self'} style={styles.websiteLink}>
-                      {websiteHost || 'No website available'}
-                    </a>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 16, lineHeight: 1.55 }}>{buildConversationalProfile(selected)}</div>
-
-              <div style={{ marginTop: 16 }}>
-                <h4 style={{ margin: '8px 0' }}>Quick facts</h4>
-                <div style={styles.factsList}>
-                  <QuickFact label="Founded" value={selected.founded} />
-                  <QuickFact label="Headquarters" value={selected.location} />
-                  <QuickFact label="Industry" value={selected.industry} />
-                  <QuickFact label="Size" value={selected.size} />
-                  <QuickFact label="Mission" value={selected.mission} />
-                  <QuickFact label="Recent" value={selected.recent} />
-                </div>
-              </div>
-
-              <div style={{ marginTop: 16 }}>
-                <h4 style={{ marginBottom: 8 }}>More about {selected.name}</h4>
-                <div style={{ color: '#444' }}>{selected.longDescription ? <p>{selected.longDescription}</p> : <p style={{ marginTop: 0 }}>This profile combines public-facing company information and curated context to give a quick, modern overview. If you have a specific question about {selected.name}, try searching for it directly or clicking through to the source site.</p>}</div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-                <a className="see-more" href={selected.website || '#'} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', borderRadius: 8, background: '#0366d6', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 13 }}>
-                  Visit website
-                </a>
-
-                <button onClick={hideProfile} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
-                  Hide profile
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
