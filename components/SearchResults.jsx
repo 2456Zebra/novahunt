@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 /**
  * SearchResults
@@ -120,8 +120,24 @@ const QuickFact = ({ label, value }) => {
 };
 
 const SearchResults = ({ results = [] }) => {
-  const [selectedIndex, setSelectedIndex] = useState(results.length > 0 ? 0 : -1);
-  const selected = useMemo(() => (selectedIndex >= 0 ? results[selectedIndex] : null), [results, selectedIndex]);
+  // Normalize results into an array in case callers pass an object (e.g., { items: [...] }) or unexpected shape.
+  const normalizedResults = useMemo(() => {
+    if (Array.isArray(results)) return results;
+    if (results && Array.isArray(results.items)) return results.items;
+    // Unexpected shape: log for debugging and return empty array to avoid runtime errors
+    // eslint-disable-next-line no-console
+    console.warn('[SearchResults] unexpected `results` shape; expected array or { items: [] }:', results);
+    return [];
+  }, [results]);
+
+  const [selectedIndex, setSelectedIndex] = useState(normalizedResults.length > 0 ? 0 : -1);
+
+  // keep selectedIndex in sync when the results payload changes
+  useEffect(() => {
+    setSelectedIndex(normalizedResults.length > 0 ? 0 : -1);
+  }, [normalizedResults]);
+
+  const selected = useMemo(() => (selectedIndex >= 0 ? normalizedResults[selectedIndex] : null), [normalizedResults, selectedIndex]);
   const [imageErrored, setImageErrored] = useState(false);
 
   const computeLogoSrc = (item) => {
@@ -190,9 +206,9 @@ const SearchResults = ({ results = [] }) => {
         <div className="search-left" style={styles.left}>
           <h2 style={{ marginTop: 0 }}>Search Results</h2>
 
-          {results.length === 0 && <div style={styles.noResults}>No results found. Try different keywords or filters.</div>}
+          {normalizedResults.length === 0 && <div style={styles.noResults}>No results found. Try different keywords or filters.</div>}
 
-          {results.map((result, idx) => (
+          {normalizedResults.map((result, idx) => (
             <div
               key={idx}
               className="result-item"
@@ -230,6 +246,7 @@ const SearchResults = ({ results = [] }) => {
             <div>
               <div style={styles.profileHeader}>
                 {!imageErrored && logoSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={logoSrc} alt={`${selected.name || 'Company'} logo`} style={styles.logo} onError={() => setImageErrored(true)} />
                 ) : (
                   <PlaceholderLogo name={selected.name} />
