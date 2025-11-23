@@ -82,10 +82,12 @@ export default function CompanyProfile({ company = null, loading = false, onClos
             <strong>Website:</strong> <a href={company.website} target="_blank" rel="noopener noreferrer">{company.website}</a>
           </div>
         )}
-        <div className={styles.description}>{company.description}</div>
+        {company.description && (
+          <div className={styles.description}>{company.description}</div>
+        )}
       </div>
 
-      <div className={styles.footer} aria-hidden={false}>
+      <div className={styles.footer}>
         <div className={styles.socials}>
           {company.linkedin && (
             <a href={company.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">LinkedIn</a>
