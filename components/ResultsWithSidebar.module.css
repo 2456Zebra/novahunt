@@ -1,0 +1,18 @@
+.resultsRoot {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  align-items: start;
+  padding: 16px;
+}
+
+.resultsMain {}
+
+.resultsSide {}
+
+@media (max-width: 900px) {
+  .resultsRoot {
+    grid-template-columns: 1fr;
+  }
+  .resultsSide { order: 2; }
+}
