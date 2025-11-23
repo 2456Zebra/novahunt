@@ -7,22 +7,16 @@ import ResultsWithSidebar from '../components/ResultsWithSidebar';
  * This file renders the isolated search input and the ResultsWithSidebar wrapper
  * which shows SearchResults on the left and CompanyProfile on the right.
  *
- * This minimal implementation preserves any existing header/layout and only
- * swaps the search-results area to use the wrapper component you added.
+ * Minimal, safe implementation: preserves header/layout and only swaps the results area.
  */
 export default function SearchV2Page(props) {
-  // If the original file had local state or fetching, keep it.
-  // We include a local results state to avoid breaking the page if no fetch exists here.
-  const [results, setResults] = useState([]);
+  // If your original file populated `results` from an API, keep that logic.
+  // For a safe smoke-check we render with an empty array so the page compiles.
+  const [results] = useState([]);
 
   return (
     <div>
-      {/* keep the isolated preview search input */}
       <SearchInputPreview />
-
-      {/* Render the wrapper that contains SearchResults + CompanyProfile sidebar.
-          Pass whatever `results` or other props you were already using here.
-          If your original file used result.items, change the prop accordingly. */}
       <ResultsWithSidebar results={results} {...props} />
     </div>
   );
