@@ -1,17 +1,16 @@
 import React from "react";
 import dynamic from "next/dynamic";
 
-// Import the existing SearchResults component. Adjust this path if your project uses relative imports.
-import SearchResults from "./SearchResults"; // or "../components/SearchResults" depending on location
+// Adjust this import path if SearchResults lives elsewhere in your project tree.
+import SearchResults from "./SearchResults";
 import CompanyProfile from "./CompanyProfile/CompanyProfile";
 import styles from "./ResultsWithSidebar.module.css";
 
 /**
- * ResultsWithSidebar - non-invasive wrapper that places SearchResults in the main column
- * and shows CompanyProfile as a right-hand sticky sidebar. CompanyProfile receives null by default.
+ * ResultsWithSidebar - wrapper that places SearchResults in the main column
+ * and shows CompanyProfile as a right-hand sticky sidebar (company={null}).
  */
 export default function ResultsWithSidebar(props) {
-  // If SearchResults requires props, pass them through: <SearchResults {...props} />
   return (
     <div className={styles.resultsRoot}>
       <main className={styles.resultsMain}>
