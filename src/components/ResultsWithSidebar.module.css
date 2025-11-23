@@ -7,11 +7,11 @@
 }
 
 .resultsMain {
-  /* existing styles remain */
+  /* leave page-specific styles to existing CSS */
 }
 
 .resultsSide {
-  /* keep aside wrapping minimal; CompanyProfile is sticky itself */
+  /* aside wrapper; CompanyProfile is sticky itself */
 }
 
 /* Stack layout on small screens */
