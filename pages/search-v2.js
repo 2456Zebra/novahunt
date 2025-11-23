@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import SearchClient from '../components/SearchClient';
+import SearchInputPreview from '../components/SearchInputPreview';
 import SearchResults from '../components/SearchResults';
 
 /**
- * Temporary preview page for the new search results UI.
- * - Uses SearchClient only for input/requests (showResults={false})
- * - Renders SearchResults (left results + company profile)
+ * /search-v2 — preview page for the new search results UI.
+ * - Uses SearchInputPreview (isolated input) so the homepage's SearchClient is not modified.
+ * - Renders SearchResults for left results + right company profile.
+ * - This route is safe to iterate on; it does not modify pages/search.js.
  */
 
 export default function SearchPageV2() {
@@ -16,16 +17,13 @@ export default function SearchPageV2() {
     <div style={{ padding: 20 }}>
       <h1 style={{ marginTop: 0 }}>Search (preview)</h1>
 
-      {/* Tell SearchClient not to render its internal results UI */}
-      <SearchClient
-        showResults={false}
+      <SearchInputPreview
         onResults={({ domain: d, result: r }) => {
           setDomain(d || '');
           setResult(r || { items: [], total: 0, public: true });
         }}
       />
 
-      {/* Render the new SearchResults component (left results + company profile) */}
       <div style={{ marginTop: 20 }}>
         <SearchResults results={result.items || []} />
       </div>
