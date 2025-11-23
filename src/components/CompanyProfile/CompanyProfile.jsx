@@ -79,10 +79,7 @@ export default function CompanyProfile({ company = null, loading = false, onClos
         )}
         {company.website && (
           <div className={styles.row}>
-            <strong>Website:</strong>{" "}
-            <a href={company.website} target="_blank" rel="noopener noreferrer">
-              {company.website}
-            </a>
+            <strong>Website:</strong> <a href={company.website} target="_blank" rel="noopener noreferrer">{company.website}</a>
           </div>
         )}
         <div className={styles.description}>{company.description}</div>
@@ -91,14 +88,10 @@ export default function CompanyProfile({ company = null, loading = false, onClos
       <div className={styles.footer} aria-hidden={false}>
         <div className={styles.socials}>
           {company.linkedin && (
-            <a href={company.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-              LinkedIn
-            </a>
+            <a href={company.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">LinkedIn</a>
           )}
           {company.twitter && (
-            <a href={company.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter">
-              Twitter
-            </a>
+            <a href={company.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter">Twitter</a>
           )}
         </div>
       </div>
