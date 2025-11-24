@@ -1,53 +1,23 @@
 import { useEffect } from 'react';
-import Head from 'next/head';
-import Header from '../components/Header';
+import { useRouter } from 'next/router';
 
-/**
- * Global app wrapper:
- * - Renders the site Header on every page.
- * - Listens for nh-signed-in and nh-signed-out events and redirects to homepage to avoid landing on broken pages.
- * - After sign-in/out we send the user to '/' so they land on a known-good page.
- */
+function MyApp({ Component, pageProps }) {
+  const router = useRouter();
 
-export default function App({ Component, pageProps }) {
   useEffect(() => {
-    function onSignedIn() {
-      try {
-        // Safe redirect to homepage after sign-in to avoid 404 redirect loops
-        if (typeof window !== 'undefined') {
-          window.location.href = '/';
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-    function onSignedOut() {
-      try {
-        if (typeof window !== 'undefined') {
-          // clear client session and go home
-          try { localStorage.removeItem('nh_session'); localStorage.removeItem('nh_usage'); } catch (e) {}
-          window.location.href = '/';
-        }
-      } catch (e) {}
-    }
+    const GOOD_HOST = "novahunt-2sxouw5cx-nova-hunts-projects.vercel.app";
 
-    window.addEventListener('nh-signed-in', onSignedIn);
-    window.addEventListener('nh-signed-out', onSignedOut);
+    if (window.location.host !== GOOD_HOST) {
+      console.error(
+        `⚠️ You are not on the good deployment! Current host: ${window.location.host}`
+      );
 
-    return () => {
-      window.removeEventListener('nh-signed-in', onSignedIn);
-      window.removeEventListener('nh-signed-out', onSignedOut);
-    };
+      // Optional: redirect automatically to good deployment
+      window.location.href = `https://${GOOD_HOST}${window.location.pathname}`;
+    }
   }, []);
 
-  return (
-    <>
-      <Head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
-
-      <Header />
-      <Component {...pageProps} />
-    </>
-  );
+  return <Component {...pageProps} />;
 }
+
+export default MyApp;
