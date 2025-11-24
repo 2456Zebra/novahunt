@@ -10,30 +10,39 @@ export default function SearchPage() {
   const handleSearch = async () => {
     if (!query) return;
 
-    // Mock search result fetching
+    // Mock email search results
     const emailResults = [
       { name: 'John Doe', email: 'john@example.com' },
       { name: 'Jane Smith', email: 'jane@example.com' },
     ];
     setResults(emailResults);
 
-    // Mock company profile
-    if (query.includes('coca-cola.com')) {
-      setCompanyInfo({
+    // Mock company info
+    const companies = {
+      'coca-cola.com': {
         name: 'Coca-Cola',
         description: 'Coca-Cola is a global beverage company known for its sparkling soft drinks and refreshing beverages.',
         logo: 'https://1000logos.net/wp-content/uploads/2017/05/Coca-Cola-Logo.png',
         founded: '1886',
         industry: 'Beverages',
         website: 'https://www.coca-cola.com',
-      });
-    } else {
-      setCompanyInfo(null);
-    }
+      },
+      'apple.com': {
+        name: 'Apple',
+        description: 'Apple Inc. designs, manufactures, and markets consumer electronics, software, and services.',
+        logo: 'https://1000logos.net/wp-content/uploads/2016/10/Apple-Logo.png',
+        founded: '1976',
+        industry: 'Technology',
+        website: 'https://www.apple.com',
+      },
+      // Add more companies as needed
+    };
+
+    setCompanyInfo(companies[query.toLowerCase()] || null);
   };
 
   return (
-    <div style={{ display: 'flex', padding: '20px' }}>
+    <div style={{ display: 'flex', padding: '20px', gap: '20px' }}>
       <main style={{ flex: 1 }}>
         <input
           type="text"
@@ -53,8 +62,10 @@ export default function SearchPage() {
         </div>
       </main>
 
-      {/* Corporate Profile on the right */}
-      {companyInfo && <CorporateProfile company={companyInfo} />}
+      {/* Right-hand Corporate Profile panel always exists */}
+      <aside style={{ width: '300px', minHeight: '400px' }}>
+        <CorporateProfile company={companyInfo} />
+      </aside>
     </div>
   );
 }
