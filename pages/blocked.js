@@ -1,39 +1,43 @@
-// pages/blocked.js
 import React from "react";
-import Link from "next/link";
 
 export default function Blocked() {
+  const goHome = () => {
+    // Always go to the good deployment URL
+    window.location.href = "https://novahunt-dxf7v1h9v-nova-hunts-projects.vercel.app/";
+  };
+
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-        textAlign: "center",
-        backgroundColor: "#f8f9fa",
-        color: "#333",
-        padding: "20px",
-      }}
-    >
-      <h1 style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🚫 Access Blocked</h1>
-      <p style={{ fontSize: "1.2rem", marginBottom: "2rem" }}>
-        This deployment is not approved for viewing.
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      height: "100vh",
+      backgroundColor: "#f5f5f5",
+      fontFamily: "Arial, sans-serif",
+      textAlign: "center",
+      padding: "20px"
+    }}>
+      <h1 style={{ fontSize: "2rem", marginBottom: "20px", color: "#333" }}>
+        Access Blocked
+      </h1>
+      <p style={{ fontSize: "1.2rem", marginBottom: "30px", color: "#666" }}>
+        You are not allowed to view this site.
       </p>
-      <Link
-        href="/"
+      <button
+        onClick={goHome}
         style={{
-          textDecoration: "none",
-          backgroundColor: "#0070f3",
-          color: "#fff",
           padding: "12px 24px",
+          fontSize: "1rem",
           borderRadius: "6px",
-          fontWeight: "bold",
+          border: "none",
+          backgroundColor: "#0057FF",
+          color: "#fff",
+          cursor: "pointer"
         }}
       >
-        Go to Home
-      </Link>
+        Go Home
+      </button>
     </div>
   );
 }
