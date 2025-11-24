@@ -1,27 +1,21 @@
-// pages/blocked.js
-import React from "react";
+import { useEffect } from "react";
+import { useRouter } from "next/router";
+import "../styles/globals.css";
 
-export default function Blocked() {
-  const goHome = () => {
-    // Full URL of the good deployment
-    window.location.href = "https://novahunt-dxf7v1h9v-nova-hunts-projects.vercel.app/";
-  };
+function MyApp({ Component, pageProps }) {
+  const router = useRouter();
 
-  return (
-    <div style={{ textAlign: "center", marginTop: "100px" }}>
-      <h1>Access Blocked</h1>
-      <p>You are not allowed to view this site.</p>
-      <button
-        onClick={goHome}
-        style={{
-          padding: "12px 24px",
-          fontSize: "16px",
-          borderRadius: "6px",
-          cursor: "pointer",
-        }}
-      >
-        Go Home
-      </button>
-    </div>
-  );
+  useEffect(() => {
+    // Only allow the good host
+    const allowedHost = "novahunt-dxf7v1h9v-nova-hunts-projects.vercel.app";
+
+    if (window.location.host !== allowedHost) {
+      // Redirect immediately to the blocked page on the good site
+      window.location.replace(`https://${allowedHost}/blocked`);
+    }
+  }, []);
+
+  return <Component {...pageProps} />;
 }
+
+export default MyApp;
