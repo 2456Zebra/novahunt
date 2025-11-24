@@ -16,8 +16,7 @@
     "framer-motion": "^10.12.16",
     "axios": "^1.6.2",
     "uuid": "^9.0.0",
-    "@upstash/redis": "^1.19.0",
-    "micro": "^10.1.2"
+    "@upstash/redis": "^1.19.0"
   },
   "devDependencies": {
     "eslint": "^8.50.0"
