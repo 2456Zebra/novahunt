@@ -1,10 +1,10 @@
 // pages/_app.js
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import "../styles/globals.css"; // adjust if you have a different global styles file
+import "../styles/globals.css";
 
-function MyApp({ Component, pageProps, router }) {
-  const route = useRouter();
+function MyApp({ Component, pageProps }) {
+  const router = useRouter();
 
   useEffect(() => {
     const allowedHost = "novahunt-2sxouw5cx-nova-hunts-projects.vercel.app";
@@ -15,9 +15,9 @@ function MyApp({ Component, pageProps, router }) {
       window.location.host !== allowedHost &&
       window.location.pathname !== "/blocked"
     ) {
-      route.replace("/blocked");
+      router.replace("/blocked");
     }
-  }, [route]);
+  }, [router]);
 
   return <Component {...pageProps} />;
 }
