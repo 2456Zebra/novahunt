@@ -10,17 +10,20 @@ function MyApp({ Component, pageProps }) {
     const allowedHost = "novahunt-2sxouw5cx-nova-hunts-projects.vercel.app";
 
     if (typeof window !== "undefined") {
+      // Skip host check if already on /blocked
+      if (router.pathname === "/blocked") {
+        setSafeToRender(true);
+        return;
+      }
+
       if (window.location.host !== allowedHost) {
-        // Immediately redirect to /blocked without rendering anything else
         window.location.replace("/blocked");
       } else {
-        // Allowed host, safe to render the page
         setSafeToRender(true);
       }
     }
-  }, []);
+  }, [router.pathname]);
 
-  // Prevent any page flash until the host check completes
   if (!safeToRender) {
     return null;
   }
