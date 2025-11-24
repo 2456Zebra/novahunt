@@ -1,14 +1,10 @@
 // pages/api/_kv-wrapper.js
-// Temporary stub to allow build without @vercel/kv
+// Stubbed KV wrapper to bypass @vercel/kv dependency
 
-// If you later add Vercel KV, you can replace this stub
+export const getKV = async () => {
+  return null; // no-op
+};
 
-export function getKV() {
-  // This is a no-op stub
-  console.warn("KV access is stubbed. No data will be stored or fetched.");
-  return {
-    get: async () => null,
-    set: async () => {},
-    del: async () => {},
-  };
-}
+export const setKV = async () => {
+  return null; // no-op
+};
