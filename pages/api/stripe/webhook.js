@@ -4,7 +4,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const config = {
   api: {
-    bodyParser: false, // required for raw Stripe events
+    bodyParser: false, // Stripe requires raw body
   },
 };
 
@@ -29,13 +29,13 @@ export default async function handler(req, res) {
       console.log("Checkout session completed:", event.data.object);
       break;
     default:
-      console.log(`Unhandled event type ${event.type}`);
+      console.log(`Unhandled event type: ${event.type}`);
   }
 
   res.json({ received: true });
 }
 
-// Helper function to convert request to buffer
+// Convert incoming request into a raw buffer
 async function buffer(readable) {
   const chunks = [];
   for await (const chunk of readable) {
