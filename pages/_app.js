@@ -1,23 +1,29 @@
-// pages/_app.js
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import "../styles/globals.css";
 
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
+  const [safeToRender, setSafeToRender] = useState(false);
 
   useEffect(() => {
     const allowedHost = "novahunt-2sxouw5cx-nova-hunts-projects.vercel.app";
 
-    // Exempt the blocked page itself from redirect
-    if (
-      typeof window !== "undefined" &&
-      window.location.host !== allowedHost &&
-      window.location.pathname !== "/blocked"
-    ) {
-      router.replace("/blocked");
+    if (typeof window !== "undefined") {
+      if (window.location.host !== allowedHost) {
+        // Immediately redirect to /blocked without rendering anything else
+        window.location.replace("/blocked");
+      } else {
+        // Allowed host, safe to render the page
+        setSafeToRender(true);
+      }
     }
-  }, [router]);
+  }, []);
+
+  // Prevent any page flash until the host check completes
+  if (!safeToRender) {
+    return null;
+  }
 
   return <Component {...pageProps} />;
 }
