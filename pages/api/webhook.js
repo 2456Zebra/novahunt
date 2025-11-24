@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 
 export const config = {
   api: {
-    bodyParser: false, // required for Stripe raw body
+    bodyParser: false, // Stripe requires raw body
   },
 };
 
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    // Handle the event
+    // Handle relevant events
     switch (event.type) {
       case 'checkout.session.completed':
         const session = event.data.object;
