@@ -1,19 +1,18 @@
-import { useEffect } from "react";
-import { useRouter } from "next/router";
-import "../styles/globals.css";
+// _app.js
+import '../styles/globals.css';
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
+  const currentProd = process.env.NEXT_PUBLIC_CURRENT_PROD_URL;
 
   useEffect(() => {
-    // Only allow the good host
-    const allowedHost = "novahunt-dxf7v1h9v-nova-hunts-projects.vercel.app";
-
-    if (window.location.host !== allowedHost) {
-      // Redirect immediately to the blocked page on the good site
-      window.location.replace(`https://${allowedHost}/blocked`);
+    // Only redirect from blocked page to current production
+    if (router.pathname === '/blocked') {
+      router.replace(currentProd); // safe redirect
     }
-  }, []);
+  }, [router, currentProd]);
 
   return <Component {...pageProps} />;
 }
