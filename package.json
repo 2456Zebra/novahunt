@@ -13,6 +13,10 @@
     "react-dom": "^18.2.0",
     "cookie": "^0.6.0",
     "stripe": "^12.10.0",
-    "framer-motion": "^10.12.16"
+    "framer-motion": "^10.12.16",
+    "axios": "^1.5.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.50.0"
   }
 }
