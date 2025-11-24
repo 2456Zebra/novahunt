@@ -1,16 +1,27 @@
-// pages/_app.js
+// _app.js
 import '../styles/globals.css';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 
 function MyApp({ Component, pageProps }) {
+  const router = useRouter();
   const currentProd = process.env.NEXT_PUBLIC_CURRENT_PROD_URL;
+  const [allowed, setAllowed] = useState(false);
 
-  if (typeof window !== 'undefined') {
-    // Redirect immediately if the host isn't the good production
-    if (window.location.origin !== currentProd || window.location.pathname === '/blocked') {
-      window.location.href = currentProd;
-      return null; // prevent any old site from rendering
+  // Early redirect if not on current production host or on /blocked
+  useEffect(() => {
+    const host = window.location.hostname;
+    const path = window.location.pathname;
+
+    if (path === '/blocked' || host !== new URL(currentProd).hostname) {
+      window.location.replace(currentProd); // hard redirect, no flash
+    } else {
+      setAllowed(true); // allow rendering
     }
-  }
+  }, [currentProd]);
+
+  // Prevent any rendering until check passes
+  if (!allowed) return null;
 
   return <Component {...pageProps} />;
 }
