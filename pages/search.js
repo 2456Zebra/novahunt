@@ -1,44 +1,47 @@
 // pages/search.js
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import CorporateProfile from '../components/CorporateProfile';
 
 export default function SearchPage() {
-  const [query, setQuery] = useState('');
+  const router = useRouter();
+  const { domain } = router.query; // get domain from query params
+  const [query, setQuery] = useState(domain || '');
   const [results, setResults] = useState([]);
   const [companyInfo, setCompanyInfo] = useState(null);
 
-  const handleSearch = async () => {
-    if (!query) return;
+  useEffect(() => {
+    if (domain) handleSearch(domain);
+  }, [domain]);
 
-    // Mock email search results
+  const handleSearch = async (searchDomain) => {
+    const targetDomain = searchDomain || query;
+    if (!targetDomain) return;
+
+    // --- Mock search results (replace with real backend call) ---
     const emailResults = [
       { name: 'John Doe', email: 'john@example.com' },
       { name: 'Jane Smith', email: 'jane@example.com' },
     ];
     setResults(emailResults);
 
-    // Mock company info
-    const companies = {
-      'coca-cola.com': {
+    // --- Mock corporate profile (replace with API call if needed) ---
+    if (targetDomain.includes('coca-cola.com')) {
+      setCompanyInfo({
         name: 'Coca-Cola',
-        description: 'Coca-Cola is a global beverage company known for its sparkling soft drinks and refreshing beverages.',
+        description:
+          'Coca-Cola is a global beverage company known for its sparkling soft drinks and refreshing beverages.',
         logo: 'https://1000logos.net/wp-content/uploads/2017/05/Coca-Cola-Logo.png',
         founded: '1886',
         industry: 'Beverages',
         website: 'https://www.coca-cola.com',
-      },
-      'apple.com': {
-        name: 'Apple',
-        description: 'Apple Inc. designs, manufactures, and markets consumer electronics, software, and services.',
-        logo: 'https://1000logos.net/wp-content/uploads/2016/10/Apple-Logo.png',
-        founded: '1976',
-        industry: 'Technology',
-        website: 'https://www.apple.com',
-      },
-      // Add more companies as needed
-    };
+      });
+    } else {
+      setCompanyInfo(null);
+    }
 
-    setCompanyInfo(companies[query.toLowerCase()] || null);
+    // --- Stub: deduct from account search/reveal totals here if needed ---
+    // deductSearchForAccount();
   };
 
   return (
@@ -48,10 +51,15 @@ export default function SearchPage() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Enter domain to search"
+          placeholder="Enter company domain"
           style={{ padding: '8px', width: '100%', marginBottom: '12px' }}
         />
-        <button onClick={handleSearch} style={{ padding: '8px 16px', marginBottom: '20px' }}>Search</button>
+        <button
+          onClick={() => handleSearch()}
+          style={{ padding: '8px 16px', marginBottom: '20px' }}
+        >
+          Search
+        </button>
 
         <div>
           {results.map((r, idx) => (
@@ -62,10 +70,8 @@ export default function SearchPage() {
         </div>
       </main>
 
-      {/* Right-hand Corporate Profile panel always exists */}
-      <aside style={{ width: '300px', minHeight: '400px' }}>
-        <CorporateProfile company={companyInfo} />
-      </aside>
+      {/* Corporate Profile panel */}
+      {companyInfo && <CorporateProfile company={companyInfo} />}
     </div>
   );
 }
