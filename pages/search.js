@@ -1,9 +1,3 @@
-export default function SearchPage() {
-  console.log("Using search.js version d63be2"); // add this
-  ...
-}
-
-
 // pages/search.js
 import { useState } from 'react';
 import CorporateProfile from '../components/CorporateProfile';
