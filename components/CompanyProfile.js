@@ -6,9 +6,10 @@ import React, { useState, useEffect } from 'react';
  *  - domain (string) — searched domain
  *  - result (object) — latest search result (optional)
  *  - company (object) — pre-fetched company data (optional, will fetch if not provided)
+ *  - maxPhotos (number) — maximum photos to display (default: 3)
  *
  * Features:
- * - Displays hero photo or small carousel (up to 3 photos)
+ * - Displays hero photo or small carousel (up to maxPhotos)
  * - Shows company logo (clearbit fallback) and name
  * - Playful, informal conversational summary
  * - Short history paragraph when available
@@ -17,6 +18,9 @@ import React, { useState, useEffect } from 'react';
  * - Graceful handling of missing data
  * - Uses inline styles only
  */
+
+// Configuration
+const DEFAULT_MAX_PHOTOS = 3;
 
 const styles = {
   container: {
@@ -177,8 +181,9 @@ const safeHostFromDomain = (domain) => {
   }
 };
 
-export default function CompanyProfile({ domain = '', result = { items: [], total: 0 }, company: propCompany = null }) {
+export default function CompanyProfile({ domain = '', result = { items: [], total: 0 }, company: propCompany = null, maxPhotos = DEFAULT_MAX_PHOTOS }) {
   const [company, setCompany] = useState(propCompany);
+  const [logoError, setLogoError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -190,6 +195,10 @@ export default function CompanyProfile({ domain = '', result = { items: [], tota
 
   // Fetch company data when domain changes (if not provided via props)
   useEffect(() => {
+    // Reset states when domain changes
+    setLogoError(false);
+    setImageErrors({});
+    
     if (propCompany) {
       setCompany(propCompany);
       return;
@@ -253,8 +262,8 @@ export default function CompanyProfile({ domain = '', result = { items: [], tota
     setImageErrors(prev => ({ ...prev, [index]: true }));
   };
 
-  // Get valid photos (those that haven't errored)
-  const validPhotos = (company?.photos || []).filter((_, index) => !imageErrors[index]).slice(0, 3);
+  // Get valid photos (those that haven't errored), respecting maxPhotos prop
+  const validPhotos = (company?.photos || []).filter((_, index) => !imageErrors[index]).slice(0, maxPhotos);
 
   // Loading state
   if (loading && !company) {
@@ -323,14 +332,14 @@ export default function CompanyProfile({ domain = '', result = { items: [], tota
 
       {/* Header with logo and name */}
       <div style={styles.header}>
-        <img
-          src={displayCompany.logo || `https://logo.clearbit.com/${host}`}
-          alt={`${displayCompany.name} logo`}
-          style={styles.logo}
-          onError={(e) => {
-            e.target.style.display = 'none';
-          }}
-        />
+        {!logoError && (
+          <img
+            src={displayCompany.logo || `https://logo.clearbit.com/${host}`}
+            alt={`${displayCompany.name} logo`}
+            style={styles.logo}
+            onError={() => setLogoError(true)}
+          />
+        )}
         <div>
           <h2 style={styles.companyName}>{displayCompany.name || host}</h2>
           <div style={styles.domain}>{host}</div>

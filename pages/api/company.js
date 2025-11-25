@@ -21,20 +21,25 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid domain' });
     }
 
-    // Fetch homepage HTML with short timeout
+    // Fetch homepage HTML with short timeout using Promise.race for proper cleanup
     const homepageUrl = `https://${normalizedDomain}`;
     let html = '';
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      const response = await fetch(homepageUrl, {
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          controller.abort();
+          reject(new Error('Timeout'));
+        }, 5000);
+      });
+      const fetchPromise = fetch(homepageUrl, {
         signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; NovaHunt/1.0)',
           'Accept': 'text/html',
         },
       });
-      clearTimeout(timeoutId);
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
       if (response.ok) {
         html = await response.text();
       }
@@ -154,7 +159,7 @@ function extractTitle(html) {
 }
 
 /**
- * Extract site images from HTML
+ * Extract site images from HTML - uses robust URL validation
  */
 function extractSiteImages(html, domain) {
   if (!html) return [];
@@ -164,11 +169,33 @@ function extractSiteImages(html, domain) {
   let match;
   while ((match = imgRegex.exec(html)) !== null && images.length < 10) {
     const src = match[1];
-    if (isValidImageUrl(src, domain)) {
-      images.push(normalizeImageUrl(src));
+    // Validate and normalize the URL before adding
+    const normalizedUrl = validateAndNormalizeUrl(src, domain);
+    if (normalizedUrl && isValidImageUrl(normalizedUrl, domain)) {
+      images.push(normalizedUrl);
     }
   }
   return images;
+}
+
+/**
+ * Validate and normalize a URL, returning null if invalid
+ */
+function validateAndNormalizeUrl(src, domain) {
+  if (!src || typeof src !== 'string') return null;
+  try {
+    // Normalize protocol-relative URLs
+    const urlToParse = src.startsWith('//') ? 'https:' + src : src;
+    // Attempt to parse as URL to validate format
+    const parsed = new URL(urlToParse);
+    // Only allow http/https protocols
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return null;
+    }
+    return parsed.href;
+  } catch {
+    return null;
+  }
 }
 
 /**
