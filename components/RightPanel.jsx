@@ -1,15 +1,13 @@
 // components/RightPanel.jsx
-export default function RightPanel({ children }) {
+import CorporateProfile from './CorporateProfile';
+
+export default function RightPanel({ domain, result }) {
+  // Use first item from search results for corporate profile
+  const company = result.items && result.items.length > 0 ? result.items[0] : null;
+
   return (
-    <div
-      style={{
-        border: '1px solid #eee',
-        padding: '16px',
-        borderRadius: '8px',
-        backgroundColor: '#f9f9f9'
-      }}
-    >
-      {children}
-    </div>
+    <aside style={{ width: '360px' }}>
+      <CorporateProfile company={company} />
+    </aside>
   );
 }
