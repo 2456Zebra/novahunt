@@ -1,34 +1,37 @@
-// components/SearchResults.jsx
-import React, { useState } from "react";
-import ResultItem from "./ResultItem";
-import CorporateProfile from "./CorporateProfile";
+import { useState } from 'react';
+import ResultItem from './ResultItem';
+import CorporateProfile from './CorporateProfile';
+import RightPanel from './RightPanel'; // optional if you already use it
 
 export default function SearchResults({ results }) {
-  const [selectedCompany, setSelectedCompany] = useState(null);
+  // Track which result is selected for the Corporate Profile
+  const [selectedResult, setSelectedResult] = useState(null);
+
+  const handleSelectResult = (result) => {
+    setSelectedResult(result);
+  };
 
   return (
-    <div style={{ display: "flex", gap: "24px", marginTop: "24px" }}>
-      {/* Left column: search results */}
+    <div style={{ display: 'flex', gap: '24px', marginTop: '20px' }}>
+      {/* Left side: list of results */}
       <div style={{ flex: 2 }}>
-        {results.length === 0 ? (
-          <p>No results found.</p>
-        ) : (
-          results.map((item) => (
-            <ResultItem
-              key={item.email}
-              item={item}
-              onSelect={() => setSelectedCompany(item)}
-            />
+        {results && results.length ? (
+          results.map((result) => (
+            <div key={result.id} onClick={() => handleSelectResult(result)}>
+              <ResultItem result={result} />
+            </div>
           ))
+        ) : (
+          <p>No results found.</p>
         )}
       </div>
 
-      {/* Right column: Corporate Profile */}
-      <div style={{ flex: 1 }}>
-        {selectedCompany ? (
-          <CorporateProfile company={selectedCompany} />
+      {/* Right side: Corporate Profile */}
+      <div style={{ flex: 1, minWidth: '300px' }}>
+        {selectedResult ? (
+          <CorporateProfile company={selectedResult.company} />
         ) : (
-          <p>Select a company from the left to see the profile.</p>
+          <p style={{ color: '#6B7280' }}>Select a result to see corporate profile.</p>
         )}
       </div>
     </div>
