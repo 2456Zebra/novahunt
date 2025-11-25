@@ -1,34 +1,24 @@
-import { useState } from 'react';
-import { useRouter } from 'next/router';
+import Head from 'next/head';
+import Header from '../components/Header';
+import SearchClient from '../components/SearchClient';
 
-export default function HomePage() {
-  const [domain, setDomain] = useState('');
-  const router = useRouter();
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!domain) return;
-    router.push(`/search?domain=${encodeURIComponent(domain)}`);
-  };
-
+export default function Home() {
   return (
-    <div>
-      <header>
-        {/* Keep your current header here */}
-      </header>
-
+    <>
+      <Head>
+        <title>NovaHunt — Find business contacts</title>
+        <meta name="description" content="Search company domains to find contact emails, names and roles." />
+      </Head>
+      <Header />
       <main style={{ padding: '24px' }}>
-        <h1>Find business contacts from a domain</h1>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px' }}>
-          <input
-            placeholder="Enter domain, e.g. coca-cola.com"
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
-            style={{ flex: 1, padding: '10px' }}
-          />
-          <button type="submit" style={{ padding: '8px 12px' }}>Search</button>
-        </form>
+        <h1 style={{ marginTop: 20 }}>Find business contacts from a domain</h1>
+        <p style={{ color: '#6B7280' }}>
+          Enter a company website (example: coca-cola.com) and NovaHunt will show public business contacts.
+        </p>
+        <div style={{ marginTop: 20 }}>
+          <SearchClient />
+        </div>
       </main>
-    </div>
+    </>
   );
 }
