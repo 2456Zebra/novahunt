@@ -1,15 +1,21 @@
+// components/SearchResults.jsx
 import RightPanel from './RightPanel';
 import ResultItem from './ResultItem';
 
-export default function SearchResults({ results, selectedCompany }) {
+export default function SearchResults({ results = [], selectedCompany }) {
   return (
     <div style={{ display: 'flex', gap: '16px' }}>
-      <div style={{ flex: 1 }}>
-        {results.map((result) => (
-          <ResultItem key={result.email} result={result} />
+      <div style={{ flex: 2 }}>
+        {results.map((result, index) => (
+          <ResultItem
+            key={result.email || index} // fallback key
+            item={result}               // pass as `item` prop
+          />
         ))}
       </div>
-      <RightPanel company={selectedCompany} />
+      <div style={{ flex: 1 }}>
+        <RightPanel company={selectedCompany} />
+      </div>
     </div>
   );
 }
