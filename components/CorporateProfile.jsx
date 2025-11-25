@@ -1,3 +1,5 @@
+// components/CorporateProfile.jsx
+
 export default function CorporateProfile({ company }) {
   if (!company) return null;
 
