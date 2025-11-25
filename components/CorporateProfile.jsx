@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 /*
-  CompanyProfile component
+  CorporateProfile component
 
   Props:
     - company (optional) : if provided, uses this and skips fetch
@@ -14,7 +14,7 @@ import React, { useEffect, useState } from 'react';
     - If API responds non-OK or fails, falls back to /data/<domain>.json (served from public/).
 */
 
-export default function CompanyProfile({ company: companyProp, domain, className = '', style = {} }) {
+export default function CorporateProfile({ company: companyProp, domain, className = '', style = {} }) {
   const [company, setCompany] = useState(companyProp || null);
   const [loading, setLoading] = useState(false);
 
