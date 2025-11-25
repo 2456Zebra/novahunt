@@ -13,11 +13,18 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "uuid": "^9.0.0",
-    "@vercel/kv": "^1.0.0",
-    "swr": "^2.2.0"
+    "@vercel/kv": "^0.0.40",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.4",
+    "cookie": "^0.6.1"
   },
   "devDependencies": {
-    "eslint": "8.51.0",
-    "eslint-config-next": "13.5.11"
+    "eslint": "8.48.0",
+    "eslint-config-next": "13.5.11",
+    "typescript": "5.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
