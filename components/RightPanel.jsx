@@ -6,14 +6,11 @@ export default function RightPanel({ domain, result }) {
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
 
-  // Helper to fetch company info (calls pages/api/company)
   const fetchCompany = useCallback(async (d, regenerate = false) => {
     if (!d) {
       setCompany(null);
       return;
     }
-
-    // If result already includes company, prefer that
     if (result && result.company) {
       setCompany(result.company);
       return;
@@ -36,7 +33,6 @@ export default function RightPanel({ domain, result }) {
     }
   }, [result, domain]);
 
-  // Load when domain or result changes
   useEffect(() => {
     fetchCompany(domain, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
