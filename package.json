@@ -5,17 +5,17 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "@upstash/redis": "^1.34.3",
-    "cookie": "^0.6.0",
-    "jsonwebtoken": "^9.0.2",
+    "axios": "^1.6.6",
     "next": "13.5.11",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "stripe": "^12.0.0",
-    "uuid": "^9.0.1"
+    "@upstash/redis": "^1.19.1",
+    "stripe": "^12.15.0",
+    "uuid": "^9.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
