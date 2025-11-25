@@ -1,8 +1,16 @@
 {
   "domain": "coca-cola.com",
-  "people": [
-    {"first": "James", "last": "Quincey", "title": "CEO"},
-    {"first": "John", "last": "Murphy", "title": "President & CFO"}
-  ],
-  "emails": ["press@coca-cola.com", "info@coca-cola.com"]
+  "name": "The Coca-Cola Company",
+  "industry": "Beverages",
+  "description": "The Coca-Cola Company is a global beverage leader offering hundreds of brands, including soft drinks, waters, juices, teas and coffees.",
+  "location": "Atlanta, GA, USA",
+  "logo": "https://logo.clearbit.com/coca-cola.com",
+  "metrics": {
+    "employees": "86,200",
+    "revenue": "38.7B"
+  },
+  "social": {
+    "twitter": "https://twitter.com/CocaCola",
+    "linkedin": "https://www.linkedin.com/company/the-coca-cola-company"
+  }
 }
