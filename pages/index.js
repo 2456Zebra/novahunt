@@ -18,6 +18,7 @@ export default function HomePage() {
             }}
           />
         </div>
+
         <div>
           <RightPanel domain={domain} result={result} />
         </div>
