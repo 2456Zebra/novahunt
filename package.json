@@ -2,6 +2,9 @@
   "name": "novahunt",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,19 +15,11 @@
     "next": "13.5.11",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "uuid": "^9.0.0",
-    "@vercel/kv": "^0.0.40",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^6.9.4",
-    "cookie": "^0.6.1"
+    "@vercel/kv": "^0.2.0",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "eslint": "8.48.0",
-    "eslint-config-next": "13.5.11",
-    "typescript": "5.2.2"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "eslint": "^8.48.0",
+    "eslint-config-next": "13.5.11"
   }
 }
