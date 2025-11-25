@@ -1,39 +1,23 @@
-// components/SearchResults.jsx
 import React, { useState } from 'react';
 import ResultItem from './ResultItem';
-import RightPanel from './RightPanel';
-import CompanyProfile from './CompanyProfile';
+import CorporateProfile from './CorporateProfile';
 
 export default function SearchResults({ results }) {
-  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [selectedDomain, setSelectedDomain] = useState(null);
 
   return (
-    <div style={{ display: 'flex', gap: '24px', marginTop: '20px' }}>
-      {/* Left: List of results */}
-      <div style={{ flex: 2 }}>
-        {results && results.length > 0 ? (
-          results.map((item) => (
-            <ResultItem
-              key={item.id}
-              item={item}
-              onClick={() => setSelectedCompany(item)}
-            />
-          ))
-        ) : (
-          <p>No results found</p>
-        )}
-      </div>
-
-      {/* Right: Corporate Profile */}
+    <div style={{ display: 'flex', gap: 24 }}>
       <div style={{ flex: 1 }}>
-        {selectedCompany ? (
-          <RightPanel>
-            <CompanyProfile company={selectedCompany} />
-          </RightPanel>
-        ) : (
-          <p>Select a company to see details</p>
-        )}
+        {results.length === 0 && <p>No results found.</p>}
+        {results.map(result => (
+          <ResultItem 
+            key={result.email} 
+            result={result} 
+            onSelect={() => setSelectedDomain(result.domain)}
+          />
+        ))}
       </div>
+      <CorporateProfile domain={selectedDomain} />
     </div>
   );
 }
