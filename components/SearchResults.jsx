@@ -1,23 +1,36 @@
-import React, { useState } from 'react';
-import ResultItem from './ResultItem';
-import CorporateProfile from './CorporateProfile';
+// components/SearchResults.jsx
+import React, { useState } from "react";
+import ResultItem from "./ResultItem";
+import CorporateProfile from "./CorporateProfile";
 
 export default function SearchResults({ results }) {
-  const [selectedDomain, setSelectedDomain] = useState(null);
+  const [selectedCompany, setSelectedCompany] = useState(null);
 
   return (
-    <div style={{ display: 'flex', gap: 24 }}>
-      <div style={{ flex: 1 }}>
-        {results.length === 0 && <p>No results found.</p>}
-        {results.map(result => (
-          <ResultItem 
-            key={result.email} 
-            result={result} 
-            onSelect={() => setSelectedDomain(result.domain)}
-          />
-        ))}
+    <div style={{ display: "flex", gap: "24px", marginTop: "24px" }}>
+      {/* Left column: search results */}
+      <div style={{ flex: 2 }}>
+        {results.length === 0 ? (
+          <p>No results found.</p>
+        ) : (
+          results.map((item) => (
+            <ResultItem
+              key={item.email}
+              item={item}
+              onSelect={() => setSelectedCompany(item)}
+            />
+          ))
+        )}
       </div>
-      <CorporateProfile domain={selectedDomain} />
+
+      {/* Right column: Corporate Profile */}
+      <div style={{ flex: 1 }}>
+        {selectedCompany ? (
+          <CorporateProfile company={selectedCompany} />
+        ) : (
+          <p>Select a company from the left to see the profile.</p>
+        )}
+      </div>
     </div>
   );
 }
