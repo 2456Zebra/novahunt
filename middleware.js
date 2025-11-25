@@ -7,8 +7,7 @@ import { NextResponse } from 'next/server';
     or when VERCEL_ENV === 'preview' (set by Vercel on preview deployments).
   - Otherwise enforces the canonical hostname (www.novahunt.ai).
 
-  Place this at the project root (feature/company-profile branch), commit, and push.
-  This will stop preview deployments from being redirected to production so you can test them.
+  Place at the repository root on branch restore-good-design-f5d87fc, commit, and push.
 */
 
 export function middleware(req) {
@@ -18,7 +17,7 @@ export function middleware(req) {
   // Allow preview and local development hosts to proceed without redirect
   const isPreviewHost =
     host.endsWith('.vercel.app') ||
-    host.includes('.vercel-preview.') || // some previews
+    host.includes('.vercel-preview.') || // some preview formats
     host.includes('githubpreview.dev') ||
     process.env.VERCEL_ENV === 'preview' ||
     host.startsWith('localhost');
@@ -34,6 +33,6 @@ export function middleware(req) {
   }
 
   url.hostname = canonicalHost;
-  // preserve the protocol + pathname + search
+  // preserve protocol + pathname + search
   return NextResponse.redirect(url);
 }
