@@ -1,17 +1,14 @@
-// components/ResultItem.jsx
-export default function ResultItem({ item, onClick }) {
+import React from 'react';
+
+export default function ResultItem({ result, onSelect }) {
   return (
-    <div
-      onClick={onClick}
-      style={{
-        border: '1px solid #ddd',
-        padding: '12px',
-        marginBottom: '12px',
-        cursor: 'pointer'
-      }}
+    <div 
+      style={{ padding: 12, borderBottom: '1px solid #E5E7EB', cursor: 'pointer' }} 
+      onClick={onSelect}
     >
-      <h3>{item.name}</h3>
-      <p>{item.email}</p>
+      <p style={{ margin: 0, fontWeight: 500 }}>{result.name}</p>
+      <p style={{ margin: 0, color: '#6B7280' }}>{result.email}</p>
+      <p style={{ margin: 0, fontSize: 12 }}>{result.role}</p>
     </div>
   );
 }
