@@ -1,5 +1,9 @@
 // Lightweight company info endpoint with image scraping.
-import fetch from 'node-fetch';
+// - Extracts meta description / og:description
+// - Extracts og:image and other absolute images from the homepage
+// - Returns company.photos (preferred og:image first), company.logo (clearbit fallback), summary (playful templates)
+// - regenerate=1 produces varied templates
+
 import { URL } from 'url';
 
 function unique(array) {
@@ -31,9 +35,13 @@ function generatePlayfulSummary(name, description, industry, seed = 0) {
   return t(name, description, industry);
 }
 
+// Use global fetch with AbortController for timeout
 async function fetchText(url, timeout = 4000) {
   try {
-    const res = await fetch(url, { redirect: 'follow', timeout });
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    const res = await fetch(url, { redirect: 'follow', signal: controller.signal });
+    clearTimeout(id);
     if (!res.ok) return null;
     return await res.text();
   } catch (err) {
@@ -48,6 +56,7 @@ function extractMetaDescription(html) {
     html.match(/<meta[^>]+property=["']og:description["'][^>]*content=["']([^"']+)["'][^>]*>/i) ||
     html.match(/<meta[^>]+name=["']twitter:description["'][^>]*content=["']([^"']+)["'][^>]*>/i);
   if (metaMatch && metaMatch[1]) return metaMatch[1].trim();
+  // fallback: first reasonably long paragraph
   const paraMatch = html.match(/<p[^>]*>([^<]{60,400})<\/p>/i);
   if (paraMatch && paraMatch[1]) return paraMatch[1].replace(/<[^>]+>/g, '').trim();
   return null;
@@ -71,16 +80,23 @@ function extractImages(html, baseDomain) {
     try {
       let src = m[1].trim();
       if (!src) continue;
+      // normalize protocol-relative URLs
       if (src.startsWith('//')) src = 'https:' + src;
+      // Only keep absolute URLs
       if (src.startsWith('http')) {
         try {
           const u = new URL(src);
+          // prefer images that reference the same domain OR are clearly absolute assets
           if (u.hostname === baseDomain || u.hostname.endsWith('.' + baseDomain) || /cdn|assets|images|img|photo/.test(u.pathname)) {
             imgs.push(src);
           }
-        } catch (e) {}
+        } catch (e) {
+          // ignore malformed
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      // ignore per-image errors
+    }
   }
   return imgs;
 }
@@ -91,16 +107,22 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'domain required' });
   }
 
+  // normalize domain
   const normalized = domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   const siteUrl = `https://${normalized}`;
+
+  // fetch homepage text
   const html = await fetchText(siteUrl, 4000);
 
   const description = extractMetaDescription(html);
   const ogImage = extractOgImage(html);
   const images = extractImages(html, normalized);
   const deduped = unique([ogImage, ...images].filter(Boolean));
+  // prefer up to 3 photos; if none, fallback to logo clearbit
   const photos = deduped.slice(0, 3);
-  if (photos.length === 0) photos.push(`https://logo.clearbit.com/${normalized}`);
+  if (photos.length === 0) {
+    photos.push(`https://logo.clearbit.com/${normalized}`);
+  }
 
   const company = {
     name: normalized.replace(/^www\./, ''),
