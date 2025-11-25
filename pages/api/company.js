@@ -270,17 +270,28 @@ function buildPhotosArray(ogImage, siteImages, clearbitLogo) {
 
 /**
  * Clean HTML text (decode entities, trim)
+ * Uses a safe approach that avoids double-unescaping issues
  */
 function cleanHtmlText(text) {
   if (!text) return null;
-  return text
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .trim();
+  
+  // Use a single-pass approach to decode entities safely
+  const entityMap = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+    '&nbsp;': ' ',
+  };
+  
+  // Match only known entities to avoid double-decoding issues
+  const result = text.replace(/&(?:amp|lt|gt|quot|#39|apos|nbsp);/gi, (match) => {
+    return entityMap[match.toLowerCase()] || match;
+  });
+  
+  return result.trim();
 }
 
 /**
