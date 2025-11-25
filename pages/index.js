@@ -1,24 +1,27 @@
-import Head from 'next/head';
-import Header from '../components/Header';
+// pages/index.js
+import React, { useState } from 'react';
 import SearchClient from '../components/SearchClient';
+import RightPanel from '../components/RightPanel';
 
-export default function Home() {
+export default function HomePage() {
+  const [domain, setDomain] = useState('');
+  const [result, setResult] = useState({ items: [], total: 0, public: true });
+
   return (
-    <>
-      <Head>
-        <title>NovaHunt — Find business contacts</title>
-        <meta name="description" content="Search company domains to find contact emails, names and roles." />
-      </Head>
-      <Header />
-      <main style={{ padding: '24px' }}>
-        <h1 style={{ marginTop: 20 }}>Find business contacts from a domain</h1>
-        <p style={{ color: '#6B7280' }}>
-          Enter a company website (example: coca-cola.com) and NovaHunt will show public business contacts.
-        </p>
-        <div style={{ marginTop: 20 }}>
-          <SearchClient />
+    <main style={{ padding: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20, alignItems: 'start' }}>
+        <div>
+          <SearchClient
+            onResults={({ domain: d, result: r }) => {
+              setDomain(d || '');
+              setResult(r || { items: [], total: 0 });
+            }}
+          />
         </div>
-      </main>
-    </>
+        <div>
+          <RightPanel domain={domain} result={result} />
+        </div>
+      </div>
+    </main>
   );
 }
