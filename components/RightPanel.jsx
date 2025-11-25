@@ -5,12 +5,21 @@ export default function RightPanel({ domain, result }) {
   const [company, setCompany] = useState(result?.company || null);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
+  const [mounted, setMounted] = useState(false);
 
+  // mark when we're on the client so we avoid SSR/client HTML mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Helper to fetch company info (calls pages/api/company)
   const fetchCompany = useCallback(async (d, regenerate = false) => {
     if (!d) {
       setCompany(null);
       return;
     }
+
+    // If result already includes company, prefer that
     if (result && result.company) {
       setCompany(result.company);
       return;
@@ -31,12 +40,15 @@ export default function RightPanel({ domain, result }) {
     } finally {
       setLoading(false);
     }
-  }, [result, domain]);
+  }, [result]);
 
+  // Load when domain or result changes (client-side only)
   useEffect(() => {
-    fetchCompany(domain, false);
+    if (mounted) {
+      fetchCompany(domain, false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [domain, result]);
+  }, [domain, result, mounted]);
 
   const handleRegenerate = async () => {
     await fetchCompany(domain, true);
@@ -45,7 +57,12 @@ export default function RightPanel({ domain, result }) {
   return (
     <aside>
       <div style={{ marginBottom: 14 }}>
-        <CompanyProfile company={company} domain={domain} onRegenerate={handleRegenerate} />
+        {/* Render CompanyProfile only on the client to avoid hydration mismatch */}
+        {mounted ? (
+          <CompanyProfile company={company} domain={domain} onRegenerate={handleRegenerate} />
+        ) : (
+          <div style={{ height: 260, background: '#fff' }} aria-hidden />
+        )}
       </div>
 
       <div style={{ marginTop: 12, padding: 16, border: '1px solid #E5E7EB', borderRadius: 8, background: '#fff' }}>
