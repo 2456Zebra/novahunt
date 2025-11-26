@@ -1,4 +1,4 @@
-import React from 'react';
+// components/RightPanel.jsx
 import CorporateProfile from './CorporateProfile';
 
 // Simple right panel: shows a decorative corporate profile and a quick sample list
@@ -15,7 +15,7 @@ export default function RightPanel({ domain, result }) {
         <h4 style={{ margin: '0 0 8px 0' }}>Try a sample</h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {PRELOAD.map((d) => (
-            <button key={d} onClick={() => window && window.location && (window.location.search = '?domain=' + encodeURIComponent(d))} style={{ textAlign: 'left', padding: 8, borderRadius: 8, border: '1px solid #e6edf3', background: '#fff' }}>
+            <button key={d} onClick={() => { if (typeof window !== 'undefined') { const u = new URL(window.location.href); u.searchParams.set('domain', d); window.location.href = u.toString(); } }} style={{ textAlign: 'left', padding: 8, borderRadius: 8, border: '1px solid #e6edf3', background: '#fff' }}>
               {d}
             </button>
           ))}
