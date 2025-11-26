@@ -1,3 +1,4 @@
+// components/ErrorBoundary.jsx
 import React from 'react';
 
 // Minimal error boundary for React pages
