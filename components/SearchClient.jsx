@@ -1,22 +1,22 @@
-// components/SearchClient.jsx
-import { useState } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 
-// Minimal SearchClient: accepts domain input and calls /api/find-emails.
-// Calls onResults({ domain, result }) where result = { items: [...], total }
+// SearchClient: input + call /api/find-emails, returns { items, total } via onResults
 export default function SearchClient({ onResults }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function doSearch(q) {
-    const normalized = (q || '').trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+    var normalized = (q || '').trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
     if (!normalized) return;
     setLoading(true);
     try {
-      const url = '/api/find-emails?domain=' + encodeURIComponent(normalized);
-      const res = await axios.get(url);
+      var url = '/api/find-emails?domain=' + encodeURIComponent(normalized);
+      var res = await axios.get(url);
       if (res && res.data && res.data.ok) {
-        onResults && onResults({ domain: normalized, result: { items: res.data.emails || [], total: res.data.total || 0 } });
+        var items = res.data.emails || res.data.items || [];
+        var total = res.data.total || items.length || 0;
+        onResults && onResults({ domain: normalized, result: { items: items, total: total } });
       } else {
         onResults && onResults({ domain: normalized, result: { items: [], total: 0 } });
       }
@@ -34,7 +34,7 @@ export default function SearchClient({ onResults }) {
         onChange={(e) => setInput(e.target.value)}
         placeholder="Enter domain, e.g. coca-cola.com"
         onKeyDown={(e) => { if (e.key === 'Enter') doSearch(input); }}
-        style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #e6edf3', width: 420 }}
+        style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #e6edf3', width: 360 }}
       />
       <button onClick={() => doSearch(input)} style={{ padding: '10px 14px', borderRadius: 8, background: '#2563eb', color: 'white', border: 'none' }}>
         {loading ? 'Searching…' : 'Search'}
