@@ -2,6 +2,7 @@ import React from 'react';
 import CorporateProfile from './CorporateProfile';
 
 // RightPanel: corporate profile (big C), and "Take it for a test ride?" sample domains (small font).
+// This file only implements the test-ride buttons and displays the CorporateProfile card (no extra changes).
 export default function RightPanel({ domain, result }) {
   const PRELOAD = ['coca-cola.com', 'fordmodels.com', 'unitedtalent.com', 'wilhelmina.com', 'nfl.com'];
 
@@ -9,7 +10,7 @@ export default function RightPanel({ domain, result }) {
     if (typeof window === 'undefined') return;
     const u = new URL(window.location.href);
     u.searchParams.set('domain', d);
-    // reload so SearchClient picks up query param
+    // reload so SearchClient picks up query param (keeps behavior simple and as requested)
     window.location.href = u.toString();
   }
 
