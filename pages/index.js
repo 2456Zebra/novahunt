@@ -1,12 +1,10 @@
-// pages/index.js
 import React, { useState } from 'react';
+import Link from 'next/link';
 import SearchClient from '../components/SearchClient';
 import RightPanel from '../components/RightPanel';
-import Link from 'next/link';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 export default function HomePage() {
-  // Lifted state for search domain and results
   const [domain, setDomain] = useState('');
   const [result, setResult] = useState({ items: [], total: 0, public: true });
 
@@ -14,14 +12,13 @@ export default function HomePage() {
     <main style={{ padding: 20, fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial' }}>
       <ErrorBoundary>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20, alignItems: 'start' }}>
-          {/* Left column: Search and intro content */}
+          {/* Left column */}
           <div>
             <h1 style={{ fontSize: 48, fontWeight: 'bold', marginBottom: 20 }}>NovaHunt</h1>
             <p style={{ fontSize: 20, marginBottom: 30 }}>
               Find business emails instantly. Enter a company domain, and get professional email results.
             </p>
 
-            {/* SearchClient component */}
             <SearchClient
               onResults={({ domain: d, result: r }) => {
                 setDomain(d || '');
@@ -29,7 +26,6 @@ export default function HomePage() {
               }}
             />
 
-            {/* Optional quick links / calls to action */}
             <div style={{ marginTop: 30 }}>
               <Link href="/plans" legacyBehavior>
                 <a>
@@ -49,6 +45,7 @@ export default function HomePage() {
                   </button>
                 </a>
               </Link>
+
               <Link href="/about" legacyBehavior>
                 <a>
                   <button
@@ -69,18 +66,17 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right column: Corporate profile panel */}
+          {/* Right column */}
           <div>
             <RightPanel domain={domain} result={result} />
           </div>
         </div>
 
-        {/* Additional homepage sections */}
+        {/* How it works */}
         <section style={{ marginTop: 60 }}>
           <h2>How it works</h2>
-          <p>
-            Enter a company domain, see all publicly available emails, and reveal verified email addresses.
-          </p>
+          <p>Enter a company domain, see all publicly available emails, and reveal verified email addresses.</p>
+
           <div style={{ display: 'flex', gap: 20, marginTop: 20 }}>
             <div style={{ flex: 1, padding: 20, border: '1px solid #E5E7EB', borderRadius: 8 }}>
               <h3>Step 1</h3>
@@ -97,6 +93,7 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Features */}
         <section style={{ marginTop: 60 }}>
           <h2>Features</h2>
           <ul style={{ listStyle: 'disc', marginLeft: 20 }}>
@@ -108,6 +105,7 @@ export default function HomePage() {
           </ul>
         </section>
 
+        {/* CTA */}
         <section style={{ marginTop: 60, textAlign: 'center' }}>
           <h2>Get Started</h2>
           <p>Create an account and start finding emails today.</p>
