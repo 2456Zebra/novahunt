@@ -1,5 +1,4 @@
-import React from 'react';
-
+// components/CorporateProfile.jsx
 // Small presentational CorporateProfile used by RightPanel.
 // Shows decorative copy if no domain provided; otherwise shows summary from result if present.
 export default function CorporateProfile({ domain, result }) {
