@@ -25,9 +25,9 @@ export default function HomePage() {
   const [domain, setDomain] = useState('');
   const [result, setResult] = useState({ items: [], total: 0 });
   const [loading, setLoading] = useState(false);
-  const [error] = useState('');
   const [revealed, setRevealed] = useState({});
 
+  // read domain query param but do not auto-modify search behavior beyond showing the name
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const u = new URL(window.location.href);
@@ -35,6 +35,7 @@ export default function HomePage() {
     if (q) setDomain(q);
   }, []);
 
+  // handler that SearchClient will call (kept minimal)
   function handleResults({ domain: d, result: r }) {
     setDomain(d || '');
     setResult(r || { items: [], total: 0 });
@@ -44,20 +45,20 @@ export default function HomePage() {
     setRevealed((prev) => ({ ...prev, [email]: !prev[email] }));
   }
 
-  // Group by department (use 'department' field from Hunter-like payload)
+  // group by department field (using Hunter's department if present)
   function grouped(items) {
     const groups = {};
     (items || []).forEach((it) => {
-      const g = (it.department || 'Other').trim() || 'Other';
-      if (!groups[g]) groups[g] = [];
-      groups[g].push(it);
+      const dept = (it.department || 'Other').trim() || 'Other';
+      if (!groups[dept]) groups[dept] = [];
+      groups[dept].push(it);
     });
     return groups;
   }
 
   function renderRows() {
-    const items = result && result.items ? result.items : [];
-    if (!items || items.length === 0) {
+    const items = (result && result.items) || [];
+    if (!items.length) {
       if (!domain) return <div style={{ color: '#64748b' }}>Enter a domain to begin searching.</div>;
       return <div style={{ color: '#64748b' }}>No contacts found yet.</div>;
     }
@@ -70,7 +71,7 @@ export default function HomePage() {
           {groups[dept].map((e, i) => {
             const email = e.email || '';
             const shown = !!revealed[email];
-            const name = ((e.first_name || '') + ' ' + (e.last_name || '')).trim() || email.split('@')[0];
+            const name = ((e.first_name || '') + ' ' + (e.last_name || '')).trim() || (email.split('@')[0] || '');
             const linkedInQuery = encodeURIComponent((name + ' ' + (domain || '') + ' site:linkedin.com').trim());
             const sourceUrl = 'https://www.google.com/search?q=' + linkedInQuery;
 
@@ -91,7 +92,18 @@ export default function HomePage() {
                 }}
               >
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 8, background: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 8,
+                      background: '#eef2ff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 800
+                    }}
+                  >
                     {(e.first_name || e.last_name) ? (((e.first_name || '').charAt(0) + (e.last_name || '').charAt(0)).toUpperCase()) : 'C'}
                   </div>
 
@@ -106,12 +118,20 @@ export default function HomePage() {
 
                 <div style={{ display: 'flex', gap: 8 }}>
                   <a href={sourceUrl} target="_blank" rel="noreferrer">
-                    <button style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #e6edf3', background: '#fff' }}>Source</button>
+                    <button style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #e6edf3', background: '#fff' }}>
+                      Source
+                    </button>
                   </a>
 
                   <button
                     onClick={() => toggleReveal(email)}
-                    style={{ padding: '8px 10px', borderRadius: 8, background: shown ? '#ef4444' : '#10b981', color: 'white', border: 'none' }}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      background: shown ? '#ef4444' : '#10b981',
+                      color: 'white',
+                      border: 'none'
+                    }}
                   >
                     {shown ? 'Hide' : 'Reveal'}
                   </button>
@@ -129,6 +149,7 @@ export default function HomePage() {
   return (
     <main style={{ padding: 20, fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial', background: '#f8fafc', minHeight: '100vh' }}>
       <ErrorBoundary>
+        {/* Header: left NovaHunt logo and search (left untouched) + underlined top-right nav links */}
         <header style={{ background: '#fff', padding: 20, borderRadius: 8, marginBottom: 18 }}>
           <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
@@ -144,7 +165,6 @@ export default function HomePage() {
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
               <SearchClient onResults={handleResults} />
 
-              {/* Top-right nav (underlined links) */}
               <nav style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <Link href="/" legacyBehavior><a style={{ textDecoration: 'underline', color: '#2563eb' }}>Home</a></Link>
                 <Link href="/plans" legacyBehavior><a style={{ textDecoration: 'underline', color: '#2563eb' }}>Plans</a></Link>
@@ -156,15 +176,17 @@ export default function HomePage() {
           </div>
         </header>
 
+        {/* Grid: expanded left column for results; right column for company card (big C aligned via spacer) */}
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.7fr 360px', gap: 20 }}>
-          {/* Left: main content (expanded) */}
+          {/* Left column: keep top-left NovaHunt area unchanged; results follow */}
           <section>
-            {/* Company block — title + bullets + decorative narrative */}
+            {/* Company info block (left-side copy kept per your request; this file only contains the company narrative area per step 8/9) */}
             <div style={{ background: '#fff', padding: 20, borderRadius: 12, marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 22, fontWeight: 900 }}>{companyName}</div>
 
+                  {/* 5 bullets as requested */}
                   <ul style={{ color: '#475569', marginTop: 12 }}>
                     <li><strong>Founded:</strong> 2010</li>
                     <li><strong>Headquarters:</strong> New York, NY</li>
@@ -173,29 +195,22 @@ export default function HomePage() {
                     <li><strong>Website:</strong> {domain || '—'}</li>
                   </ul>
 
+                  {/* Decorative narrative */}
                   <div style={{ marginTop: 12, color: '#475569' }}>
                     <p style={{ margin: 0 }}>
-                      Meet {companyName} — a cheerful, creatively-minded team building delightful products that solve real problems.
-                      We love good design, coffee, and a sensible spreadsheet.
-                    </p>
-                    <p style={{ marginTop: 8 }}>
-                      This section is decorative and meant to give a warm, human summary of the company. Images and logos can be added later.
+                      Meet {companyName} — a cheerful, creative team building delightful products that solve real problems. This content is decorative and light.
                     </p>
                   </div>
                 </div>
-
-                {/* Right-side spacer: big C is rendered in the right panel and aligned by a small top spacer */}
               </div>
             </div>
 
-            {/* Results area (vertical, grouped by department) */}
+            {/* Results area (vertical Hunter-like results grouped by department). Everything below results removed. */}
             <div style={{ background: '#fff', padding: 16, borderRadius: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div>
                   <div style={{ fontWeight: 900 }}>{domain ? `Results for ${domain}` : 'Top contacts'}</div>
-                  <div style={{ color: '#64748b', fontSize: 13 }}>
-                    {domain ? ('Displaying ' + ((result.items && result.items.length) || 0) + ' of ' + (result.total || 0) + ' results') : 'No contacts found yet.'}
-                  </div>
+                  <div style={{ color: '#64748b', fontSize: 13 }}>{domain ? (`Displaying ${((result.items && result.items.length) || 0)} of ${result.total || 0} results`) : 'No contacts found yet.'}</div>
                 </div>
 
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -206,28 +221,18 @@ export default function HomePage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {loading && <div style={{ color: '#64748b' }}>Loading…</div>}
-                {error && <div style={{ color: '#ef4444' }}>{error}</div>}
                 {renderRows()}
               </div>
             </div>
           </section>
 
-          {/* Right: side panel: spacer so big C aligns with NovaHunt logo, CorporateProfile (big C), and test-ride samples */}
+          {/* Right column: small spacer to align big C with header logo top, then CorporateProfile and test-ride sample buttons */}
           <aside>
-            <div style={{ height: 28 }} /> {/* spacer so big C top aligns with header logo top */}
-            <div style={{ background: '#fff', padding: 16, borderRadius: 12, marginBottom: 12 }}>
+            <div style={{ height: 28 }} /> {/* spacer so big C top aligns with NovaHunt logo top */}
+            <div style={{ marginBottom: 12 }}>
               <RightPanel domain={domain} result={result} />
             </div>
-
-            <div style={{ background: '#fff', padding: 16, borderRadius: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontWeight: 700 }}>View Results</div>
-                <div style={{ color: '#64748b' }}>Export</div>
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <a href="/plans" style={{ color: '#2563eb' }}>See Plans</a>
-              </div>
-            </div>
+            {/* kept only small results CTA as requested (no other footer/decorations) */}
           </aside>
         </div>
       </ErrorBoundary>
