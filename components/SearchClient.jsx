@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// components/SearchClient.jsx
+import { useState } from 'react';
 import axios from 'axios';
 
 // Minimal SearchClient: accepts domain input and calls /api/find-emails.
