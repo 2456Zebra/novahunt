@@ -1,29 +1,53 @@
-// _app.js
-import '../styles/globals.css';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+import '../styles/theme.css';
+import React from 'react';
 
-function MyApp({ Component, pageProps }) {
-  const router = useRouter();
-  const currentProd = process.env.NEXT_PUBLIC_CURRENT_PROD_URL;
-  const [allowed, setAllowed] = useState(false);
-
-  // Early redirect if not on current production host or on /blocked
-  useEffect(() => {
-    const host = window.location.hostname;
-    const path = window.location.pathname;
-
-    if (path === '/blocked' || host !== new URL(currentProd).hostname) {
-      window.location.replace(currentProd); // hard redirect, no flash
-    } else {
-      setAllowed(true); // allow rendering
+/**
+ * ErrorBoundary: catch render errors so a single client error doesn't break the whole app.
+ */
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    // Send to logging if you have one
+    if (typeof console !== 'undefined') {
+      console.error('ErrorBoundary caught:', error, info);
     }
-  }, [currentProd]);
-
-  // Prevent any rendering until check passes
-  if (!allowed) return null;
-
-  return <Component {...pageProps} />;
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <main style={{ padding: 24 }}>
+          <h2>Something went wrong.</h2>
+          <pre style={{ whiteSpace: 'pre-wrap', color: '#b91c1c' }}>
+            {this.state.error?.message || 'Unknown error'}
+          </pre>
+          <p>The app encountered an error. Please refresh or contact support.</p>
+        </main>
+      );
+    }
+    return this.props.children;
+  }
 }
 
-export default MyApp;
+// Global client-side handlers to log (non-blocking)
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (e) => {
+    try { console.error('Window error:', e.error || e.message || e); } catch {}
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    try { console.error('Unhandled rejection:', e.reason || e); } catch {}
+  });
+}
+
+export default function App({ Component, pageProps }) {
+  return (
+    <ErrorBoundary>
+      <Component {...pageProps} />
+    </ErrorBoundary>
+  );
+}
