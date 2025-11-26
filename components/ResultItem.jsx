@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import './../styles/theme.css';
 
 export default function ResultItem({ contact }) {
   const [revealed, setRevealed] = useState(false);
@@ -15,18 +14,18 @@ export default function ResultItem({ contact }) {
 
   return (
     <div className="nh-card nh-result-item" role="listitem">
-      <div className="nh-avatar">{contact.avatar || contact.name?.[0] || '?'}</div>
+      <div className="nh-avatar" aria-hidden>{contact.avatar || contact.name?.[0] || '?'}</div>
 
       <div className="nh-result-main">
-        <div className="nh-result-header">
+        <div className="nh-result-header" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
           <div className="nh-name">{contact.name}</div>
-          <div className="nh-trust">{contact.trust?.toString() || '—'}% trust</div>
+          <div className="nh-trust" aria-label={`${contact.trust || '—'} percent trust`}>{contact.trust?.toString() || '—'}% trust</div>
         </div>
 
         <div className="nh-title">{contact.title}</div>
 
         <div className="nh-email-row">
-          <div className="nh-email">
+          <div className="nh-email" aria-live="polite">
             {revealed ? (contact.email || 'n/a') : maskEmail(contact.email || '')}
           </div>
 
@@ -38,7 +37,7 @@ export default function ResultItem({ contact }) {
             >
               {revealed ? 'Hide' : 'Reveal'}
             </button>
-            <span className="nh-badge">{contact.source || 'public'}</span>
+            <span className="nh-badge" aria-hidden>{contact.source || 'public'}</span>
           </div>
         </div>
       </div>
