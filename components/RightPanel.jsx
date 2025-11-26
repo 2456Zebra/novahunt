@@ -1,93 +1,36 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import CompanyProfile from './CompanyProfile';
+import React from 'react';
+import CorporateProfile from './CorporateProfile';
 
+// RightPanel: corporate profile (big C), and "Take it for a test ride?" sample domains (small font).
 export default function RightPanel({ domain, result }) {
-  const [company, setCompany] = useState(result?.company || null);
-  const [loading, setLoading] = useState(false);
-  const [fetchError, setFetchError] = useState(null);
-  const [mounted, setMounted] = useState(false);
+  const PRELOAD = ['coca-cola.com', 'fordmodels.com', 'unitedtalent.com', 'wilhelmina.com', 'nfl.com'];
 
-  // mark when we're on the client so we avoid SSR/client HTML mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Helper to fetch company info (calls pages/api/company)
-  const fetchCompany = useCallback(async (d, regenerate = false) => {
-    if (!d) {
-      setCompany(null);
-      return;
-    }
-
-    // If result already includes company, prefer that
-    if (result && result.company) {
-      setCompany(result.company);
-      return;
-    }
-
-    setLoading(true);
-    setFetchError(null);
-    try {
-      const url = `/api/company?domain=${encodeURIComponent(d)}${regenerate ? '&regenerate=1' : ''}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Company API error: ${res.status}`);
-      const payload = await res.json();
-      setCompany(payload.company || null);
-    } catch (err) {
-      console.error('Company fetch failed', err);
-      setFetchError('Failed to load company info.');
-      setCompany(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [result]);
-
-  // Load when domain or result changes (client-side only)
-  useEffect(() => {
-    if (mounted) {
-      fetchCompany(domain, false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [domain, result, mounted]);
-
-  const handleRegenerate = async () => {
-    await fetchCompany(domain, true);
-  };
+  function setQueryDomain(d) {
+    if (typeof window === 'undefined') return;
+    const u = new URL(window.location.href);
+    u.searchParams.set('domain', d);
+    // reload so SearchClient picks up the query param and shows results (keeps behavior simple)
+    window.location.href = u.toString();
+  }
 
   return (
-    <aside>
-      <div style={{ marginBottom: 14 }}>
-        {/* Render CompanyProfile only on the client to avoid hydration mismatch */}
-        {mounted ? (
-          <CompanyProfile company={company} domain={domain} onRegenerate={handleRegenerate} />
-        ) : (
-          <div style={{ height: 260, background: '#fff' }} aria-hidden />
-        )}
-      </div>
+    <div>
+      <CorporateProfile domain={domain} result={result} />
 
-      <div style={{ marginTop: 12, padding: 16, border: '1px solid #E5E7EB', borderRadius: 8, background: '#fff' }}>
-        <h4 style={{ marginTop: 0 }}>Top contacts</h4>
-        {result && result.items && result.items.length ? (
-          <ul style={{ paddingLeft: 18, marginTop: 8 }}>
-            {result.items.slice(0, 4).map((c, i) => (
-              <li key={i} style={{ marginBottom: 8 }}>
-                <div style={{ fontWeight: 600 }}>{c.name || c.email}</div>
-                <div style={{ color: '#6B7280', fontSize: 13 }}>{c.role || c.title || ''} {c.company && `• ${c.company}`}</div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p style={{ color: '#6B7280' }}>No contacts found yet.</p>
-        )}
-
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button style={{ flex: 1, padding: '10px 12px', borderRadius: 6 }}>View Results</button>
-          <button style={{ padding: '10px 12px', borderRadius: 6 }}>Export</button>
+      <div style={{ background: '#fff', padding: 12, borderRadius: 12, marginTop: 12 }}>
+        <div style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>Take it for a test ride? Click a sample domain:</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {PRELOAD.map((d) => (
+            <button
+              key={d}
+              onClick={() => setQueryDomain(d)}
+              style={{ textAlign: 'left', padding: '6px 8px', borderRadius: 6, border: '1px solid #e6edf3', background: '#fff', fontSize: 13 }}
+            >
+              {d}
+            </button>
+          ))}
         </div>
       </div>
-
-      {loading && <p style={{ color: '#6B7280', marginTop: 8 }}>Loading company data…</p>}
-      {fetchError && <p style={{ color: '#DC2626', marginTop: 8 }}>{fetchError}</p>}
-    </aside>
+    </div>
   );
 }
