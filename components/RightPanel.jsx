@@ -1,34 +1,39 @@
-// components/RightPanel.jsx
+import React from 'react';
 import CorporateProfile from './CorporateProfile';
 
-// Simple right panel: shows a decorative corporate profile and a quick sample list
+// Right panel with sample preload domains and the decorative corporate profile.
+// Note: we intentionally do NOT duplicate "Top contacts" in this panel (it appears in main content only).
 export default function RightPanel({ domain, result }) {
   const PRELOAD = ['coca-cola.com', 'fordmodels.com', 'unitedtalent.com', 'wilhelmina.com', 'nfl.com'];
 
+  function setQueryDomain(d) {
+    if (typeof window === 'undefined') return;
+    var u = new URL(window.location.href);
+    u.searchParams.set('domain', d);
+    // reload to let SearchClient pick up query param on mount
+    window.location.href = u.toString();
+  }
+
   return (
-    <aside>
-      <div style={{ background: 'white', padding: 16, borderRadius: 12, marginBottom: 12 }}>
-        <CorporateProfile domain={domain} result={result} />
-      </div>
+    <div>
+      <CorporateProfile domain={domain} result={result} />
 
-      <div style={{ background: 'white', padding: 12, borderRadius: 12, marginBottom: 12 }}>
-        <h4 style={{ margin: '0 0 8px 0' }}>Try a sample</h4>
+      <div style={{ marginTop: 12 }}>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>Try a sample</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {PRELOAD.map((d) => (
-            <button key={d} onClick={() => { if (typeof window !== 'undefined') { const u = new URL(window.location.href); u.searchParams.set('domain', d); window.location.href = u.toString(); } }} style={{ textAlign: 'left', padding: 8, borderRadius: 8, border: '1px solid #e6edf3', background: '#fff' }}>
-              {d}
-            </button>
-          ))}
+          {PRELOAD.map(function (d) {
+            return (
+              <button
+                key={d}
+                onClick={() => setQueryDomain(d)}
+                style={{ textAlign: 'left', padding: 8, borderRadius: 8, border: '1px solid #e6edf3', background: '#fff' }}
+              >
+                {d}
+              </button>
+            );
+          })}
         </div>
       </div>
-
-      <div style={{ background: 'white', padding: 12, borderRadius: 12 }}>
-        <div style={{ fontWeight: 700 }}>View Results</div>
-        <div style={{ color: '#64748b', marginTop: 8 }}>Export</div>
-        <div style={{ marginTop: 12 }}>
-          <a href="/plans" style={{ color: '#2563eb' }}>See Plans</a>
-        </div>
-      </div>
-    </aside>
+    </div>
   );
 }
