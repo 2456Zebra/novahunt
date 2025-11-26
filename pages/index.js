@@ -1,30 +1,46 @@
 // pages/index.js
-import Link from 'next/link';
+import Head from 'next/head';
+import React, { useState } from 'react';
+import HeroLiveDemo from '../components/HeroLiveDemo';
+import RightPanel from '../components/RightPanel';
 
 export default function HomePage() {
+  const [selectedDomain, setSelectedDomain] = useState('coca-cola.com');
+  const [companyData, setCompanyData] = useState(null);
+
+  // When demo selects a domain, update page-level state so RightPanel can show profile.
+  const handleSelectDomain = (domain, company) => {
+    setSelectedDomain(domain);
+    setCompanyData(company || null);
+  };
+
   return (
-    <main style={{ padding: "40px", maxWidth: 800, margin: "0 auto" }}>
-      <h1 style={{ fontSize: "48px", fontWeight: "bold", marginBottom: "20px" }}>
-        NovaHunt
-      </h1>
+    <>
+      <Head>
+        <title>NovaHunt — Find business emails instantly</title>
+        <meta name="description" content="Demo: search company domains and reveal professional emails." />
+      </Head>
 
-      <p style={{ fontSize: "20px", marginBottom: "30px" }}>
-        Find business emails instantly. Enter a company domain, and get professional email results.
-      </p>
+      <div className="nh-container">
+        <header className="nh-header">
+          <div>
+            <h1 className="nh-logo">NovaHunt</h1>
+            <p className="nh-sub">Find business emails instantly. Enter a company domain and get professional email results.</p>
+          </div>
+        </header>
 
-      <Link href="/search">
-        <button style={{
-          padding: "14px 26px",
-          fontSize: "18px",
-          cursor: "pointer",
-          borderRadius: "8px",
-          border: "1px solid #333",
-          background: "#000",
-          color: "#fff"
-        }}>
-          Start Searching
-        </button>
-      </Link>
-    </main>
+        <main className="nh-main">
+          <section className="nh-left">
+            <HeroLiveDemo initial={selectedDomain} onSelectDomain={handleSelectDomain} />
+          </section>
+
+          <section className="nh-right">
+            <RightPanel domain={selectedDomain} company={companyData} />
+          </section>
+        </main>
+
+        <footer className="nh-footer">© {new Date().getFullYear()} NovaHunt. Demo only.</footer>
+      </div>
+    </>
   );
 }
