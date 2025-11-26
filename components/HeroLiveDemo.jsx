@@ -1,90 +1,97 @@
-import React, { useState } from 'react';
+// components/HeroLiveDemo.jsx
+import React, { useState, useEffect } from 'react';
 import ResultsList from './ResultsList';
 
 /**
- * Demo domains & sample contacts:
- * coca-cola.com, fordmodels.com, caa.com, wilhelmina.com, warnerbros.com
- *
- * These are mock/demo data for the homepage demo section.
+ * HeroLiveDemo
+ * - initial: initial domain to show
+ * - onSelectDomain(domain, company): callback when a domain is chosen
  */
 const DEMO_DATA = {
-  'coca-cola.com': [
-    { name: 'Anya Fisher', title: 'Senior Director of Corporate Communications', email: 'anya.fisher@coca-cola.com', trust: 99, source: 'public' },
-    { name: 'Anna Rodzik', title: 'Media Director', email: 'anna.rodzik@coca-cola.com', trust: 99, source: 'public' },
-    { name: 'Felix Poh', title: 'VP, Strategy & Corporate Dev', email: 'felix.poh@coca-cola.com', trust: 99, source: 'public' },
-    { name: 'Priscila Martino', title: 'Senior Director of Accounting', email: 'priscila.martino@coca-cola.com', trust: 99, source: 'public' },
-  ],
-  'fordmodels.com': [
-    { name: 'Jamie Hart', title: 'Talent Booker', email: 'jamie.hart@fordmodels.com', trust: 98, source: 'demo' },
-    { name: 'Sofia Lee', title: 'Casting Director', email: 'sofia.lee@fordmodels.com', trust: 97, source: 'demo' },
-  ],
-  'caa.com': [
-    { name: 'Marco Diaz', title: 'Talent Agent', email: 'marco.diaz@caa.com', trust: 96, source: 'demo' },
-    { name: 'Lisa Park', title: 'Casting Producer', email: 'lisa.park@caa.com', trust: 95, source: 'demo' },
-  ],
-  'wilhelmina.com': [
-    { name: 'Ava Stone', title: 'PR Manager', email: 'ava.stone@wilhelmina.com', trust: 98, source: 'demo' },
-    { name: 'Noah Filipe', title: 'Sponsorships Lead', email: 'noah.filipe@wilhelmina.com', trust: 94, source: 'demo' },
-  ],
-  'warnerbros.com': [
-    { name: 'Rita Gomez', title: 'Art Director', email: 'rita.gomez@warnerbros.com', trust: 95, source: 'demo' },
-    { name: 'Mark Mitchell', title: 'Director of Cloud Services', email: 'mark.mitchell@warnerbros.com', trust: 95, source: 'demo' },
-  ],
+  'coca-cola.com': {
+    company: { name: 'Coca-Cola', description: 'Global beverage company' },
+    contacts: [
+      { name: 'Anya Fisher', title: 'Senior Director, Corp Comms', email: 'anya.fisher@coca-cola.com', trust: 99, source: 'public' },
+      { name: 'Anna Rodzik', title: 'Media Director', email: 'anna.rodzik@coca-cola.com', trust: 99, source: 'public' },
+    ],
+  },
+  'fordmodels.com': {
+    company: { name: 'Ford Models', description: 'Modeling agency' },
+    contacts: [
+      { name: 'Jamie Hart', title: 'Talent Booker', email: 'jamie.hart@fordmodels.com', trust: 98, source: 'demo' },
+      { name: 'Sofia Lee', title: 'Casting Director', email: 'sofia.lee@fordmodels.com', trust: 97, source: 'demo' },
+    ],
+  },
+  'caa.com': {
+    company: { name: 'CAA', description: 'Creative artists agency' },
+    contacts: [
+      { name: 'Marco Diaz', title: 'Talent Agent', email: 'marco.diaz@caa.com', trust: 96, source: 'demo' },
+    ],
+  },
+  'wilhelmina.com': {
+    company: { name: 'Wilhelmina', description: 'Global modeling agency' },
+    contacts: [
+      { name: 'Ava Stone', title: 'PR Manager', email: 'ava.stone@wilhelmina.com', trust: 98, source: 'demo' },
+    ],
+  },
+  'warnerbros.com': {
+    company: { name: 'Warner Bros', description: 'Entertainment company' },
+    contacts: [
+      { name: 'Rita Gomez', title: 'Art Director', email: 'rita.gomez@warnerbros.com', trust: 95, source: 'demo' },
+    ],
+  },
 };
 
-const DOMAIN_LIST = Object.keys(DEMO_DATA);
+const DOMAINS = Object.keys(DEMO_DATA);
 
-export default function HeroLiveDemo({ initial = 'coca-cola.com' }) {
+export default function HeroLiveDemo({ initial = 'coca-cola.com', onSelectDomain }) {
   const [domain, setDomain] = useState(initial);
-  const [query, setQuery] = useState(domain);
+  const [query, setQuery] = useState(initial);
+  const [contacts, setContacts] = useState(DEMO_DATA[initial].contacts || []);
 
-  const contacts = DEMO_DATA[domain] || [];
+  useEffect(() => {
+    // When domain changes, update shown contacts
+    setContacts(DEMO_DATA[domain]?.contacts || []);
+    if (typeof onSelectDomain === 'function') {
+      onSelectDomain(domain, DEMO_DATA[domain]?.company || null);
+    }
+  }, [domain]);
 
-  const onSelect = (d) => {
-    setDomain(d);
-    setQuery(d);
-    window.scrollTo({ top: 600, behavior: 'smooth' });
+  const runSearch = (d) => {
+    const normalized = (d || '').trim().toLowerCase();
+    if (!normalized) return;
+    setDomain(normalized);
+    setQuery(normalized);
   };
 
   return (
-    <section className="nh-hero-demo" aria-label="Live demo search">
-      <div className="nh-demo-controls" style={{display:'flex', gap:10}}>
+    <div className="nh-hero-demo">
+      <div className="nh-search-row">
         <input
           className="nh-input"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Enter a company domain (e.g. coca-cola.com)"
-          aria-label="demo domain"
+          onKeyDown={(e) => { if (e.key === 'Enter') runSearch(query); }}
+          placeholder="Enter domain, e.g. coca-cola.com"
+          aria-label="domain"
         />
-        <button
-          className="nh-btn nh-btn-outline"
-          onClick={() => onSelect(query)}
-        >
-          Search
-        </button>
+        <button className="nh-btn nh-btn-accent" onClick={() => runSearch(query)}>Search</button>
       </div>
 
-      <div className="nh-domain-carousel" style={{marginTop:12}}>
-        {DOMAIN_LIST.map((d) => (
+      <div className="nh-suggestions">
+        {DOMAINS.map((d) => (
           <button
             key={d}
             className={`nh-chip ${d === domain ? 'nh-chip-active' : ''}`}
-            onClick={() => onSelect(d)}
-            aria-pressed={d === domain}
-            style={{marginBottom:8}}
+            onClick={() => runSearch(d)}
           >
             {d}
           </button>
         ))}
       </div>
 
-      <div className="nh-demo-results" style={{marginTop:16}}>
-        <ResultsList contacts={contacts} />
-      </div>
-
-      <div className="nh-demo-cta">
-        <p className="nh-small">Try a real search above. Reveal shows the full email in this demo.</p>
-      </div>
-    </section>
+      <h3 className="nh-section-title">Top contacts</h3>
+      <ResultsList contacts={contacts} />
+    </div>
   );
 }
