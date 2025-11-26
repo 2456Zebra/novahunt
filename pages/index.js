@@ -1,26 +1,30 @@
-import Head from 'next/head';
-import HeroLiveDemo from '../components/HeroLiveDemo';
+// pages/index.js
+import Link from 'next/link';
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <>
-      <Head>
-        <title>NovaHunt</title>
-        <meta name="description" content="Find business emails instantly." />
-      </Head>
+    <main style={{ padding: "40px", maxWidth: 800, margin: "0 auto" }}>
+      <h1 style={{ fontSize: "48px", fontWeight: "bold", marginBottom: "20px" }}>
+        NovaHunt
+      </h1>
 
-      <main style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
-        <header style={{ marginBottom: 18 }}>
-          <h1 style={{ margin: 0 }}>NovaHunt</h1>
-          <p style={{ color: '#6b7280' }}>
-            Find business emails instantly. Enter a company domain, and get professional email results.
-          </p>
-        </header>
+      <p style={{ fontSize: "20px", marginBottom: "30px" }}>
+        Find business emails instantly. Enter a company domain, and get professional email results.
+      </p>
 
-        <section>
-          <HeroLiveDemo initial="coca-cola.com" />
-        </section>
-      </main>
-    </>
+      <Link href="/search">
+        <button style={{
+          padding: "14px 26px",
+          fontSize: "18px",
+          cursor: "pointer",
+          borderRadius: "8px",
+          border: "1px solid #333",
+          background: "#000",
+          color: "#fff"
+        }}>
+          Start Searching
+        </button>
+      </Link>
+    </main>
   );
 }
