@@ -1,8 +1,9 @@
+// pages/_app.js
 import '../styles/theme.css';
 import React from 'react';
 
 /**
- * ErrorBoundary: catch render errors so a single client error doesn't break the whole app.
+ * Simple ErrorBoundary so a single client error doesn't break the whole app.
  */
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -13,10 +14,7 @@ class ErrorBoundary extends React.Component {
     return { hasError: true, error };
   }
   componentDidCatch(error, info) {
-    // Send to logging if you have one
-    if (typeof console !== 'undefined') {
-      console.error('ErrorBoundary caught:', error, info);
-    }
+    if (typeof console !== 'undefined') console.error('ErrorBoundary caught:', error, info);
   }
   render() {
     if (this.state.hasError) {
@@ -26,7 +24,6 @@ class ErrorBoundary extends React.Component {
           <pre style={{ whiteSpace: 'pre-wrap', color: '#b91c1c' }}>
             {this.state.error?.message || 'Unknown error'}
           </pre>
-          <p>The app encountered an error. Please refresh or contact support.</p>
         </main>
       );
     }
@@ -34,14 +31,9 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Global client-side handlers to log (non-blocking)
 if (typeof window !== 'undefined') {
-  window.addEventListener('error', (e) => {
-    try { console.error('Window error:', e.error || e.message || e); } catch {}
-  });
-  window.addEventListener('unhandledrejection', (e) => {
-    try { console.error('Unhandled rejection:', e.reason || e); } catch {}
-  });
+  window.addEventListener('error', (e) => { try { console.error('Window error:', e.error || e.message || e); } catch {} });
+  window.addEventListener('unhandledrejection', (e) => { try { console.error('Unhandled rejection:', e.reason || e); } catch {} });
 }
 
 export default function App({ Component, pageProps }) {
