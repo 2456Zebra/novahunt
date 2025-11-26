@@ -21,16 +21,35 @@ function toCompanyName(domain) {
   return domain.split('.')[0].replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Safe URL helper: never throws in the browser if input is invalid
+function getLocationUrl() {
+  if (typeof window === 'undefined') return null;
+  try {
+    // normally valid
+    return new URL(window.location.href);
+  } catch (e) {
+    try {
+      // fallback: attempt to build from origin + pathname
+      const origin = window.location && window.location.origin ? window.location.origin : '';
+      const pathname = window.location && window.location.pathname ? window.location.pathname : '/';
+      return new URL(origin + pathname);
+    } catch (e2) {
+      // give up and return null
+      return null;
+    }
+  }
+}
+
 export default function HomePage() {
   const [domain, setDomain] = useState('');
   const [result, setResult] = useState({ items: [], total: 0 });
   const [loading, setLoading] = useState(false);
   const [revealed, setRevealed] = useState({});
 
-  // Read domain param (do not auto-trigger complex behavior; SearchClient controls searching)
+  // Read domain param safely (do not throw)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const u = new URL(window.location.href);
+    const u = getLocationUrl();
+    if (!u) return;
     const q = (u.searchParams.get('domain') || '').trim();
     if (q) setDomain(q);
   }, []);
