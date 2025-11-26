@@ -1,15 +1,26 @@
-// components/CorporateProfile.jsx
+import React from 'react';
 
-export default function CorporateProfile({ company }) {
-  if (!company) return null;
+// Small presentational CorporateProfile used by RightPanel.
+// Shows decorative copy if no domain provided; otherwise shows summary from result if present.
+export default function CorporateProfile({ domain, result }) {
+  const companyName = domain ? domain.split('.')[0].replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Company';
+  const summary = (result && result.items && result.items.length > 0)
+    ? `Found ${result.total || result.items.length} contacts.`
+    : 'Meet Company: a scrappy team solving problems in surprisingly delightful ways.';
 
   return (
-    <div style={{ padding: '16px', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
-      <h2>{company.name}</h2>
-      <p style={{ color: '#6B7280' }}>{company.domain}</p>
-      <p><strong>Email:</strong> {company.email || 'N/A'}</p>
-      <p><strong>Role:</strong> {company.role || 'N/A'}</p>
-      <p><strong>Location:</strong> {company.location || 'N/A'}</p>
+    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+      <div style={{ width: 56, height: 56, borderRadius: 12, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+        C
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 800 }}>{companyName}</div>
+        <div style={{ color: '#64748b', marginTop: 6 }}>{summary}</div>
+        <div style={{ marginTop: 8 }}>
+          <button style={{ marginRight: 8, padding: '6px 10px', borderRadius: 8, border: '1px solid #e6edf3', background: '#fff' }}>Show more</button>
+          <button style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #e6edf3', background: '#fff' }}>Regenerate</button>
+        </div>
+      </div>
     </div>
   );
 }
