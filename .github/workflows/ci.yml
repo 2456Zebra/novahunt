@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [ novahunt-v2 ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: |
+          npx eslint . || true
+
+      - name: Build
+        run: npm run build
