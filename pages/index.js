@@ -1,12 +1,8 @@
 // pages/index.js
-// Restored homepage wired to new small UI components (SearchClient, RightPanel, ErrorBoundary).
-// This version matches the "restore-good-design-f5d87fc" layout while using simpler, self-contained components
-// so the branch builds without extra plugin deps.
-
 import React, { useState } from 'react';
-import Link from 'next/link';
 import SearchClient from '../components/SearchClient';
 import RightPanel from '../components/RightPanel';
+import Link from 'next/link';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 export default function HomePage() {
