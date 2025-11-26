@@ -1,75 +1,95 @@
 :root{
-  --nh-bg: #ffffff;
-  --nh-text: #111827;
-  --nh-muted: #6b7280;
-  --nh-card: #ffffff;
-  --nh-border: #e6e9ec;
-  --nh-accent: #FF4D7E; /* creative pink */
-  --nh-accent-2: #7C3AED; /* purple */
-  --nh-radius: 12px;
-  --nh-shadow: 0 6px 18px rgba(17,24,39,0.06);
+  --nh-bg: linear-gradient(180deg,#0f172a 0%, #0b1220 100%);
+  --nh-surface: #0b1220;
+  --nh-card: linear-gradient(180deg,#0f172a 0%, #0b1220 60%);
+  --nh-text: #e6eef8;
+  --nh-muted: #9fb1d7;
+  --nh-accent: #ff5a99;
+  --nh-accent-2: #7c3aed;
+  --nh-radius: 14px;
+  --nh-shadow: 0 10px 30px rgba(12,18,36,0.6);
   --nh-font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 
-body {
-  font-family: var(--nh-font-sans);
-  color: var(--nh-text);
-  background: var(--nh-bg);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+*{box-sizing:border-box}
+html,body,#__next{height:100%}
+body{
+  margin:0;
+  background:var(--nh-bg);
+  color:var(--nh-text);
+  font-family:var(--nh-font-sans);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
 }
 
-/* Cards */
-.nh-card {
-  background: var(--nh-card);
-  border: 1px solid var(--nh-border);
-  border-radius: var(--nh-radius);
-  box-shadow: var(--nh-shadow);
-  padding: 14px;
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
+/* Layout */
+.nh-container{max-width:1200px;margin:32px auto;padding:20px}
+.nh-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.nh-logo{font-size:36px;margin:0;color:var(--nh-text);letter-spacing:0.4px}
+.nh-sub{color:var(--nh-muted);margin-top:6px}
+
+/* Main split */
+.nh-main{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+.nh-left{min-height:320px}
+.nh-right{}
+
+/* Cards and utilities */
+.nh-card{
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border-radius:var(--nh-radius);
+  padding:14px;
+  border:1px solid rgba(255,255,255,0.04);
+  box-shadow:var(--nh-shadow);
+  color:var(--nh-text);
 }
 
-/* Avatar */
-.nh-avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--nh-accent), var(--nh-accent-2));
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 20px;
+/* Avatar/badge */
+.nh-avatar{
+  width:56px;height:56px;border-radius:12px;
+  background:linear-gradient(135deg,var(--nh-accent),var(--nh-accent-2));
+  color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;
 }
 
-/* Result item specific */
-.nh-result-item { padding: 12px; }
-.nh-result-main { flex: 1; }
-.nh-name { font-weight: 700; font-size: 16px; }
-.nh-title { color: var(--nh-muted); font-size: 13px; margin-top: 6px; }
-.nh-email-row { display:flex; align-items:center; justify-content:space-between; gap: 12px; margin-top: 10px; }
-.nh-email { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Courier New", monospace; color: #111827; }
-.nh-actions { display:flex; align-items:center; gap:8px; }
-.nh-btn { padding: 8px 12px; border-radius: 10px; border: none; cursor: pointer; background: #f3f4f6; color: var(--nh-text);}
-.nh-btn-outline { background: transparent; border: 1px solid var(--nh-border); }
-.nh-btn-accent { background: var(--nh-accent); color: white; border-radius: 12px; padding: 8px 14px; }
-.nh-badge { background: #f1f5f9; color: var(--nh-muted); padding: 6px 8px; border-radius: 8px; font-size: 12px; }
+/* Logo badge for profile */
+.nh-logo-badge{
+  width:72px;height:72px;border-radius:12px;
+  background:linear-gradient(135deg,var(--nh-accent),#ffb3d6);
+  color:#111827;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:28px;
+}
+
+/* Hero */
+.nh-hero-demo{display:flex;flex-direction:column;gap:12px}
+.nh-search-row{display:flex;gap:10px}
+.nh-input{
+  flex:1;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02); color:var(--nh-text); outline:none;
+}
+.nh-btn{
+  padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:700;
+}
+.nh-btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--nh-text)}
+.nh-btn-accent{background:linear-gradient(90deg,var(--nh-accent),var(--nh-accent-2));color:white;border:none}
+
+/* Chips & suggestions */
+.nh-suggestions{display:flex;flex-wrap:wrap;gap:8px}
+.nh-chip{background:rgba(255,255,255,0.02);padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.03);color:var(--nh-muted);cursor:pointer}
+.nh-chip-active{background:linear-gradient(90deg,var(--nh-accent),var(--nh-accent-2));color:white;border:none}
+
+/* Results */
+.nh-results{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+.nh-result-item{display:flex;gap:12px;align-items:flex-start}
+.nh-result-main{flex:1}
+.nh-name{font-weight:800}
+.nh-title{color:var(--nh-muted);margin-top:6px;font-size:13px}
+.nh-email-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:12px}
+.nh-email{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,monospace;color:var(--nh-text)}
+
+/* Badges */
+.nh-badge{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.03);font-size:12px;color:var(--nh-muted)}
 
 /* Right panel */
-.nh-rightpanel { width: 320px; padding: 18px; }
-.nh-rightpanel-empty { color: var(--nh-muted); font-size: 14px; }
+.nh-right-panel{position:sticky;top:24px}
+.nh-right-empty{padding:20px;text-align:center;color:var(--nh-muted)}
 
-/* Demo hero */
-.nh-hero-demo { margin: 28px 0; background: linear-gradient(90deg, rgba(255,77,126,0.03), rgba(124,58,237,0.02)); padding: 18px; border-radius: 14px; }
-.nh-demo-controls { display:flex; gap:10px; }
-.nh-input { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--nh-border); flex: 1; }
-.nh-domain-carousel { margin-top: 12px; display:flex; gap:8px; flex-wrap:wrap; }
-.nh-chip { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--nh-border); background: transparent; cursor: pointer; }
-.nh-chip-active { background: var(--nh-accent); color: white; border-color: var(--nh-accent); }
-
-/* Utilities */
-.nh-empty { color: var(--nh-muted); padding: 18px; text-align:center; }
-.nh-small { font-size: 13px; color: var(--nh-muted); margin-top: 12px; text-align:center; }
+/* Footer */
+.nh-footer{text-align:center;color:var(--nh-muted);margin-top:26px;font-size:13px}
