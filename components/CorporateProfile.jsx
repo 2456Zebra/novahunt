@@ -1,6 +1,8 @@
-import React from 'react';
+// Overwrite components/CorporateProfile.jsx (v3-new-layout)
+// Key: use enrichment.image and enrichment.description (scraped) as decorative fallback,
+// use Clearbit logo or enrichment image, tidy layout.
 
-// CorporateProfile: shows company logo (or Clearbit logo fallback), bullets and description.
+import React from 'react';
 
 function getFact(data, keys) {
   if (!data) return '';
@@ -40,10 +42,9 @@ export default function CorporateProfile({ domain, data }) {
     { label: 'Website', value: data?.domain || domain || '—' }
   ];
 
-  const description = data?.description || data?.narrative || data?.about || '';
-
-  // logo fallback: prefer data.logo; if missing use Clearbit logo service (no key required)
-  const logoSrc = data?.logo || (domain ? `https://logo.clearbit.com/${domain}?size=280` : null);
+  // Prefer explicit company.logo (Clearbit) -> fallback to Clearbit logo service -> enrichment image
+  const logoSrc = data?.logo || (domain ? `https://logo.clearbit.com/${domain}?size=280` : null) || (data?.enrichment && data.enrichment.image) || null;
+  const description = data?.description || (data?.enrichment && data.enrichment.description) || '';
 
   return (
     <div style={{ background:'#fff', border:'1px solid #e6edf3', borderRadius:8, padding:16, fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto' }}>
@@ -59,7 +60,9 @@ export default function CorporateProfile({ domain, data }) {
 
         <div style={{ flex:1 }}>
           <div style={{ fontWeight:800, fontSize:18, lineHeight:1.1 }}>{companyName}</div>
-          <div style={{ color:'#6b7280', marginTop:6, fontSize:13 }}>{data?.subTitle || data?.domain || domain || ''}</div>
+          <div style={{ color:'#6b7280', marginTop:6, fontSize:13 }}>{data?.domain || domain || ''}</div>
+
+          {/* summary line removed (per request) */}
         </div>
       </div>
 
