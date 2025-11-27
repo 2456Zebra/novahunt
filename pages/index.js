@@ -1,3 +1,8 @@
+// Overwrite pages/index.js (v3-new-layout)
+// Key changes: moved results meta above Contacts, restored full features grid,
+// department counts next to name, Save stores to localStorage and calls save API,
+// persist last domain in localStorage to survive redirects (Stripe flow).
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import RightPanel from '../components/RightPanel';
@@ -29,6 +34,29 @@ function safeGetQueryDomain() {
   }
 }
 
+function readSavedContactsFromStorage() {
+  try {
+    const raw = localStorage.getItem('novahunt.savedContacts') || '[]';
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function saveContactToStorage(contact) {
+  try {
+    const arr = readSavedContactsFromStorage();
+    // dedupe by email
+    const exists = arr.find(c => c.email === contact.email);
+    if (!exists) {
+      arr.push({ ...contact, savedAt: Date.now() });
+      localStorage.setItem('novahunt.savedContacts', JSON.stringify(arr));
+    }
+  } catch (e) {
+    console.warn('saveContactToStorage failed', e);
+  }
+}
+
 export default function HomePage() {
   const [domain, setDomain] = useState('');
   const [data, setData] = useState(null);
@@ -36,7 +64,9 @@ export default function HomePage() {
 
   useEffect(() => {
     const q = safeGetQueryDomain();
+    const last = (typeof window !== 'undefined') ? localStorage.getItem('nh_lastDomain') : null;
     if (q) loadDomain(q);
+    else if (last) loadDomain(last);
     else loadDomain('coca-cola.com');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -47,82 +77,84 @@ export default function HomePage() {
     setDomain(key);
     setLoading(true);
 
+    // store last domain so we can recover after external redirects (Stripe)
+    try { localStorage.setItem('nh_lastDomain', key); } catch {}
+
     try {
       const res = await fetch(`/api/find-company?domain=${encodeURIComponent(key)}`);
       if (res.ok) {
         const payload = await res.json();
         const company = payload.company || {};
-        company.contacts = payload.contacts || [];
-        company.total = payload.total || company.total || (company.contacts.length || 0);
+        // ensure contacts array is present and limited as API indicates
+        company.contacts = (payload.contacts || company.contacts || []).map(c => ({ ...c, _revealed: false, _saved: false }));
+        company.total = payload.total || (company.contacts && company.contacts.length) || 0;
         company.shown = payload.shown || company.contacts.length || 0;
-        company.enrichment = { description: company.description || '', image: company.logo || null };
 
-        // If no description/image present, try the free enrichment fallback
-        if ((!company.enrichment.description || !company.enrichment.image) && key) {
+        // enrichment fallback (scrape OG) if needed
+        if ((!company.description || !company.logo) && key) {
           try {
-            const e = await fetch(`/api/enrich-company?domain=${encodeURIComponent(key)}`).then(r => r.ok ? r.json() : {});
-            if (e && e.description) company.enrichment.description = company.enrichment.description || e.description;
-            if (e && e.image) company.enrichment.image = company.enrichment.image || e.image;
+            const e = await fetch(`/api/enrich-company?domain=${encodeURIComponent(key)}`);
+            if (e.ok) {
+              const j = await e.json();
+              company.description = company.description || j.description || '';
+              company.logo = company.logo || j.image || company.logo;
+              company.enrichment = { description: j.description || '', image: j.image || null, url: j.url || null };
+            }
           } catch {}
         }
 
-        // ensure _revealed and _saved flags
-        company.contacts = (company.contacts || []).map(c => ({ ...c, _revealed: false, _saved: false }));
+        // mark saved contacts from localStorage
+        const saved = readSavedContactsFromStorage();
+        const savedEmails = new Set(saved.map(s => s.email));
+        company.contacts = company.contacts.map(c => ({ ...c, _saved: savedEmails.has(c.email) }));
+
         setData(company);
+        setLoading(false);
+        // update URL without reload
         try {
           const u = new URL(window.location.href);
           u.searchParams.set('domain', key);
           window.history.replaceState({}, '', u.toString());
         } catch {}
-        setLoading(false);
         return;
       }
     } catch (err) {
       console.warn('find-company failed', err);
     }
 
-    // fallback: create a minimal sample
-    setData({
-      name: key,
-      domain: key,
-      contacts: [],
-      total: 0,
-      shown: 0,
-      enrichment: { description: '', image: null }
-    });
+    // fallback minimal
+    setData({ name: key, domain: key, contacts: [], total: 0, shown: 0, enrichment: { description: '', image: null } });
     setLoading(false);
   }
 
-  // Save contact -> POST to /api/save-contact
+  // Save contact -> local storage (free) + POST to demo API (non-persistent placeholder)
   async function saveContact(contact, idx) {
     try {
-      const r = await fetch('/api/save-contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contact })
+      saveContactToStorage(contact);
+      // optimistic UI: mark saved locally
+      setData(prev => {
+        const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
+        clone.contacts[idx] = { ...clone.contacts[idx], _saved: true };
+        return clone;
       });
-      const j = await r.json();
-      if (r.ok && j.ok) {
-        // set _saved on that contact instance
-        setData(prev => {
-          const clone = { ...prev, contacts: [...(prev.contacts || [])] };
-          clone.contacts[idx] = { ...clone.contacts[idx], _saved: true };
-          return clone;
+      // call demo API for record (no persistence guaranteed)
+      try {
+        await fetch('/api/save-contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contact })
         });
-      } else {
-        alert(j.error || 'Save failed');
-      }
+      } catch (err) { /* ignore API errors for now */ }
     } catch (err) {
-      console.error(err);
+      console.error('saveContact failed', err);
       alert('Save failed');
     }
   }
 
-  // Render contacts: display confidence %, department counts, Save button (instead of Hide)
+  // Contacts rendering: department counts displayed next to dept name
   function renderContacts(list) {
     if (!list || list.length === 0) return <div style={{ color:'#6b7280' }}>No contacts found yet.</div>;
 
-    // group by department with counts
     const groups = {};
     list.forEach((c, i) => {
       const dept = (c.department || 'Other').trim() || 'Other';
@@ -133,8 +165,7 @@ export default function HomePage() {
     return Object.keys(groups).map(dept => (
       <div key={dept} style={{ marginBottom:12 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8 }}>
-          <div style={{ fontWeight:700, textTransform:'capitalize' }}>{dept}</div>
-          <div style={{ color:'#6b7280', fontSize:13 }}>{groups[dept].length} people</div>
+          <div style={{ fontWeight:700, textTransform:'capitalize', fontSize:15 }}>{dept} <span style={{ color:'#6b7280', fontSize:13, marginLeft:8 }}>({groups[dept].length})</span></div>
         </div>
 
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -153,12 +184,11 @@ export default function HomePage() {
                 background:'#fff'
               }}>
                 <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-                  {/* optional small confidence badge */}
                   {confidence !== null ? (
                     <div style={{ minWidth:36, textAlign:'center', fontSize:12, fontWeight:700, color: confidence > 70 ? '#065f46' : '#92400e' }}>
                       {confidence}%
                     </div>
-                  ) : null }
+                  ) : null}
 
                   <div style={{ display:'flex', flexDirection:'column' }}>
                     <div style={{ fontWeight:700 }}>{p.first_name} {p.last_name}</div>
@@ -196,7 +226,12 @@ export default function HomePage() {
     { icon: '👗', title: 'Model → Agency', text: 'Find modelling agencies and casting contacts to book your next shoot.' },
     { icon: '🎭', title: 'Actor → Agent', text: 'Locate talent agents and casting directors for auditions.' },
     { icon: '💼', title: 'Freelancer → Clients', text: 'Locate hiring managers and decision makers for contract work.' },
-    { icon: '🎵', title: 'Musician → Gigs', text: 'Find booking agents, promoters, and venues to book shows.' }
+    { icon: '🎵', title: 'Musician → Gigs', text: 'Find booking agents, promoters, and venues to book shows.' },
+    { icon: '🏷️', title: 'Seller → Leads', text: 'Discover sales contacts to scale your outreach and win that next contract.' },
+    { icon: '📣', title: 'Influencer → Sponsors', text: 'Find brand contacts and PR reps to land sponsorships and collabs.' },
+    { icon: '📸', title: 'Photographer → Clients', text: 'Find art directors, magazines, and brands who hire photographers.' },
+    { icon: '📋', title: 'Event Planner → Vendors', text: 'Discover venue contacts, caterers, and vendor reps for events.' },
+    { icon: '🚀', title: 'Founder → Investors', text: 'Locate investor relations, VCs, and angel contacts for fundraising.' }
   ];
 
   return (
@@ -224,7 +259,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Results meta: shows "Showing 10 of 444" and Upgrade CTA */}
+              {/* Results meta: above Contacts */}
               <div style={{ color:'#6b7280', fontSize:13, marginBottom:10 }}>
                 { data ? (
                   <div>
