@@ -1,10 +1,6 @@
 import React from 'react';
 
-// CorporateProfile: cleaned and resilient.
-// - Removes upload/edit UI and the "X contacts found" line
-// - Shows only populated facts; uses sensible fallbacks
-// - Shows large logo if present; otherwise a subtle placeholder
-// - Shows description if present; otherwise omits that section
+// CorporateProfile: shows company logo (or Clearbit logo fallback), bullets and description.
 
 function getFact(data, keys) {
   if (!data) return '';
@@ -19,7 +15,6 @@ function getFact(data, keys) {
 export default function CorporateProfile({ domain, data }) {
   const companyName = data?.name || (domain ? domain.split('.')[0].replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Company');
 
-  // Facts: prefer Clearbit-style mapping, then fallback to any facts present
   const factsToShow = [
     ['Date', ['Date','founded','Founded']],
     ['Ticker', ['Ticker','ticker','Symbol']],
@@ -32,13 +27,11 @@ export default function CorporateProfile({ domain, data }) {
     ['Headquarters', ['Headquarters','HQ','headquarters','location']]
   ];
 
-  // Build the rendered facts list, only include entries with values
   const renderedFacts = factsToShow.map(([label, keys]) => {
     const val = getFact(data, keys);
     return val ? { label, value: val } : null;
   }).filter(Boolean);
 
-  // Fallback bullets when no company-level facts exist (helpful for private companies)
   const fallbackBullets = [
     { label: 'Founded', value: getFact(data, ['founded','Date']) || '—' },
     { label: 'Location', value: getFact(data, ['Headquarters','HQ','headquarters']) || '—' },
@@ -49,13 +42,18 @@ export default function CorporateProfile({ domain, data }) {
 
   const description = data?.description || data?.narrative || data?.about || '';
 
+  // logo fallback: prefer data.logo; if missing use Clearbit logo service (no key required)
+  const logoSrc = data?.logo || (domain ? `https://logo.clearbit.com/${domain}?size=280` : null);
+
   return (
     <div style={{ background:'#fff', border:'1px solid #e6edf3', borderRadius:8, padding:16, fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto' }}>
       <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
         <div style={{ width:100, height:100, borderRadius:8, background:'#fff', border:'1px solid #eef2f7', overflow:'hidden', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          { data?.logo
-            ? <img src={data.logo} alt={`${companyName} logo`} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
-            : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#f3f4f6', fontWeight:800, fontSize:28, color:'#0b1220' }}>C</div>
+          { logoSrc ? (
+              <img src={logoSrc} alt={`${companyName} logo`} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+            ) : (
+              <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#f3f4f6', fontWeight:800, fontSize:28, color:'#0b1220' }}>C</div>
+            )
           }
         </div>
 
@@ -65,7 +63,6 @@ export default function CorporateProfile({ domain, data }) {
         </div>
       </div>
 
-      {/* facts: if we have any rendered facts show them, else show fallback bullets */}
       <div style={{ display:'grid', gridTemplateColumns: renderedFacts.length ? '1fr 1fr' : '1fr', gap:12, marginTop:14, fontSize:13 }}>
         { renderedFacts.length ? (
           <>
@@ -98,7 +95,6 @@ export default function CorporateProfile({ domain, data }) {
         )}
       </div>
 
-      {/* description (only if there is content) */}
       {description ? (
         <div style={{ marginTop:12, borderTop:'1px solid #f1f5f9', paddingTop:12, color:'#374151', fontSize:13, lineHeight:1.45 }}>
           {description}
