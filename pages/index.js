@@ -25,16 +25,13 @@ function toCompanyName(domain) {
 function getLocationUrl() {
   if (typeof window === 'undefined') return null;
   try {
-    // normally valid
     return new URL(window.location.href);
   } catch (e) {
     try {
-      // fallback: attempt to build from origin + pathname
       const origin = window.location && window.location.origin ? window.location.origin : '';
       const pathname = window.location && window.location.pathname ? window.location.pathname : '/';
       return new URL(origin + pathname);
     } catch (e2) {
-      // give up and return null
       return null;
     }
   }
@@ -112,18 +109,7 @@ export default function HomePage() {
                 }}
               >
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <div
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 8,
-                      background: '#eef2ff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800
-                    }}
-                  >
+                  <div style={{ width: 44, height: 44, borderRadius: 8, background: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
                     {(e.first_name || e.last_name) ? (((e.first_name || '').charAt(0) + (e.last_name || '').charAt(0)).toUpperCase()) : 'C'}
                   </div>
 
