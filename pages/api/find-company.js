@@ -13,7 +13,8 @@ function normalizeHunterEmail(e) {
     score: e.score || null,
     // Hunter doesn't always provide department; leave blank if not present
     department: e.department || e.department_name || 'Other',
-    source: e.sources || null
+    source: e.sources || null,
+    photo: e.avatar || e.picture || null
   };
 }
 
