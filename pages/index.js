@@ -3,18 +3,18 @@ import { useState } from "react";
 import CompanySearch from "@/components/CompanySearch";
 import SearchResults from "@/components/SearchResults";
 
-const mockCompanies = {
+const companies = {
   "coca-cola.com": { name: "The Coca-Cola Company", logo: "https://upload.wikimedia.org/wikipedia/commons/c/ce/Coca-Cola_logo.svg", founded: "1892", location: "Atlanta, Georgia", size: "10,001+ employees", industry: "Food & Beverages", narrative: "Fizzing since 1886. Secret formula in a vault. Polar bears love it. Legends." },
-  "fordmodels.com": { name: "Ford Models", logo: "https://via.placeholder.com/140x140?text=Ford", founded: "1946", location: "New York, NY", size: "51–200 employees", industry: "Modeling", narrative: "Discovered supermodels before the word existed." },
-  "unitedtalent.com": { name: "United Talent Agency", logo: "https://via.placeholder.com/140x140?text=UTA", founded: "1991", location: "Beverly Hills, CA", size: "1,001–5,000 employees", industry: "Entertainment", narrative: "They rep the people who play make-believe for a living." },
-  "wilhelmina.com": { name: "Wilhelmina Models", logo: "https://via.placeholder.com/140x140?text=Wilhelmina", founded: "1967", location: "New York, NY", size: "201–500 employees", industry: "Fashion", narrative: "Home of the original supermodels." },
-  "nfl.com": { name: "National Football League", logo: "https://upload.wikimedia.org/wikipedia/en/a/a2/National_Football_League_logo.svg", founded: "1920", location: "New York, NY", size: "1,001–5,000 employees", industry: "Sports", narrative: "Where grown men chase a ball for billions on Sundays." },
+  "fordmodels.com": { name: "Ford Models", logo: "https://via.placeholder.com/160?text=Ford", founded: "1946", location: "New York, NY", size: "51–200 employees", industry: "Modeling", narrative: "Discovered supermodels before “supermodel” was a word." },
+  "unitedtalent.com": { name: "United Talent Agency", logo: "https://via.placeholder.com/160?text=UTA", founded: "1991", location: "Beverly Hills, CA", size: "1,001–5,000 employees", industry: "Entertainment", narrative: "They rep the people who play make-believe for a living." },
+  "wilhelmina.com": { name: "Wilhelmina Models", logo: "https://via.placeholder.com/160?text=Wilhelmina", founded: "1967", location: "New York, NY", size: "201–500 employees", industry: "Fashion", narrative: "Home of the original supermodels." },
+  "nfl.com": { name: "National Football League", logo: "https://upload.wikimedia.org/wikipedia/en/a/a2/National_Football_League_logo.svg", founded: "1920", location: "New York, NY", size: "1,001–5,000 employees", industry: "Sports", narrative: "Where grown men chase a ball for billions on Sundays." }
 };
 
-const mockResults = [
+const results = [
   { first_name: "John", last_name: "Smith", email: "john.smith@coca-cola.com", position: "VP Marketing", department: "Marketing" },
   { first_name: "Sarah", last_name: "Connor", email: "sarah.connor@coca-cola.com", position: "Director of Sales", department: "Sales" },
-  { first_name: "Mike", last_name: "Chen", email: "mike.chen@coca-cola.com", position: "Head of Design", department: "Creative" },
+  { first_name: "Mike", last_name: "Chen", email: "mike.chen@coca-cola.com", position: "Head of Design", department: "Creative" }
 ];
 
 export default function Home() {
@@ -62,8 +62,8 @@ export default function Home() {
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-4">Take it for a test ride?</p>
                     <div className="flex flex-wrap gap-3">
-                      {Object.keys(mockCompanies).map(d => (
-                        <button key={d} onClick={() => setCompany(mockCompanies[d])} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm transition">
+                      {Object.keys(companies).map(d => (
+                        <button key={d} onClick={() => setCompany(companies[d])} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm transition">
                           {d}
                         </button>
                       ))}
@@ -73,7 +73,7 @@ export default function Home() {
               </div>
 
               <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-10 -mx-10">
-                <SearchResults results={mockResults} />
+                <SearchResults results={results} />
               </div>
             </>
           ) : (
