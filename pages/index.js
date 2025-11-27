@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { useState } from "react";
-import CompanySearch from "@/components/CompanySearch";
-import SearchResults from "@/components/SearchResults";
+import CompanySearch from "../components/CompanySearch";
+import SearchResults from "../components/SearchResults";
 
 const companies = {
   "coca-cola.com": { name: "The Coca-Cola Company", logo: "https://upload.wikimedia.org/wikipedia/commons/c/ce/Coca-Cola_logo.svg", founded: "1892", location: "Atlanta, Georgia", size: "10,001+ employees", industry: "Food & Beverages", narrative: "Fizzing since 1886. Secret formula in a vault. Polar bears love it. Legends." },
