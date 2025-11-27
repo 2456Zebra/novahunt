@@ -1,7 +1,7 @@
 // pages/api/find-company.js
 // Server-side proxy to fetch company metadata (Clearbit) and contacts (Hunter domain-search).
+// Use the global fetch available in Node >= 18 (no node-fetch import).
 // Keep API keys in environment: HUNTER_API_KEY, CLEARBIT_KEY (optional).
-import fetch from 'node-fetch';
 
 function normalizeHunterEmail(e) {
   // Hunter v2 domain-search email object → simplified contact model
@@ -83,7 +83,6 @@ export default async function handler(req, res) {
           };
         }
       } else {
-        // include error details if needed
         console.warn('Hunter returned non-OK', hr.status);
       }
     } catch (err) {
