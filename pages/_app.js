@@ -1,29 +1,19 @@
-// _app.js
-import '../styles/globals.css';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+// pages/_app.js
+// Minimal custom App to wrap the site in a global error boundary to avoid an uncaught client exception from taking down the whole page.
+// This complements the other fixes (removing top-level server-only URL usage).
+import React from 'react';
+import App from 'next/app';
+import ErrorBoundary from '../components/ErrorBoundary';
 
-function MyApp({ Component, pageProps }) {
-  const router = useRouter();
-  const currentProd = process.env.NEXT_PUBLIC_CURRENT_PROD_URL;
-  const [allowed, setAllowed] = useState(false);
-
-  // Early redirect if not on current production host or on /blocked
-  useEffect(() => {
-    const host = window.location.hostname;
-    const path = window.location.pathname;
-
-    if (path === '/blocked' || host !== new URL(currentProd).hostname) {
-      window.location.replace(currentProd); // hard redirect, no flash
-    } else {
-      setAllowed(true); // allow rendering
-    }
-  }, [currentProd]);
-
-  // Prevent any rendering until check passes
-  if (!allowed) return null;
-
-  return <Component {...pageProps} />;
+class MyApp extends App {
+  render() {
+    const { Component, pageProps } = this.props;
+    return (
+      <ErrorBoundary>
+        <Component {...pageProps} />
+      </ErrorBoundary>
+    );
+  }
 }
 
 export default MyApp;
