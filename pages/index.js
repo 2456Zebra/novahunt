@@ -11,7 +11,7 @@ const companies = {
   "nfl.com": { name: "National Football League", logo: "https://upload.wikimedia.org/wikipedia/en/a/a2/National_Football_League_logo.svg", founded: "1920", location: "New York, NY", size: "1,001–5,000 employees", industry: "Sports", narrative: "Where grown men chase a ball for billions on Sundays." }
 };
 
-const results = [
+const mockResults = [
   { first_name: "John", last_name: "Smith", email: "john.smith@coca-cola.com", position: "VP Marketing", department: "Marketing" },
   { first_name: "Sarah", last_name: "Connor", email: "sarah.connor@coca-cola.com", position: "Director of Sales", department: "Sales" },
   { first_name: "Mike", last_name: "Chen", email: "mike.chen@coca-cola.com", position: "Head of Design", department: "Creative" }
@@ -73,7 +73,7 @@ export default function Home() {
               </div>
 
               <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-10 -mx-10">
-                <SearchResults results={results} />
+                <SearchResults results={mockResults} />
               </div>
             </>
           ) : (
