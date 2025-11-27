@@ -25,7 +25,9 @@ const SAMPLE = {
       Industry: "Beverages",
       CEO: "Mr. James Robert B. Quincey",
       Headquarters: "Atlanta"
-    }
+    },
+    total: 444,
+    shown: 5
   }
 };
 
@@ -77,12 +79,16 @@ export default function HomePage() {
       const res = await fetch(`/api/find-company?domain=${encodeURIComponent(key)}`);
       if (res.ok) {
         const payload = await res.json();
-        // payload: { domain, company, contacts }
+        // payload: { domain, company, contacts, total, shown }
         const company = payload.company || {};
-        company.contacts = payload.contacts || payload.contacts || company.contacts || [];
+        company.contacts = payload.contacts || (payload.contacts || company.contacts) || [];
+        company.total = payload.total || company.total || (company.contacts ? company.contacts.length : 0);
+        company.shown = payload.shown || company.contacts.length || 0;
+
         // ensure each contact has _revealed flag
         company.contacts = (company.contacts || []).map(c => ({ ...c, _revealed: false }));
         setData(company);
+
         // update URL without reload
         try {
           const u = new URL(window.location.href);
@@ -92,7 +98,6 @@ export default function HomePage() {
         return;
       }
     } catch (err) {
-      // fallthrough to sample
       console.warn('find-company API failed, using sample fallback', err?.message || err);
     }
 
@@ -199,7 +204,17 @@ export default function HomePage() {
               </div>
 
               <div style={{ color:'#6b7280', fontSize:13 }}>
-                Want to take us for a test drive? Click any of these to see results live or enter your own search above.
+                <div>
+                  { data ? (
+                    <span>Showing {data.shown || (data.contacts && data.contacts.length) || 0} of {data.total || (data.contacts && data.contacts.length) || 0} results. </span>
+                  ) : <span>Showing results</span> }
+
+                  { /* upgrade link */ }
+                  { data && data.total && data.total > (data.shown || (data.contacts && data.contacts.length) || 0) ? (
+                    <Link href="/plans"><a style={{ marginLeft:10, color:'#2563eb', textDecoration:'underline', fontWeight:600 }}>Upgrade to see all</a></Link>
+                  ) : null }
+                </div>
+
                 <div style={{ marginTop:8, display:'flex', gap:12, flexWrap:'wrap' }}>
                   {SAMPLE_DOMAINS.map(d => (<a key={d} href="#" onClick={(e)=>{e.preventDefault(); loadDomain(d);}} style={{ fontSize:13 }}>{d}</a>))}
                 </div>
