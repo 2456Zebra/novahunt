@@ -1,6 +1,5 @@
 // pages/_app.js
 // Minimal custom App to wrap the site in a global error boundary to avoid an uncaught client exception from taking down the whole page.
-// This complements the other fixes (removing top-level server-only URL usage).
 import React from 'react';
 import App from 'next/app';
 import ErrorBoundary from '../components/ErrorBoundary';
