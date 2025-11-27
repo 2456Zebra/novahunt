@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import RightPanel from '../components/RightPanel';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -44,10 +44,47 @@ function maskEmail(email){
   return local.slice(0,visible) + '••••' + '@' + domain;
 }
 
+function safeGetQueryDomain() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const u = new URL(window.location.href);
+    return (u.searchParams.get('domain') || '').trim().toLowerCase();
+  } catch (e) {
+    // fallback: parse location.search manually
+    try {
+      const qs = window.location.search || '';
+      const params = new URLSearchParams(qs);
+      return (params.get('domain') || '').trim().toLowerCase();
+    } catch {
+      return null;
+    }
+  }
+}
+
 export default function HomePage() {
-  const [domain, setDomain] = useState('coca-cola.com');
-  const [data, setData] = useState(SAMPLE['coca-cola.com']);
-  // no global revealed map here; each contact has _revealed property in data
+  // start with an empty domain; we'll try to read query param on mount
+  const [domain, setDomain] = useState('');
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    const q = safeGetQueryDomain();
+    if (q) {
+      loadDomain(q);
+    } else {
+      // optionally initialize with sample for preview
+      loadDomain('coca-cola.com');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function cloneData(src) {
+    // shallow clone of object and contacts array to avoid mutating SAMPLE constant
+    if (!src) return null;
+    return {
+      ...src,
+      contacts: (src.contacts || []).map(c => ({ ...c, _revealed: false }))
+    };
+  }
 
   function loadDomain(d) {
     if (!d) return;
@@ -55,9 +92,21 @@ export default function HomePage() {
     setDomain(key);
     const found = SAMPLE[key] || null;
     if (found) {
-      // ensure _revealed flagged false
-      found.contacts.forEach(c => { c._revealed = c._revealed || false; });
-      setData(found);
+      setData(cloneData(found));
+      // update URL query param without full reload
+      if (typeof window !== 'undefined') {
+        try {
+          const u = new URL(window.location.href);
+          u.searchParams.set('domain', key);
+          window.history.replaceState({}, '', u.toString());
+        } catch {
+          try {
+            const base = window.location.pathname || '/';
+            const qs = '?domain=' + encodeURIComponent(key);
+            window.history.replaceState({}, '', base + qs);
+          } catch {}
+        }
+      }
     } else {
       setData(null);
     }
@@ -98,7 +147,9 @@ export default function HomePage() {
               background: '#fff'
             }}>
               <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
-                <div style={{ width:44, height:44, borderRadius:6, background:'#eef2ff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800 }}>{(p.first_name||'').charAt(0)+(p.last_name||'').charAt(0)}</div>
+                <div style={{ width:44, height:44, borderRadius:6, background:'#eef2ff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800 }}>
+                  {( (p.first_name||'').charAt(0) + (p.last_name||'').charAt(0) ).toUpperCase()}
+                </div>
                 <div style={{ display:'flex', flexDirection:'column' }}>
                   <div style={{ fontWeight:700 }}>{p.first_name} {p.last_name}</div>
                   <div style={{ fontFamily: 'ui-monospace, Menlo, Monaco, monospace', fontStyle:'italic', color:'#0b1220' }}>
