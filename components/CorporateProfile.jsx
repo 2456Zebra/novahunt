@@ -1,10 +1,10 @@
 import React from 'react';
 
 // CorporateProfile: cleaned and resilient.
-// - Removes upload/edit UI and the "X contacts found" line (per request).
-// - Shows only populated facts; uses sensible fallbacks.
-// - Shows large logo if present; otherwise a subtle placeholder.
-// - Shows description if present; otherwise omits that section.
+// - Removes upload/edit UI and the "X contacts found" line
+// - Shows only populated facts; uses sensible fallbacks
+// - Shows large logo if present; otherwise a subtle placeholder
+// - Shows description if present; otherwise omits that section
 
 function getFact(data, keys) {
   if (!data) return '';
