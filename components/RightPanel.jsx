@@ -1,16 +1,20 @@
 import React from 'react';
 import CorporateProfile from './CorporateProfile';
 
-// RightPanel: simplified — only shows CorporateProfile and (optionally) the illustration.
-// Removed the "Take it for a test ride" block (it's intentionally placed in the left column per your instruction).
-export default function RightPanel({ domain, data /*, onSelectDomain intentionally unused here */ }) {
+// RightPanel: simplified and aligned.
+// - No "contacts found" summary or edit/upload control.
+// - Spacer reduced so right panel lines up with left column.
+// - Illustration only displayed if present.
+
+export default function RightPanel({ domain, data }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-      <div style={{ height:28 }} /> {/* spacer to align big C with header logo top */}
+      {/* Reduced spacer so top aligns with left column header */}
+      <div style={{ height:8 }} />
 
       <CorporateProfile domain={domain} data={data} />
 
-      {/* Illustration or decorative image underneath (if available) */}
+      {/* only show illustration when present */}
       {data && data.illustration ? (
         <div style={{ marginTop:12, border:'1px solid #e6edf3', borderRadius:8, overflow:'hidden' }}>
           <img src={data.illustration} alt={`${data.name || domain} illustration`} style={{ width:'100%', display:'block' }} />
