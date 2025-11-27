@@ -1,7 +1,6 @@
 // pages/api/find-company.js
 // Server-side proxy to fetch company metadata (Clearbit) and contacts (Hunter domain-search).
-// Use the global fetch available in Node >= 18 (no node-fetch import).
-// Keep API keys in environment: HUNTER_API_KEY, CLEARBIT_KEY (optional).
+// Uses global fetch (Node >= 18). Keep API keys in environment: HUNTER_API_KEY, CLEARBIT_KEY (optional).
 
 function normalizeHunterEmail(e) {
   // Hunter v2 domain-search email object → simplified contact model
@@ -11,7 +10,6 @@ function normalizeHunterEmail(e) {
     position: e.position || e.title || '',
     email: e.value || e.email || '',
     score: e.score || null,
-    // Hunter doesn't always provide department; leave blank if not present
     department: e.department || e.department_name || 'Other',
     source: e.sources || null,
     photo: e.avatar || e.picture || null
@@ -28,7 +26,9 @@ export default async function handler(req, res) {
   const result = {
     domain,
     company: null,
-    contacts: []
+    contacts: [],
+    total: 0,
+    shown: 0
   };
 
   // 1) Try Clearbit Company enrichment (optional)
@@ -38,7 +38,6 @@ export default async function handler(req, res) {
       const r = await fetch(url, { headers: { Authorization: `Bearer ${CLEARBIT_KEY}` } });
       if (r.ok) {
         const c = await r.json();
-        // Map to our company shape
         result.company = {
           name: c.name || '',
           domain: c.domain || domain,
@@ -56,7 +55,6 @@ export default async function handler(req, res) {
         };
       }
     } catch (err) {
-      // continue, fallback to Hunter-derived metadata
       console.error('Clearbit fetch error', err?.message || err);
     }
   }
@@ -68,9 +66,18 @@ export default async function handler(req, res) {
       const hr = await fetch(hunterUrl);
       if (hr.ok) {
         const hd = await hr.json();
-        // Hunter payload path: hd.data.emails (array)
+        // Hunter payload path: hd.data.emails (array); try to get total if provided
         const emails = (hd && hd.data && hd.data.emails) ? hd.data.emails : [];
-        result.contacts = emails.map(normalizeHunterEmail);
+        // Many Hunter responses include a 'total' or 'meta.total' — try common spots
+        const total = (hd && hd.data && (hd.data.total || hd.data.meta && hd.data.meta.total)) || emails.length || 0;
+
+        // Limit contacts returned to the first 10 for the "Showing X of Y" UX
+        const shownEmails = emails.slice(0, 10);
+
+        result.contacts = shownEmails.map(normalizeHunterEmail);
+        result.total = total;
+        result.shown = result.contacts.length;
+
         // If no company metadata yet, attempt to extract light metadata from Hunter
         if (!result.company && hd && hd.data && hd.data.organization) {
           const org = hd.data.organization;
@@ -94,7 +101,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Server missing HUNTER_API_KEY environment variable' });
   }
 
-  // 3) Final normalization: ensure company object exists
+  // 3) Final normalization: ensure company object exists and logo fallback
   if (!result.company) {
     result.company = {
       name: domain.split('.')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
@@ -104,6 +111,12 @@ export default async function handler(req, res) {
       headquarters: '',
       raw: {}
     };
+  }
+
+  // Provide a lightweight logo fallback using Clearbit logo service if we don't have an explicit logo
+  if (!result.company.logo) {
+    // Clearbit logo endpoint is unauthenticated for logos (simple fallback)
+    result.company.logo = `https://logo.clearbit.com/${domain}?size=400`;
   }
 
   return res.status(200).json(result);
