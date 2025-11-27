@@ -8,9 +8,9 @@ import CorporateProfile from './CorporateProfile';
 
 export default function RightPanel({ domain, data }) {
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-      {/* Reduced spacer so top aligns with left column header */}
-      <div style={{ height:8 }} />
+    <div style={{ display:'flex', flexDirection:'column', gap:12, alignItems:'stretch' }}>
+      {/* spacer set to 0 so right column aligns exactly with left column content */}
+      <div style={{ height:0 }} />
 
       <CorporateProfile domain={domain} data={data} />
 
