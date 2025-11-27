@@ -5,12 +5,25 @@ import CorporateProfile from './CorporateProfile';
 export default function RightPanel({ domain, result }) {
   const PRELOAD = ['coca-cola.com', 'fordmodels.com', 'unitedtalent.com', 'wilhelmina.com', 'nfl.com'];
 
-  function setQueryDomain(d) {
+  function safeSetQueryDomain(d) {
     if (typeof window === 'undefined') return;
-    const u = new URL(window.location.href);
-    u.searchParams.set('domain', d);
-    // reload so SearchClient picks up the query param and shows results (keeps behavior simple)
-    window.location.href = u.toString();
+    // Try to use URL API safely, fall back to constructing a relative path if needed.
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('domain', d);
+      window.location.href = u.toString();
+      return;
+    } catch (e) {
+      try {
+        // fallback: build a relative URL preserving pathname
+        const pathname = (window.location && window.location.pathname) ? window.location.pathname : '/';
+        const search = '?domain=' + encodeURIComponent(d);
+        window.location.href = pathname + search;
+      } catch (e2) {
+        // last resort: set location to root with domain param
+        window.location.href = '/?domain=' + encodeURIComponent(d);
+      }
+    }
   }
 
   return (
@@ -23,7 +36,7 @@ export default function RightPanel({ domain, result }) {
           {PRELOAD.map((d) => (
             <button
               key={d}
-              onClick={() => setQueryDomain(d)}
+              onClick={() => safeSetQueryDomain(d)}
               style={{ textAlign: 'left', padding: '6px 8px', borderRadius: 6, border: '1px solid #e6edf3', background: '#fff', fontSize: 13 }}
             >
               {d}
