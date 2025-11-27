@@ -2,12 +2,12 @@ import React from 'react';
 import CorporateProfile from './CorporateProfile';
 
 // RightPanel: corporate profile (big C), and "Take it for a test ride?" sample domains (small font).
+// Updated to avoid unsafe `new URL(...)` usage in the browser.
 export default function RightPanel({ domain, result }) {
   const PRELOAD = ['coca-cola.com', 'fordmodels.com', 'unitedtalent.com', 'wilhelmina.com', 'nfl.com'];
 
   function safeSetQueryDomain(d) {
     if (typeof window === 'undefined') return;
-    // Try to use URL API safely, fall back to constructing a relative path if needed.
     try {
       const u = new URL(window.location.href);
       u.searchParams.set('domain', d);
@@ -15,12 +15,10 @@ export default function RightPanel({ domain, result }) {
       return;
     } catch (e) {
       try {
-        // fallback: build a relative URL preserving pathname
         const pathname = (window.location && window.location.pathname) ? window.location.pathname : '/';
         const search = '?domain=' + encodeURIComponent(d);
         window.location.href = pathname + search;
       } catch (e2) {
-        // last resort: set location to root with domain param
         window.location.href = '/?domain=' + encodeURIComponent(d);
       }
     }
