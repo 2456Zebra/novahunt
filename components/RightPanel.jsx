@@ -6,13 +6,24 @@ export default function RightPanel({ domain, data, onSelectDomain }) {
   const PRELOAD = ['coca-cola.com','fordmodels.com','unitedtalent.com','wilhelmina.com','nfl.com'];
 
   function safeSelect(d) {
-    if (typeof onSelectDomain === 'function') onSelectDomain(d);
-    else {
-      // fallback: navigate the current page (client-only demos)
-      if (typeof window !== 'undefined') {
-        const u = new URL(window.location.href);
-        u.searchParams.set('domain', d);
-        window.location.href = u.toString();
+    if (typeof onSelectDomain === 'function') {
+      onSelectDomain(d);
+      return;
+    }
+
+    if (typeof window === 'undefined') return;
+    // Use URL API safely with a fallback to relative navigation
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('domain', d);
+      window.location.href = u.toString();
+    } catch (e) {
+      try {
+        const pathname = (window.location && window.location.pathname) ? window.location.pathname : '/';
+        const search = '?domain=' + encodeURIComponent(d);
+        window.location.href = pathname + search;
+      } catch {
+        window.location.href = '/?domain=' + encodeURIComponent(d);
       }
     }
   }
@@ -32,8 +43,6 @@ export default function RightPanel({ domain, data, onSelectDomain }) {
           ))}
         </div>
       </div>
-
-      {/* optional area for image/description handled inside CorporateProfile or other components */}
     </div>
   );
 }
