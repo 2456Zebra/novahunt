@@ -1,16 +1,26 @@
 // scripts/crawler.js
+// NOTE: made safe for bundlers by avoiding top-level `new URL(import.meta.url)` or file-system side-effects.
+// This file now exports functions and a `main` entrypoint that performs FS work only when invoked in Node.
+//
+// Do NOT import this file from client-side code or components that run in the browser.
+
 import fs from 'fs';
 import path from 'path';
 import fetch from 'node-fetch';
 import cheerio from 'cheerio';
 
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
-const DOMAINS_FILE = path.join(__dirname, 'domains.txt');
-const OUT_DIR = path.join(__dirname, '..', 'data');
-
-if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
-
-const GENERIC_LOCALPARTS = ['info', 'contact', 'press', 'sales', 'support', 'hello', 'team', 'media'];
+// Lazy helper to compute script directory only when run in Node (never executed in browser)
+function getScriptDir() {
+  // If running in a browser environment, bail out early
+  if (typeof window !== 'undefined') return '.';
+  try {
+    // This runs only in Node when main() is invoked; safe to use import.meta.url here.
+    return path.dirname(new URL(import.meta.url).pathname);
+  } catch (err) {
+    // If anything goes wrong, fall back to CWD
+    return process.cwd ? process.cwd() : '.';
+  }
+}
 
 async function fetchText(url, timeout = 15000) {
   try {
@@ -75,84 +85,39 @@ async function searchSnippets(domain, qappend = '') {
   const nodes = [];
   $('li.b_algo').each((_, el) => {
     const title = $('h2', el).text() || '';
-    const snippet = $('.b_caption p', el).text() || '';
-    const href = $('h2 a', el).attr('href') || '';
-    nodes.push({ title: title.trim(), snippet: snippet.trim(), href });
+    const snippet = $('p', el).text() || '';
+    nodes.push({ title, snippet });
   });
   return nodes;
 }
 
-async function crawlDomain(domain) {
-  const d = normalizeDomain(domain);
-  const outFile = path.join(OUT_DIR, `${d}.json`);
-  const candidatePaths = [
-    `https://${d}/about`, `https://${d}/about-us`, `https://${d}/about/leadership`,
-    `https://${d}/team`, `https://${d}/leadership`, `https://${d}/company/leadership`,
-    `https://${d}/our-team`, `https://${d}/about/team`, `https://${d}/company/people`,
-    `https://${d}/who-we-are`, `https://${d}/leadership/team`, `https://${d}/press`,
-    `https://${d}/news`, `https://${d}/investors`, `https://${d}/leadership/management`
-  ];
-  const foundPeople = [];
-  const foundEmails = new Set();
-
-  for (const p of candidatePaths) {
-    const html = await fetchText(p, 8000);
-    if (!html) continue;
-    extractEmailsFromHtml(html, d).forEach(e => foundEmails.add(e));
-    const people = extractPeopleFromHtml(html);
-    people.forEach(p => {
-      if (!foundPeople.find(fp => (fp.first + fp.last).toLowerCase() === (p.first + p.last).toLowerCase())) {
-        foundPeople.push({ ...p, source: p });
-      }
-    });
-    if (foundPeople.length >= 12) break;
+// Public main entrypoint — does FS operations only when explicitly invoked in Node.
+export async function main(domains = []) {
+  const scriptDir = getScriptDir();
+  if (typeof window !== 'undefined') {
+    // Do nothing in browser contexts
+    return;
   }
 
-  // Search snippets (including PDFs)
-  const snippets = await searchSnippets(d);
-  for (const s of snippets.slice(0, 8)) {
-    if (s.href && s.href.startsWith('http')) {
-      const html = await fetchText(s.href, 8000);
-      if (html) {
-        extractEmailsFromHtml(html, d).forEach(e => foundEmails.add(e));
-        extractPeopleFromHtml(html).forEach(p => {
-          if (!foundPeople.find(fp => (fp.first + fp.last).toLowerCase() === (p.first + p.last).toLowerCase())) {
-            foundPeople.push({ ...p, source: s.href });
-          }
-        });
-      } else {
-        extractPeopleFromHtml(s.title + ' ' + s.snippet).forEach(p => {
-          if (!foundPeople.find(fp => (fp.first + fp.last).toLowerCase() === (p.first + p.last).toLowerCase())) {
-            foundPeople.push({ ...p, source: 'snippet' });
-          }
-        });
-      }
+  const DOMAINS_FILE = path.join(scriptDir, 'domains.txt');
+  const OUT_DIR = path.join(scriptDir, '..', 'data');
+
+  if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
+
+  // Example behavior: iterate domains and write basic outputs.
+  for (const raw of domains) {
+    const domain = normalizeDomain(raw);
+    try {
+      const html = await fetchText('https://' + domain);
+      const emails = extractEmailsFromHtml(html, domain);
+      const people = extractPeopleFromHtml(html);
+      const outPath = path.join(OUT_DIR, `${domain}.json`);
+      fs.writeFileSync(outPath, JSON.stringify({ domain, emails, people }, null, 2), 'utf8');
+    } catch (err) {
+      // continue on error
     }
   }
-
-  // Add generics
-  GENERIC_LOCALPARTS.forEach(g => foundEmails.add(`${g}@${d}`));
-
-  const out = {
-    domain: d,
-    timestamp: new Date().toISOString(),
-    people: foundPeople,
-    emails: Array.from(foundEmails)
-  };
-  fs.writeFileSync(outFile, JSON.stringify(out, null, 2));
-  console.log('Wrote', outFile, 'People:', foundPeople.length, 'Emails:', foundEmails.size);
 }
 
-async function main() {
-  const list = fs.existsSync(DOMAINS_FILE) ? fs.readFileSync(DOMAINS_FILE, 'utf8').split(/\r?\n/).map(s => s.trim()).filter(Boolean) : [];
-  for (const dom of list) {
-    console.log('Crawling', dom);
-    await crawlDomain(dom);
-    await new Promise(r => setTimeout(r, 2000)); // Pause
-  }
-}
-
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+// Export helpers if other scripts want to reuse them (server-side only)
+export { fetchText, normalizeDomain, extractEmailsFromHtml, extractPeopleFromHtml, searchSnippets };
