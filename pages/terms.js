@@ -9,10 +9,16 @@ export default function Terms() {
           <h1 style={{ margin:0 }}>Terms of Service</h1>
           <Link href="/"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Back to homepage</a></Link>
         </div>
+
         <p style={{ color:'#374151' }}>
-          These Terms of Service govern your use of NovaHunt. By using the service you agree not to misuse contact data, to respect privacy and applicable laws,
-          and to use results only for legitimate business or personal outreach. This is a short placeholder — replace with full legal text from counsel.
+          These Terms govern your use of NovaHunt. By using NovaHunt you agree to use data responsibly and to comply with applicable laws.
         </p>
+
+        <h3>Acceptable use</h3>
+        <p style={{ color:'#374151' }}>You may not use NovaHunt to send spam, harass, or violate privacy laws. Use contact data responsibly and ethically.</p>
+
+        <h3>Limitation of liability</h3>
+        <p style={{ color:'#374151' }}>NovaHunt provides data as-is and is not responsible for outreach outcomes. This is a template — consult legal counsel before publishing.</p>
       </div>
     </div>
   );
