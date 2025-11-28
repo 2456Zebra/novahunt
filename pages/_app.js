@@ -1,11 +1,10 @@
 // pages/_app.js
-// Render the site-wide Header on every page so Home/Plans/About appear consistently.
-// Keep ErrorBoundary and Footer.
+// Minimal app wrapper: do NOT render the site-wide Header so page-level headers (like the homepage) remain the single header.
+// Keeps ErrorBoundary and site footer.
 
 import React from 'react';
 import App from 'next/app';
 import ErrorBoundary from '../components/ErrorBoundary';
-import Header from '../components/Header';
 
 function Footer() {
   return (
@@ -27,7 +26,6 @@ class MyApp extends App {
     const { Component, pageProps } = this.props;
     return (
       <ErrorBoundary>
-        <Header />
         <Component {...pageProps} />
         <Footer />
       </ErrorBoundary>
