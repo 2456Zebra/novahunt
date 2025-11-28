@@ -1,8 +1,12 @@
-// Overwrite pages/index.js (v3-new-layout)
-// Key changes: moved results meta above Contacts, restored full features grid,
-// department counts next to name, Save stores to localStorage and calls save API,
-// persist last domain in localStorage to survive redirects (Stripe flow).
-
+/* pages/index.js (v3-new-layout)
+   Notes:
+   - "Contacts  Showing 10 of 444 results. Upgrade to see all Powered by AI" appears inline above the Contacts card
+   - Reveal behavior: if not signed in -> redirect to /plans; if signed in -> reveal and show Save button
+   - Contact name is normal weight (not bold)
+   - Source shown as small lowercase text link (no rectangle)
+   - Department counts show next to department name
+   - Persists last domain to localStorage to survive Stripe redirect
+*/
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import RightPanel from '../components/RightPanel';
@@ -34,6 +38,18 @@ function safeGetQueryDomain() {
   }
 }
 
+// Simple auth placeholder - replace with your real auth check.
+// We treat user as signed in if localStorage.nh_isSignedIn === '1' OR a cookie 'nh_token' exists.
+function userIsSignedIn() {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (localStorage.getItem('nh_isSignedIn') === '1') return true;
+    // quick cookie check
+    if (document.cookie && /\bnh_token=/.test(document.cookie)) return true;
+  } catch {}
+  return false;
+}
+
 function readSavedContactsFromStorage() {
   try {
     const raw = localStorage.getItem('novahunt.savedContacts') || '[]';
@@ -42,19 +58,15 @@ function readSavedContactsFromStorage() {
     return [];
   }
 }
-
 function saveContactToStorage(contact) {
   try {
     const arr = readSavedContactsFromStorage();
-    // dedupe by email
     const exists = arr.find(c => c.email === contact.email);
     if (!exists) {
       arr.push({ ...contact, savedAt: Date.now() });
       localStorage.setItem('novahunt.savedContacts', JSON.stringify(arr));
     }
-  } catch (e) {
-    console.warn('saveContactToStorage failed', e);
-  }
+  } catch (e) { console.warn(e); }
 }
 
 export default function HomePage() {
@@ -68,7 +80,7 @@ export default function HomePage() {
     if (q) loadDomain(q);
     else if (last) loadDomain(last);
     else loadDomain('coca-cola.com');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadDomain(d) {
@@ -76,8 +88,6 @@ export default function HomePage() {
     const key = (d || '').trim().toLowerCase().replace(/^https?:\/\//,'').split('/')[0];
     setDomain(key);
     setLoading(true);
-
-    // store last domain so we can recover after external redirects (Stripe)
     try { localStorage.setItem('nh_lastDomain', key); } catch {}
 
     try {
@@ -85,12 +95,11 @@ export default function HomePage() {
       if (res.ok) {
         const payload = await res.json();
         const company = payload.company || {};
-        // ensure contacts array is present and limited as API indicates
         company.contacts = (payload.contacts || company.contacts || []).map(c => ({ ...c, _revealed: false, _saved: false }));
         company.total = payload.total || (company.contacts && company.contacts.length) || 0;
         company.shown = payload.shown || company.contacts.length || 0;
 
-        // enrichment fallback (scrape OG) if needed
+        // enrichment fallback scrape when description or image missing
         if ((!company.description || !company.logo) && key) {
           try {
             const e = await fetch(`/api/enrich-company?domain=${encodeURIComponent(key)}`);
@@ -103,14 +112,13 @@ export default function HomePage() {
           } catch {}
         }
 
-        // mark saved contacts from localStorage
+        // read saved items to mark saved flag
         const saved = readSavedContactsFromStorage();
         const savedEmails = new Set(saved.map(s => s.email));
         company.contacts = company.contacts.map(c => ({ ...c, _saved: savedEmails.has(c.email) }));
 
         setData(company);
         setLoading(false);
-        // update URL without reload
         try {
           const u = new URL(window.location.href);
           u.searchParams.set('domain', key);
@@ -127,31 +135,46 @@ export default function HomePage() {
     setLoading(false);
   }
 
-  // Save contact -> local storage (free) + POST to demo API (non-persistent placeholder)
+  // Save contact: called after reveal; persists to localStorage and calls demo API
   async function saveContact(contact, idx) {
     try {
       saveContactToStorage(contact);
-      // optimistic UI: mark saved locally
       setData(prev => {
         const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
         clone.contacts[idx] = { ...clone.contacts[idx], _saved: true };
         return clone;
       });
-      // call demo API for record (no persistence guaranteed)
       try {
         await fetch('/api/save-contact', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contact })
         });
-      } catch (err) { /* ignore API errors for now */ }
+      } catch {}
     } catch (err) {
       console.error('saveContact failed', err);
       alert('Save failed');
     }
   }
 
-  // Contacts rendering: department counts displayed next to dept name
+  // Reveal handler: if not signed in -> /plans; if signed in -> reveal permanently and show Save.
+  function handleReveal(idx) {
+    const signedIn = userIsSignedIn();
+    if (!signedIn) {
+      // save last domain and redirect user to plans so they create account to use Reveal
+      try { localStorage.setItem('nh_lastDomain', domain); } catch {}
+      window.location.href = '/plans';
+      return;
+    }
+    // mark revealed (one-way)
+    setData(prev => {
+      const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
+      clone.contacts[idx] = { ...clone.contacts[idx], _revealed: true };
+      return clone;
+    });
+  }
+
+  // Render contacts list with department counts inline and small confidence badge, source as small text
   function renderContacts(list) {
     if (!list || list.length === 0) return <div style={{ color:'#6b7280' }}>No contacts found yet.</div>;
 
@@ -191,7 +214,8 @@ export default function HomePage() {
                   ) : null}
 
                   <div style={{ display:'flex', flexDirection:'column' }}>
-                    <div style={{ fontWeight:700 }}>{p.first_name} {p.last_name}</div>
+                    {/* name not bold now */}
+                    <div style={{ fontWeight:500 }}>{p.first_name} {p.last_name}</div>
                     <div style={{ fontFamily:'ui-monospace, Menlo, Monaco, monospace', fontStyle:'italic', color:'#0b1220' }}>
                       <span style={{ color:'#10b981', fontWeight:700, marginRight:8, fontSize:12 }}>Verified</span>
                       <span>{p._revealed ? p.email : maskEmail(p.email)}</span>
@@ -203,15 +227,24 @@ export default function HomePage() {
 
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
                   <div style={{ color:'#6b7280', fontSize:14 }}>{p.department}</div>
-                  <div style={{ display:'flex', gap:8 }}>
-                    <button onClick={() => {
+                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                    {/* source as small lowercase text link */}
+                    <a onClick={() => {
                       const q = encodeURIComponent(`${p.first_name} ${p.last_name} ${domain} site:linkedin.com`);
                       window.open('https://www.google.com/search?q=' + q, '_blank');
-                    }} style={{ padding:'6px 10px', borderRadius:6, border:'1px solid #e6edf3', background:'#fff', cursor:'pointer' }}>Source</button>
+                    }} style={{ fontSize:12, color:'#6b7280', textTransform:'lowercase', cursor:'pointer', textDecoration:'none' }}>source</a>
 
-                    <button onClick={() => saveContact(p, idx)} disabled={p._saved} style={{ padding:'6px 10px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: p._saved ? '#4b5563' : '#2563eb' }}>
-                      {p._saved ? 'Saved' : 'Save'}
+                    {/* Reveal is always present; if user not signed in they will be redirected to /plans */}
+                    <button onClick={() => handleReveal(idx)} style={{ padding:'6px 10px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb' }}>
+                      Reveal
                     </button>
+
+                    {/* if revealed, show Save (replaces Hide behavior) */}
+                    { p._revealed ? (
+                      <button onClick={() => saveContact(p, idx)} disabled={p._saved} style={{ padding:'6px 10px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: p._saved ? '#4b5563' : '#10b981' }}>
+                        {p._saved ? 'Saved' : 'Save'}
+                      </button>
+                    ) : null }
                   </div>
                 </div>
               </div>
@@ -251,7 +284,7 @@ export default function HomePage() {
                 <button onClick={() => loadDomain(domain)} style={{ background:'#2563eb', color:'#fff', border:'none', padding:'10px 14px', borderRadius:6, fontWeight:700, cursor:'pointer' }}>Search</button>
               </div>
 
-              {/* Test drive (restored) */}
+              {/* Test drive restored */}
               <div style={{ color:'#6b7280', fontSize:13, marginBottom:12 }}>
                 Want to take us for a test drive? Click any of these to see results live or enter your own search above.
                 <div style={{ marginTop:8, display:'flex', gap:12, flexWrap:'wrap' }}>
@@ -259,16 +292,20 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Results meta: above Contacts */}
-              <div style={{ color:'#6b7280', fontSize:13, marginBottom:10 }}>
-                { data ? (
-                  <div>
-                    <strong>Showing {data.shown || (data.contacts && data.contacts.length) || 0} of {data.total || (data.contacts && data.contacts.length) || 0} results.</strong>
-                    { data && data.total && data.total > (data.shown || (data.contacts && data.contacts.length) || 0) ? (
-                      <Link href="/plans"><a style={{ marginLeft:12, color:'#2563eb', textDecoration:'underline', fontWeight:600 }}>Upgrade to see all</a></Link>
-                    ) : null }
-                  </div>
-                ) : <div>Showing results</div> }
+              {/* Results meta: inline with Contacts heading */}
+              <div style={{ display:'flex', alignItems:'center', gap:12, color:'#6b7280', fontSize:13, marginBottom:8 }}>
+                <div style={{ fontWeight:700, fontSize:18 }}>Contacts</div>
+                <div>
+                  { data ? (
+                    <span>Showing {data.shown || (data.contacts && data.contacts.length) || 0} of {data.total || (data.contacts && data.contacts.length) || 0} results.</span>
+                  ) : <span>Showing results</span> }
+                </div>
+
+                { data && data.total && data.total > (data.shown || (data.contacts && data.contacts.length) || 0) ? (
+                  <Link href="/plans"><a style={{ color:'#2563eb', textDecoration:'underline', marginLeft:4 }}>Upgrade to see all</a></Link>
+                ) : null }
+
+                <div style={{ marginLeft:8, color:'#9ca3af', fontSize:12 }}>Powered by AI</div>
               </div>
             </div>
 
@@ -286,7 +323,7 @@ export default function HomePage() {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:28, marginTop:24, alignItems:'start' }}>
             <section>
               <div style={{ background:'#fff', border:'1px solid #e6edf3', borderRadius:8, padding:18 }}>
-                <div style={{ fontWeight:700, fontSize:20, marginBottom:12 }}>Contacts</div>
+                {/* Contacts header removed from here (now above) */}
                 <div>
                   { data ? renderContacts(data.contacts || []) : <div style={{ color:'#6b7280' }}>No sample data for that domain.</div> }
                 </div>
