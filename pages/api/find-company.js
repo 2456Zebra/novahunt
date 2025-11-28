@@ -1,9 +1,14 @@
 // pages/api/find-company.js
-// Server-side proxy to fetch company metadata (Clearbit) and contacts (Hunter domain-search).
-// Uses global fetch (Node >= 18). Keep API keys in environment: HUNTER_API_KEY, CLEARBIT_KEY (optional).
+// Server-side proxy to fetch company metadata (Clearbit optional) and contacts (Hunter).
+// Added small in-memory TTL cache and more robust extraction of Hunter total count.
+// Keep API keys in environment: HUNTER_API_KEY, CLEARBIT_KEY.
+
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const cache = new Map();
+
+function now() { return Date.now(); }
 
 function normalizeHunterEmail(e) {
-  // Hunter v2 domain-search email object → simplified contact model
   return {
     first_name: e.first_name || '',
     last_name: e.last_name || '',
@@ -16,9 +21,33 @@ function normalizeHunterEmail(e) {
   };
 }
 
+function extractHunterTotal(hd) {
+  // Try several common locations for the total count
+  if (!hd || !hd.data) return 0;
+  const d = hd.data;
+  const possible = [
+    d.total,
+    (d.meta && d.meta.total),
+    (d.meta && d.meta['results'] && d.meta['results'].total),
+    (d.emails && d.emails.length),
+    (d.meta && d.meta.emails && d.meta.emails.total)
+  ];
+  for (const v of possible) {
+    if (typeof v === 'number' && v >= 0) return v;
+    if (typeof v === 'string' && /^\d+$/.test(v)) return Number(v);
+  }
+  return (d.emails && d.emails.length) || 0;
+}
+
 export default async function handler(req, res) {
   const domain = (req.query.domain || '').toString().trim().toLowerCase();
   if (!domain) return res.status(400).json({ error: 'Missing domain query' });
+
+  const cacheKey = `find:${domain}`;
+  const cached = cache.get(cacheKey);
+  if (cached && (now() - cached.ts) < CACHE_TTL_MS) {
+    return res.status(200).json(cached.value);
+  }
 
   const HUNTER_KEY = process.env.HUNTER_API_KEY;
   const CLEARBIT_KEY = process.env.CLEARBIT_KEY;
@@ -31,7 +60,7 @@ export default async function handler(req, res) {
     shown: 0
   };
 
-  // 1) Try Clearbit Company enrichment (optional)
+  // 1) Clearbit enrichment (optional)
   if (CLEARBIT_KEY) {
     try {
       const url = `https://company.clearbit.com/v2/companies/find?domain=${encodeURIComponent(domain)}`;
@@ -43,10 +72,7 @@ export default async function handler(req, res) {
           domain: c.domain || domain,
           logo: (c.logo && c.logo.length) ? c.logo : null,
           description: c.description || c.tagline || '',
-          city: c.geo && c.geo.city ? c.geo.city : '',
-          state: c.geo && c.geo.state ? c.geo.state : '',
-          country: c.geo && c.geo.country ? c.geo.country : '',
-          headquarters: (c.location || (c.geo && [c.geo.city, c.geo.state].filter(Boolean).join(', ')) || ''),
+          headquarters: c.location || (c.geo && [c.geo.city, c.geo.state].filter(Boolean).join(', ')) || '',
           ticker: c.ticker || '',
           sector: c.category && c.category.sector ? c.category.sector : '',
           industry: c.category && c.category.industry ? c.category.industry : '',
@@ -59,26 +85,23 @@ export default async function handler(req, res) {
     }
   }
 
-  // 2) Hunter domain-search for contacts (requires HUNTER_API_KEY)
+  // 2) Hunter domain-search for contacts
   if (HUNTER_KEY) {
     try {
       const hunterUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&api_key=${HUNTER_KEY}`;
       const hr = await fetch(hunterUrl);
       if (hr.ok) {
         const hd = await hr.json();
-        // Hunter payload path: hd.data.emails (array); try to get total if provided
         const emails = (hd && hd.data && hd.data.emails) ? hd.data.emails : [];
-        // Many Hunter responses include a 'total' or 'meta.total' — try common spots
-        const total = (hd && hd.data && (hd.data.total || hd.data.meta && hd.data.meta.total)) || emails.length || 0;
+        const total = extractHunterTotal(hd) || emails.length || 0;
 
-        // Limit contacts returned to the first 10 for the "Showing X of Y" UX
+        // Limit contacts returned to first 10 for preview UX
         const shownEmails = emails.slice(0, 10);
-
         result.contacts = shownEmails.map(normalizeHunterEmail);
         result.total = total;
         result.shown = result.contacts.length;
 
-        // If no company metadata yet, attempt to extract light metadata from Hunter
+        // Attempt to extract light metadata from Hunter organization info if needed
         if (!result.company && hd && hd.data && hd.data.organization) {
           const org = hd.data.organization;
           result.company = {
@@ -97,11 +120,10 @@ export default async function handler(req, res) {
       console.error('Hunter fetch error', err?.message || err);
     }
   } else {
-    // If no Hunter key present, return helpful message
     return res.status(400).json({ error: 'Server missing HUNTER_API_KEY environment variable' });
   }
 
-  // 3) Final normalization: ensure company object exists and logo fallback
+  // Final normalization: ensure company object exists
   if (!result.company) {
     result.company = {
       name: domain.split('.')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
@@ -113,11 +135,12 @@ export default async function handler(req, res) {
     };
   }
 
-  // Provide a lightweight logo fallback using Clearbit logo service if we don't have an explicit logo
+  // Provide a Clearbit logo fallback if explicit logo missing
   if (!result.company.logo) {
-    // Clearbit logo endpoint is unauthenticated for logos (simple fallback)
     result.company.logo = `https://logo.clearbit.com/${domain}?size=400`;
   }
 
+  // Cache and return
+  cache.set(cacheKey, { ts: now(), value: result });
   return res.status(200).json(result);
 }
