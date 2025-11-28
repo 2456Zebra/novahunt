@@ -30,17 +30,19 @@ export default function CorporateProfile({ domain, data }) {
     { label: 'Headquarters', value: getFact(data, ['Headquarters','HQ','headquarters','location']) },
   ].filter(Boolean).filter(f => f.value);
 
+  // logo preference: explicit logo -> clearbit fallback -> enrichment image
   const logoSrc = data?.logo || (domain ? `https://logo.clearbit.com/${domain}?size=280` : null) || (data?.enrichment && data.enrichment.image) || null;
 
+  // description: prefer explicit description, then enrichment, then small fallback
   const rawDescription = data?.description || (data?.enrichment && data.enrichment.description) || '';
   const description = makeConversational(companyName, rawDescription, data?.industry || getFact(data, ['Industry','industry']));
 
-  // extended profile: show if enrichment description exists and is substantive
-  const extended = (data && data.enrichment && data.enrichment.description) ? data.enrichment : null;
+  // Extended profile: only when enrichment source is 'wikipedia' or 'kg' (not raw OG/meta)
+  const extended = (data && data.enrichment && (data.enrichment.source === 'wikipedia' || data.enrichment.source === 'kg')) ? data.enrichment : null;
 
   return (
     <>
-      <div style={{ background:'#fff', border:'1px solid #e6edf3', borderRadius:8, padding:16, fontFamily: 'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
+      <div style={{ background:'#fff', border:'1px solid #e6edf3', borderRadius:8, padding:16, fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto' }}>
         <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
           <div style={{ width:100, height:100, borderRadius:8, background:'#fff', border:'1px solid #eef2f7', overflow:'hidden', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
             { logoSrc ? (
@@ -85,8 +87,8 @@ export default function CorporateProfile({ domain, data }) {
         ) : null}
       </div>
 
-      {/* Extended profile card: show only when we have an enriched description (wikipedia/og) longer than ~120 chars */}
-      { extended && extended.description && extended.description.length > 120 ? (
+      {/* Only show extended profile for Wikipedia / KG sources (avoid raw OG promotional text) */}
+      { extended && extended.description && extended.source && (extended.source === 'wikipedia' || extended.source === 'kg') && extended.description.length > 120 ? (
         <div style={{ marginTop:12, background:'#fff', border:'1px solid #e6edf3', borderRadius:8, padding:14, fontSize:13, color:'#374151' }}>
           <div style={{ fontWeight:700, marginBottom:8 }}>Company profile</div>
           <div style={{ lineHeight:1.5 }}>{extended.description}</div>
