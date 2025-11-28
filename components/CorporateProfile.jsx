@@ -1,6 +1,7 @@
-// Overwrite components/CorporateProfile.jsx (v3-new-layout)
-// Key: use enrichment.image and enrichment.description (scraped) as decorative fallback,
-// use Clearbit logo or enrichment image, tidy layout.
+// components/CorporateProfile.jsx
+// - Avoid duplicate domain lines when name equals domain
+// - Prefer company.logo -> clearbit logo fallback -> enrichment.image
+// - Improve description presentation (light conversational fallback if scrape is thin)
 
 import React from 'react';
 
@@ -14,40 +15,40 @@ function getFact(data, keys) {
   return '';
 }
 
+function makeConversational(companyName, description, industry) {
+  if (!description || description.trim().length < 30) {
+    // small decorative fallback
+    if (industry) return `${companyName} is a ${industry.toLowerCase()} company focused on serving customers with high-quality products and services.`;
+    return `${companyName} is a company focused on delivering great work and building lasting relationships with customers.`;
+  }
+  // ensure punctuation and friendly lead
+  const trimmed = description.trim();
+  if (trimmed.endsWith('.')) return trimmed;
+  return trimmed + '.';
+}
+
 export default function CorporateProfile({ domain, data }) {
   const companyName = data?.name || (domain ? domain.split('.')[0].replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Company');
 
-  const factsToShow = [
-    ['Date', ['Date','founded','Founded']],
-    ['Ticker', ['Ticker','ticker','Symbol']],
-    ['Share Price', ['Share Price','price','Price']],
-    ['Market Cap', ['Market Cap','marketCap','Mkt Cap']],
-    ['Annual Revenue', ['Annual Revenue','annualRevenue','Revenue']],
-    ['Sector', ['Sector','sector']],
-    ['Industry', ['Industry','industry']],
-    ['CEO', ['CEO','ceo','chiefExecutive']],
-    ['Headquarters', ['Headquarters','HQ','headquarters','location']]
-  ];
+  const renderedFacts = [
+    { label: 'Ticker', value: getFact(data, ['Ticker','ticker']) },
+    { label: 'Sector', value: getFact(data, ['Sector','sector']) },
+    { label: 'Industry', value: getFact(data, ['Industry','industry']) },
+    { label: 'Headquarters', value: getFact(data, ['Headquarters','HQ','headquarters','location']) },
+  ].filter(Boolean).filter(f => f.value);
 
-  const renderedFacts = factsToShow.map(([label, keys]) => {
-    const val = getFact(data, keys);
-    return val ? { label, value: val } : null;
-  }).filter(Boolean);
-
-  const fallbackBullets = [
-    { label: 'Founded', value: getFact(data, ['founded','Date']) || '—' },
-    { label: 'Location', value: getFact(data, ['Headquarters','HQ','headquarters']) || '—' },
-    { label: 'Employees', value: getFact(data, ['employees','employeeCount']) || '—' },
-    { label: 'Industry', value: getFact(data, ['Industry','industry']) || (data?.category?.industry || '') || '—' },
-    { label: 'Website', value: data?.domain || domain || '—' }
-  ];
-
-  // Prefer explicit company.logo (Clearbit) -> fallback to Clearbit logo service -> enrichment image
+  // logo preference: explicit logo -> clearbit fallback -> enrichment image
   const logoSrc = data?.logo || (domain ? `https://logo.clearbit.com/${domain}?size=280` : null) || (data?.enrichment && data.enrichment.image) || null;
-  const description = data?.description || (data?.enrichment && data.enrichment.description) || '';
+
+  // description: prefer explicit description, then enrichment, then small fallback
+  const rawDescription = data?.description || (data?.enrichment && data.enrichment.description) || '';
+  const description = makeConversational(companyName, rawDescription, data?.industry || getFact(data, ['Industry','industry']));
+
+  // avoid printing the domain twice: if name looks like domain, show only name once
+  const showDomainLine = data?.name && data.name.toLowerCase() !== (domain || '').toLowerCase();
 
   return (
-    <div style={{ background:'#fff', border:'1px solid #e6edf3', borderRadius:8, padding:16, fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto' }}>
+    <div style={{ background:'#fff', border:'1px solid #e6edf3', borderRadius:8, padding:16, fontFamily: 'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
       <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
         <div style={{ width:100, height:100, borderRadius:8, background:'#fff', border:'1px solid #eef2f7', overflow:'hidden', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
           { logoSrc ? (
@@ -60,46 +61,35 @@ export default function CorporateProfile({ domain, data }) {
 
         <div style={{ flex:1 }}>
           <div style={{ fontWeight:800, fontSize:18, lineHeight:1.1 }}>{companyName}</div>
-          <div style={{ color:'#6b7280', marginTop:6, fontSize:13 }}>{data?.domain || domain || ''}</div>
-
-          {/* summary line removed (per request) */}
+          { showDomainLine ? <div style={{ color:'#6b7280', marginTop:6, fontSize:13 }}>{data?.domain || domain || ''}</div> : null}
         </div>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns: renderedFacts.length ? '1fr 1fr' : '1fr', gap:12, marginTop:14, fontSize:13 }}>
-        { renderedFacts.length ? (
-          <>
-            <div>
-              {renderedFacts.slice(0, Math.ceil(renderedFacts.length/2)).map(f => (
-                <div key={f.label} style={{ marginBottom:8 }}>
-                  <div style={{ fontWeight:700 }}>{f.label}:</div>
-                  <div style={{ color:'#6b7280' }}>{f.value}</div>
-                </div>
-              ))}
-            </div>
-            <div>
-              {renderedFacts.slice(Math.ceil(renderedFacts.length/2)).map(f => (
-                <div key={f.label} style={{ marginBottom:8 }}>
-                  <div style={{ fontWeight:700 }}>{f.label}:</div>
-                  <div style={{ color:'#6b7280' }}>{f.value}</div>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
+      {/* facts */}
+      { renderedFacts.length ? (
+        <div style={{ display:'grid', gridTemplateColumns: '1fr 1fr', gap:12, marginTop:14, fontSize:13 }}>
           <div>
-            {fallbackBullets.map(f => (
+            {renderedFacts.slice(0, Math.ceil(renderedFacts.length/2)).map(f => (
               <div key={f.label} style={{ marginBottom:8 }}>
                 <div style={{ fontWeight:700 }}>{f.label}:</div>
                 <div style={{ color:'#6b7280' }}>{f.value}</div>
               </div>
             ))}
           </div>
-        )}
-      </div>
+          <div>
+            {renderedFacts.slice(Math.ceil(renderedFacts.length/2)).map(f => (
+              <div key={f.label} style={{ marginBottom:8 }}>
+                <div style={{ fontWeight:700 }}>{f.label}:</div>
+                <div style={{ color:'#6b7280' }}>{f.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null }
 
-      {description ? (
-        <div style={{ marginTop:12, borderTop:'1px solid #f1f5f9', paddingTop:12, color:'#374151', fontSize:13, lineHeight:1.45 }}>
+      {/* description (conversational fallback) */}
+      { description ? (
+        <div style={{ marginTop:12, borderTop:'1px solid #f1f5f9', paddingTop:12, color:'#374151', fontSize:13, lineHeight:1.5 }}>
           {description}
         </div>
       ) : null}
