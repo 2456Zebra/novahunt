@@ -288,12 +288,23 @@ export default function HomePage() {
                 {/* Inline Contacts header + meta inside the card */}
                 <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
                   <div style={{ fontWeight:700, fontSize:22 }}>Contacts</div>
-                  <div style={{ color:'#6b7280', fontSize:13 }}>
-                    { data ? `Showing ${data.shown || (data.contacts && data.contacts.length) || 0} of ${data.total || (data.contacts && data.contacts.length) || 0} results.` : 'Showing results' }
+
+                  <div style={{ color:'#6b7280', fontSize:13, display:'flex', alignItems:'center', gap:8 }}>
+                    { data ? (
+                      <>
+                        <span>
+                          Showing {data.shown || (data.contacts && data.contacts.length) || 0} of {data.total || (data.contacts && data.contacts.length) || 0} results.
+                        </span>
+
+                        { data && Number(data.total) > Number(data.shown) ? (
+                          <Link href="/plans">
+                            <a style={{ color:'#ff6b00', textDecoration:'underline', marginLeft:6 }}>Upgrade to see all</a>
+                          </Link>
+                        ) : null }
+                      </>
+                    ) : <span>Showing results</span> }
                   </div>
-                  { data && data.total && data.total > (data.shown || (data.contacts && data.contacts.length) || 0) ? (
-                    <Link href="/plans"><a style={{ color:'#f97316', textDecoration:'underline', marginLeft:8 }}>Upgrade to see all</a></Link>
-                  ) : null }
+
                   <div style={{ marginLeft:8, color:'#9ca3af', fontSize:12 }}>Powered by AI</div>
                 </div>
 
