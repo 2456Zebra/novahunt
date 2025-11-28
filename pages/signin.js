@@ -3,9 +3,12 @@ import Link from 'next/link';
 
 export default function SignIn() {
   return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f8fafc', fontFamily:'Inter, system-ui, -apple-system, "Segoe UI", Roboto' }}>
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f8fafc', fontFamily:'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
       <div style={{ width:420, background:'#fff', borderRadius:10, boxShadow:'0 6px 18px rgba(8,15,29,0.06)', padding:28 }}>
-        <h2 style={{ margin:0, marginBottom:8, fontSize:24 }}>Sign in to NovaHunt</h2>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+          <h2 style={{ margin:0, fontSize:22 }}>Sign in to NovaHunt</h2>
+          <Link href="/"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Back to homepage</a></Link>
+        </div>
         <p style={{ marginTop:0, marginBottom:18, color:'#6b7280' }}>Access saved contacts, and manage your searches and plan.</p>
 
         <form onSubmit={(e) => { e.preventDefault(); alert('Sign in flow to be implemented.'); }}>
