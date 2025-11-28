@@ -10,7 +10,7 @@ export default function Contact() {
           <Link href="/"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Back to homepage</a></Link>
         </div>
         <p style={{ color:'#374151' }}>
-          For support or inquiries, email us at <a href="mailto:support@novahunt.ai">support@novahunt.ai</a>. For sales and partnerships, please use the Plans page to contact us.
+          For support or inquiries, email us at <a href="mailto:support@novahunt.ai">support@novahunt.ai</a>.
         </p>
       </div>
     </div>
