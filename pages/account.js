@@ -1,101 +1,58 @@
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 
-export default function AccountPage() {
-  const [usage, setUsage] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+function readSavedContacts() {
+  try {
+    const raw = localStorage.getItem('novahunt.savedContacts') || '[]';
+    return JSON.parse(raw);
+  } catch { return []; }
+}
 
-  async function fetchUsage() {
-    setLoading(true);
+export default function Account() {
+  const [saved, setSaved] = useState(null);
+
+  useEffect(() => {
     try {
-      const sessionValue = typeof window !== 'undefined' ? localStorage.getItem('nh_session') || '' : '';
-      const res = await fetch('/api/account-usage', {
-        headers: { 'x-nh-session': sessionValue }
-      });
-      const body = await res.json();
-      if (res.ok) setUsage(body);
-    } catch (err) {
-      console.error('account fetch', err);
-    } finally {
-      setLoading(false);
+      const s = readSavedContacts();
+      setSaved(s);
+    } catch {
+      setSaved([]);
     }
-  }
-
-  useEffect(() => { fetchUsage(); }, []);
-
-  async function reconcile() {
-    setBusy(true);
-    try {
-      const sessionValue = typeof window !== 'undefined' ? localStorage.getItem('nh_session') || '' : '';
-      const res = await fetch('/api/reconcile-subscription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-nh-session': sessionValue },
-        body: JSON.stringify({})
-      });
-      const body = await res.json();
-      if (!res.ok) {
-        alert('Reconcile failed: ' + (body?.error || 'unknown'));
-      } else {
-        // refresh usage
-        await fetchUsage();
-        alert('Reconciliation complete (' + (body?.source || 'unknown') + '). Plan should update if found.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Reconcile error');
-    } finally {
-      setBusy(false);
-    }
-  }
+  }, []);
 
   return (
-    <main style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
-      <h1>Account</h1>
-      {loading && <div>Loading…</div>}
-      {!loading && !usage && <div>No account data found.</div>}
-      {!loading && usage && (
-        <>
-          <div style={{ marginBottom: 12 }}>
-            <strong>{usage.email}</strong>
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            Plan: <strong>{usage.plan}</strong>
-          </div>
+    <div style={{ padding:32, fontFamily:'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
+      <div style={{ maxWidth:900, margin:'0 auto' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+          <h1 style={{ margin:0 }}>Account</h1>
+          <Link href="/"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Back to homepage</a></Link>
+        </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div style={{ border: '1px solid #e5e7eb', padding: 12, borderRadius: 8 }}>
-              <div style={{ fontSize: 13, color: '#6b7280' }}>Searches</div>
-              <div style={{ fontWeight: 700, marginTop: 8 }}>{usage.used.searches}/{usage.limits.searches}</div>
+        { saved && saved.length > 0 ? (
+          <>
+            <p style={{ color:'#374151' }}>Saved contacts (local demo):</p>
+            <div style={{ display:'grid', gap:10 }}>
+              {saved.map((c, i) => (
+                <div key={i} style={{ background:'#fff', border:'1px solid #e6edf3', padding:12, borderRadius:8 }}>
+                  <div style={{ fontWeight:700 }}>{c.first_name} {c.last_name}</div>
+                  <div style={{ color:'#6b7280' }}>{c.email}</div>
+                  <div style={{ color:'#6b7280', fontSize:13 }}>{c.position}</div>
+                </div>
+              ))}
             </div>
-
-            <div style={{ border: '1px solid #e5e7eb', padding: 12, borderRadius: 8 }}>
-              <div style={{ fontSize: 13, color: '#6b7280' }}>Reveals</div>
-              <div style={{ fontWeight: 700, marginTop: 8 }}>{usage.used.reveals}/{usage.limits.reveals}</div>
+          </>
+        ) : (
+          <div style={{ background:'#fff', border:'1px solid #e6edf3', padding:18, borderRadius:8 }}>
+            <div style={{ fontWeight:700, marginBottom:8 }}>No account data found.</div>
+            <div style={{ color:'#374151', marginBottom:12 }}>It looks like you don't have saved contacts yet or your account data wasn't created. For now we persist saved contacts locally (demo).</div>
+            <div style={{ display:'flex', gap:8 }}>
+              <Link href="/plans"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Choose a plan</a></Link>
+              <Link href="/signup"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Create an account</a></Link>
             </div>
           </div>
+        )}
 
-          <div style={{ marginTop: 16 }}>
-            <button onClick={() => window.location.href = '/'} style={{ padding: '8px 10px' }}>Back to dashboard</button>
-
-            <button onClick={reconcile} disabled={busy} style={{ marginLeft: 8, padding: '8px 10px' }}>
-              {busy ? 'Refreshing…' : 'Refresh subscription'}
-            </button>
-
-            <button onClick={async () => {
-              try {
-                const sessionValue = localStorage.getItem('nh_session') || '';
-                const res = await fetch('/api/create-portal-session', { method: 'POST', headers: { 'x-nh-session': sessionValue } });
-                const body = await res.json();
-                if (res.ok && body.url) window.location.href = body.url;
-                else alert('Could not open billing portal: ' + (body?.error || 'unknown'));
-              } catch (err) {
-                console.error(err);
-                alert('Could not open billing portal.');
-              }
-            }} style={{ marginLeft: 8, padding: '8px 10px' }}>Manage billing</button>
-          </div>
-        </>
-      )}
-    </main>
+      </div>
+    </div>
   );
 }
