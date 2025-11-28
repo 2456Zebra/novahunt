@@ -1,7 +1,5 @@
 // pages/api/find-company.js
-// Server-side proxy to fetch company metadata (Clearbit optional) and contacts (Hunter).
-// Added small in-memory TTL cache and more robust extraction of Hunter total count.
-// Keep API keys in environment: HUNTER_API_KEY, CLEARBIT_KEY.
+// Robust Hunter + Clearbit aggregator with small in-memory TTL cache and better total extraction.
 
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const cache = new Map();
@@ -22,21 +20,32 @@ function normalizeHunterEmail(e) {
 }
 
 function extractHunterTotal(hd) {
-  // Try several common locations for the total count
-  if (!hd || !hd.data) return 0;
-  const d = hd.data;
-  const possible = [
-    d.total,
-    (d.meta && d.meta.total),
-    (d.meta && d.meta['results'] && d.meta['results'].total),
-    (d.emails && d.emails.length),
-    (d.meta && d.meta.emails && d.meta.emails.total)
-  ];
-  for (const v of possible) {
-    if (typeof v === 'number' && v >= 0) return v;
-    if (typeof v === 'string' && /^\d+$/.test(v)) return Number(v);
+  if (!hd) return 0;
+  // hd may have different shapes — try many locations
+  try {
+    const d = hd.data || hd;
+    const candidates = [
+      d.total,
+      d.count,
+      d.meta && d.meta.total,
+      d.meta && d.meta.count,
+      d.meta && d.meta.results && d.meta.results.total,
+      d.meta && d.meta.results_count,
+      d.meta && d.meta.total_results,
+      d.meta && d.meta.total_count,
+      d.meta && d.meta.pagination && d.meta.pagination.total,
+      d.emails && d.emails.length,
+      (d.data && d.data.total),
+      (d.meta && d.meta.emails && d.meta.emails.total)
+    ];
+    for (const v of candidates) {
+      if (typeof v === 'number' && !Number.isNaN(v) && v >= 0) return v;
+      if (typeof v === 'string' && /^\d+$/.test(v)) return Number(v);
+    }
+  } catch (e) {
+    // ignore
   }
-  return (d.emails && d.emails.length) || 0;
+  return 0;
 }
 
 export default async function handler(req, res) {
@@ -57,10 +66,11 @@ export default async function handler(req, res) {
     company: null,
     contacts: [],
     total: 0,
-    shown: 0
+    shown: 0,
+    debug: {}
   };
 
-  // 1) Clearbit enrichment (optional)
+  // Try Clearbit (optional)
   if (CLEARBIT_KEY) {
     try {
       const url = `https://company.clearbit.com/v2/companies/find?domain=${encodeURIComponent(domain)}`;
@@ -79,29 +89,37 @@ export default async function handler(req, res) {
           metrics: c.metrics || {},
           raw: c
         };
+      } else {
+        // record response code for debugging
+        result.debug.clearbit_status = r.status;
       }
     } catch (err) {
+      result.debug.clearbit_error = String(err?.message || err);
       console.error('Clearbit fetch error', err?.message || err);
     }
   }
 
-  // 2) Hunter domain-search for contacts
+  // Hunter domain-search
   if (HUNTER_KEY) {
     try {
       const hunterUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&api_key=${HUNTER_KEY}`;
       const hr = await fetch(hunterUrl);
-      if (hr.ok) {
-        const hd = await hr.json();
+      const txt = await hr.text();
+      let hd = null;
+      try { hd = JSON.parse(txt); } catch { hd = null; }
+
+      if (hr.ok && hd) {
         const emails = (hd && hd.data && hd.data.emails) ? hd.data.emails : [];
         const total = extractHunterTotal(hd) || emails.length || 0;
 
-        // Limit contacts returned to first 10 for preview UX
         const shownEmails = emails.slice(0, 10);
         result.contacts = shownEmails.map(normalizeHunterEmail);
         result.total = total;
         result.shown = result.contacts.length;
 
-        // Attempt to extract light metadata from Hunter organization info if needed
+        // capture some debug info
+        result.debug.hunter_raw = { emails_count: emails.length, has_meta: !!(hd.data && hd.data.meta) };
+
         if (!result.company && hd && hd.data && hd.data.organization) {
           const org = hd.data.organization;
           result.company = {
@@ -114,16 +132,19 @@ export default async function handler(req, res) {
           };
         }
       } else {
+        result.debug.hunter_status = hr.status;
+        result.debug.hunter_text = txt.slice(0, 2000);
         console.warn('Hunter returned non-OK', hr.status);
       }
     } catch (err) {
+      result.debug.hunter_error = String(err?.message || err);
       console.error('Hunter fetch error', err?.message || err);
     }
   } else {
     return res.status(400).json({ error: 'Server missing HUNTER_API_KEY environment variable' });
   }
 
-  // Final normalization: ensure company object exists
+  // Ensure company fallback
   if (!result.company) {
     result.company = {
       name: domain.split('.')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
@@ -135,12 +156,13 @@ export default async function handler(req, res) {
     };
   }
 
-  // Provide a Clearbit logo fallback if explicit logo missing
+  // logo fallback
   if (!result.company.logo) {
     result.company.logo = `https://logo.clearbit.com/${domain}?size=400`;
   }
 
-  // Cache and return
+  // store cache
   cache.set(cacheKey, { ts: now(), value: result });
+
   return res.status(200).json(result);
 }
