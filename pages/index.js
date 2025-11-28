@@ -87,15 +87,17 @@ export default function HomePage() {
         company.total = payload.total || (company.contacts && company.contacts.length) || 0;
         company.shown = payload.shown || company.contacts.length || 0;
 
-        // enrichment fallback (wikipedia -> KG -> OG/meta)
-        if ((!company.description || !company.logo) && key) {
+        // enrichment
+        if ((!company.description || !company.logo || !company.narrative) && key) {
           try {
             const e = await fetch(`/api/enrich-company?domain=${encodeURIComponent(key)}`);
             if (e.ok) {
               const j = await e.json();
               company.description = company.description || j.description || '';
               company.logo = company.logo || j.image || company.logo;
-              company.enrichment = { description: j.description || '', image: j.image || null, url: j.url || null, source: j.source || null };
+              company.narrative = company.narrative || j.narrative || '';
+              company.url = company.url || j.url || company.url;
+              company.enrichment = { ...company.enrichment, ...j };
             }
           } catch {}
         }
@@ -213,7 +215,7 @@ export default function HomePage() {
                       window.open('https://www.google.com/search?q=' + q, '_blank');
                     }} style={{ fontSize:12, color:'#6b7280', textTransform:'lowercase', cursor:'pointer', textDecoration:'none' }}>source</a>
 
-                    <button onClick={() => handleReveal(idx)} style={{ padding:'5px 8px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb', fontSize:13 }}>
+                    <button onClick={() => handleReveal(idx)} style={{ padding:'4px 6px', borderRadius:4, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb', fontSize:12 }}>
                       Reveal
                     </button>
 
@@ -280,7 +282,7 @@ export default function HomePage() {
             </div>
           </header>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:28, marginTop:24, alignItems:'start' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 360px', gap:28, marginTop:24, alignItems:'start' }}>
             <section>
               <div style={{ background:'#fff', border:'1px solid #e6edf3', borderRadius:8, padding:18 }}>
                 {/* Inline Contacts header + meta inside the card */}
