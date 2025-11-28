@@ -9,10 +9,13 @@ export default function Privacy() {
           <h1 style={{ margin:0 }}>Privacy Policy</h1>
           <Link href="/"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Back to homepage</a></Link>
         </div>
+
         <p style={{ color:'#374151' }}>
-          NovaHunt uses server-side proxies to fetch public contact data. Saved contacts are stored locally unless you connect an account.
-          We recommend reviewing applicable laws before outreach. This privacy page is a starter template — please consult legal counsel for production.
+          NovaHunt uses server-side lookups and local demo storage for saved contacts. This policy is a template — consult legal counsel for production use.
         </p>
+
+        <h3>Data we collect</h3>
+        <p style={{ color:'#374151' }}>We collect domain lookups and may call third-party enrichment services. Saved contacts in the demo are stored locally.</p>
       </div>
     </div>
   );
