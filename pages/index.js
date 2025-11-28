@@ -292,7 +292,7 @@ export default function HomePage() {
                     { data ? `Showing ${data.shown || (data.contacts && data.contacts.length) || 0} of ${data.total || (data.contacts && data.contacts.length) || 0} results.` : 'Showing results' }
                   </div>
                   { data && data.total && data.total > (data.shown || (data.contacts && data.contacts.length) || 0) ? (
-                    <Link href="/plans"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Upgrade to see all</a></Link>
+                    <Link href="/plans"><a style={{ color:'#f97316', textDecoration:'underline', marginLeft:8 }}>Upgrade to see all</a></Link>
                   ) : null }
                   <div style={{ marginLeft:8, color:'#9ca3af', fontSize:12 }}>Powered by AI</div>
                 </div>
