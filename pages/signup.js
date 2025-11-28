@@ -3,25 +3,28 @@ import Link from 'next/link';
 
 export default function Signup() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!email) { alert('Enter an email'); return; }
+    if (!email || !password) { alert('Please enter email and password'); return; }
     setSubmitting(true);
 
-    // Demo: create local demo account
     try {
+      // Demo account persisted to localStorage. Replace with real backend in production.
       const account = {
         email,
+        password, // demo only — replace with proper hashing/auth in prod
         plan: 'Free',
         searches: 0,
         reveals: 0,
+        unsubscribed: false,
         createdAt: Date.now()
       };
       localStorage.setItem('nh_isSignedIn', '1');
       localStorage.setItem('nh_account', JSON.stringify(account));
-      // redirect to homepage
+      // Redirect to homepage signed in
       window.location.href = '/';
     } catch (err) {
       alert('Signup failed (demo).');
@@ -40,6 +43,9 @@ export default function Signup() {
         <form onSubmit={handleSubmit}>
           <label style={{ display:'block', marginBottom:8, fontSize:13 }}>Email</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" style={{ width:'100%', padding:'10px 12px', borderRadius:8, border:'1px solid #e6edf3', marginBottom:12 }} />
+
+          <label style={{ display:'block', marginBottom:8, fontSize:13 }}>Password</label>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Choose a password" style={{ width:'100%', padding:'10px 12px', borderRadius:8, border:'1px solid #e6edf3', marginBottom:12 }} />
 
           <button type="submit" disabled={submitting} style={{ width:'100%', background:'#2563eb', color:'#fff', padding:'10px', borderRadius:8, border:'none', fontWeight:700 }}>
             {submitting ? 'Creating…' : 'Create free account'}
