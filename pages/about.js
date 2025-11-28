@@ -1,36 +1,33 @@
+// pages/about.js (v3-new-layout) - refreshed About page with Back to homepage.
+
 import React from 'react';
+import Link from 'next/link';
 
-export default function AboutPage() {
-  const who = [
-    { title: 'Agencies', img: '/images/who-agencies.png', desc: 'Find decision-makers at brands and publishers to pitch your services.' },
-    { title: 'Sales Teams', img: '/images/who-sales.png', desc: 'Locate contacts across target accounts, sorted by role and trust.' },
-    { title: 'Recruiters', img: '/images/who-recruiters.png', desc: 'Discover engineering and product leaders for hiring pipelines.' },
-    { title: 'Founders', img: '/images/who-founders.png', desc: 'Quickly find C-suite and executive contacts for partnerships.' }
-  ];
-
+export default function About() {
   return (
-    <main style={{ padding: 24, maxWidth: 980, margin: '0 auto' }}>
-      <h1>About NovaHunt</h1>
-      <p style={{ color: '#374151', fontSize: 16 }}>
-        NovaHunt helps teams discover business contacts by company domain and organizes results with trust ratings, roles, and sources.
-      </p>
-
-      <section style={{ marginTop: 28 }}>
-        <h2>Who we help</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginTop: 12 }}>
-          {who.map((w, i) => (
-            <div key={i} style={{ padding: 12, borderRadius: 8, border: '1px solid #eef2f7', background: '#fff' }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <img src={w.img} alt={w.title} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8 }} />
-                <div>
-                  <div style={{ fontWeight: 700 }}>{w.title}</div>
-                  <div style={{ color: '#6b7280', fontSize: 13 }}>{w.desc}</div>
-                </div>
-              </div>
-            </div>
-          ))}
+    <div style={{ padding: 32, fontFamily: 'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
+      <div style={{ maxWidth:900, margin:'0 auto' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
+          <h1 style={{ margin:0 }}>About NovaHunt</h1>
+          <Link href="/"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Back to homepage</a></Link>
         </div>
-      </section>
-    </main>
+
+        <p style={{ color:'#374151', fontSize:16, lineHeight:1.6 }}>
+          NovaHunt helps you find verified business email addresses quickly so you can reach the right decision makers.
+          We combine public sources and third-party enrichment to surface contacts and decorate results with company context.
+        </p>
+
+        <h3 style={{ marginTop:24 }}>Our philosophy</h3>
+        <p style={{ color:'#374151', lineHeight:1.6 }}>
+          We focus on delivering useful, defensible contact results — and a simple UX that lets you start outreach fast.
+          The right panel is intentionally decorative to give context while your main value is the contact data on the left.
+        </p>
+
+        <h3 style={{ marginTop:20 }}>Privacy</h3>
+        <p style={{ color:'#374151', lineHeight:1.6 }}>
+          We use server-side proxies for third-party APIs so keys remain secret. Saved contacts are stored locally until you connect an account. For production, we recommend storing saved contacts in a user-specific DB tied to authentication.
+        </p>
+      </div>
+    </div>
   );
 }
