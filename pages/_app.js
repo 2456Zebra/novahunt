@@ -1,8 +1,23 @@
 // pages/_app.js
-// Minimal custom App to wrap the site in a global error boundary to avoid an uncaught client exception from taking down the whole page.
 import React from 'react';
 import App from 'next/app';
 import ErrorBoundary from '../components/ErrorBoundary';
+
+// Simple footer included site-wide. Update legal links/text as needed.
+function Footer() {
+  return (
+    <footer style={{ marginTop:40, padding:20, borderTop:'1px solid #e6edf3', background:'#fbfcfd', textAlign:'center', color:'#6b7280', fontSize:13 }}>
+      <div style={{ maxWidth:1100, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}>
+        <div>© {new Date().getFullYear()} NovaHunt</div>
+        <div style={{ display:'flex', gap:12 }}>
+          <a href="/terms" style={{ color:'#6b7280', textDecoration:'underline' }}>Terms</a>
+          <a href="/privacy" style={{ color:'#6b7280', textDecoration:'underline' }}>Privacy</a>
+          <a href="/contact" style={{ color:'#6b7280', textDecoration:'underline' }}>Contact</a>
+        </div>
+      </div>
+    </footer>
+  );
+}
 
 class MyApp extends App {
   render() {
@@ -10,6 +25,7 @@ class MyApp extends App {
     return (
       <ErrorBoundary>
         <Component {...pageProps} />
+        <Footer />
       </ErrorBoundary>
     );
   }
