@@ -87,7 +87,7 @@ export default function HomePage() {
         company.total = payload.total || (company.contacts && company.contacts.length) || 0;
         company.shown = payload.shown || company.contacts.length || 0;
 
-        // enrichment fallback (scrape OG/meta or Google KG)
+        // enrichment fallback (wikipedia -> KG -> OG/meta)
         if ((!company.description || !company.logo) && key) {
           try {
             const e = await fetch(`/api/enrich-company?domain=${encodeURIComponent(key)}`);
@@ -95,7 +95,7 @@ export default function HomePage() {
               const j = await e.json();
               company.description = company.description || j.description || '';
               company.logo = company.logo || j.image || company.logo;
-              company.enrichment = { description: j.description || '', image: j.image || null, url: j.url || null };
+              company.enrichment = { description: j.description || '', image: j.image || null, url: j.url || null, source: j.source || null };
             }
           } catch {}
         }
@@ -121,7 +121,6 @@ export default function HomePage() {
     setLoading(false);
   }
 
-  // Save contact: called after reveal; persists to localStorage and calls demo API
   async function saveContact(contact, idx) {
     try {
       saveContactToStorage(contact);
@@ -143,7 +142,6 @@ export default function HomePage() {
     }
   }
 
-  // Reveal behavior: if not signed in -> /plans; if signed in -> reveal permanently
   function handleReveal(idx) {
     const signedIn = userIsSignedIn();
     if (!signedIn) {
@@ -287,7 +285,7 @@ export default function HomePage() {
               <div style={{ background:'#fff', border:'1px solid #e6edf3', borderRadius:8, padding:18 }}>
                 {/* Inline Contacts header + meta inside the card */}
                 <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-                  <div style={{ fontWeight:700, fontSize:18 }}>Contacts</div>
+                  <div style={{ fontWeight:700, fontSize:22 }}>Contacts</div>
                   <div style={{ color:'#6b7280', fontSize:13 }}>
                     { data ? `Showing ${data.shown || (data.contacts && data.contacts.length) || 0} of ${data.total || (data.contacts && data.contacts.length) || 0} results.` : 'Showing results' }
                   </div>
