@@ -1,6 +1,6 @@
 // pages/_app.js
-// Minimal app wrapper: do NOT render the site-wide Header so page-level headers (like the homepage) remain the single header.
-// Keeps ErrorBoundary and site footer.
+// Minimal app wrapper: do NOT render the site-wide Header so page-level headers remain the single header.
+// Keeps ErrorBoundary and site footer. Removed Terms and Privacy links as requested.
 
 import React from 'react';
 import App from 'next/app';
@@ -12,8 +12,6 @@ function Footer() {
       <div style={{ maxWidth:1100, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}>
         <div>© 2026 NovaHunt</div>
         <div style={{ display:'flex', gap:12 }}>
-          <a href="/terms" style={{ color:'#6b7280', textDecoration:'underline' }}>Terms</a>
-          <a href="/privacy" style={{ color:'#6b7280', textDecoration:'underline' }}>Privacy</a>
           <a href="/contact" style={{ color:'#6b7280', textDecoration:'underline' }}>Contact</a>
         </div>
       </div>
