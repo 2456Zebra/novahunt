@@ -29,15 +29,6 @@ function safeGetQueryDomain() {
   }
 }
 
-function userIsSignedIn() {
-  if (typeof window === 'undefined') return false;
-  try {
-    if (localStorage.getItem('nh_isSignedIn') === '1') return true;
-    if (document.cookie && /\bnh_token=/.test(document.cookie)) return true;
-  } catch {}
-  return false;
-}
-
 function readSavedContactsFromStorage() {
   try {
     const raw = localStorage.getItem('novahunt.savedContacts') || '[]';
@@ -46,22 +37,19 @@ function readSavedContactsFromStorage() {
     return [];
   }
 }
-function saveContactToStorage(contact) {
-  try {
-    const arr = readSavedContactsFromStorage();
-    const exists = arr.find(c => c.email === contact.email);
-    if (!exists) {
-      arr.push({ ...contact, savedAt: Date.now() });
-      localStorage.setItem('novahunt.savedContacts', JSON.stringify(arr));
-    }
-  } catch (e) { console.warn(e); }
-}
 
 function getStoredAccount() {
   try {
     const a = localStorage.getItem('nh_account');
     return a ? JSON.parse(a) : null;
   } catch { return null; }
+}
+
+function persistAccount(a) {
+  try {
+    localStorage.setItem('nh_account', JSON.stringify(a));
+    localStorage.setItem('nh_isSignedIn', '1');
+  } catch {}
 }
 
 export default function HomePage() {
@@ -81,18 +69,29 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function loadDomain(d) {
+  async function loadDomain(d, incrementSearch = false) {
     if (!d) return;
     const key = (d || '').trim().toLowerCase().replace(/^https?:\/\//,'').split('/')[0];
     setDomain(key);
     setLoading(true);
     try { localStorage.setItem('nh_lastDomain', key); } catch {}
 
+    // increment demo search count
+    if (incrementSearch) {
+      try {
+        const a = getStoredAccount();
+        if (a) {
+          a.searches = (a.searches || 0) + 1;
+          persistAccount(a);
+          setAcct(a);
+        }
+      } catch {}
+    }
+
     try {
       const res = await fetch(`/api/find-company?domain=${encodeURIComponent(key)}`);
       if (res.ok) {
         const payload = await res.json();
-        // debug: log payload so you can paste if totals are missing
         console.log('find-company payload', payload);
         const company = payload.company || {};
         company.contacts = (payload.contacts || company.contacts || []).map(c => ({ ...c, _revealed: false, _saved: false }));
@@ -146,13 +145,14 @@ export default function HomePage() {
     window.location.href = '/';
   }
 
+  // small account pulldown in the header area with searches/reveals
   function AccountUI() {
     const a = acct;
     if (!a) {
       return (
         <div style={{ display:'flex', gap:12 }}>
           <Link href='/signin'><a style={{ textDecoration:'underline', color:'#2563eb' }}>SignIn</a></Link>
-          <Link href='/signup'><a style={{ textDecoration:'underline', color:'#2563eb' }}>SignUp</a></Link>
+          <Link href='/plans'><a style={{ textDecoration:'underline', color:'#2563eb' }}>SignUp</a></Link>
         </div>
       );
     }
@@ -179,7 +179,47 @@ export default function HomePage() {
     );
   }
 
-  // renderContacts is same as previous implementation (kept for completeness)
+  // save contact and persist (keeps same button sizing as Reveal)
+  function saveContact(contact, idx) {
+    try {
+      const saved = readSavedContactsFromStorage();
+      if (!saved.find(s => s.email === contact.email)) {
+        saved.push({ ...contact, savedAt: Date.now() });
+        localStorage.setItem('novahunt.savedContacts', JSON.stringify(saved));
+      }
+      setData(prev => {
+        const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
+        clone.contacts[idx] = { ...clone.contacts[idx], _saved: true };
+        return clone;
+      });
+    } catch (err) { console.error(err); }
+  }
+
+  function handleReveal(idx) {
+    const signedIn = (localStorage.getItem('nh_isSignedIn') === '1');
+    if (!signedIn) {
+      try { localStorage.setItem('nh_lastDomain', domain); } catch {}
+      window.location.href = '/plans';
+      return;
+    }
+
+    // increment demo account reveals
+    try {
+      const a = getStoredAccount();
+      if (a) {
+        a.reveals = (a.reveals || 0) + 1;
+        persistAccount(a);
+        setAcct(a);
+      }
+    } catch (e) {}
+
+    setData(prev => {
+      const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
+      clone.contacts[idx] = { ...clone.contacts[idx], _revealed: true };
+      return clone;
+    });
+  }
+
   function renderContacts(list) {
     if (!list || list.length === 0) return <div style={{ color:'#6b7280' }}>No contacts found yet.</div>;
 
@@ -237,27 +277,12 @@ export default function HomePage() {
                       window.open('https://www.google.com/search?q=' + q, '_blank');
                     }} style={{ fontSize:12, color:'#6b7280', textTransform:'lowercase', cursor:'pointer', textDecoration:'none' }}>source</a>
 
-                    <button onClick={() => {
-                      const signedIn = (localStorage.getItem('nh_isSignedIn') === '1');
-                      if (!signedIn) { try { localStorage.setItem('nh_lastDomain', domain); } catch {} window.location.href = '/plans'; return; }
-                      setData(prev => {
-                        const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
-                        clone.contacts[idx] = { ...clone.contacts[idx], _revealed: true };
-                        return clone;
-                      });
-                    }} style={{ padding:'4px 6px', borderRadius:4, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb', fontSize:12 }}>
+                    <button onClick={() => handleReveal(idx)} style={{ padding:'6px 8px', borderRadius:4, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb', fontSize:12 }}>
                       Reveal
                     </button>
 
                     { p._revealed ? (
-                      <button onClick={() => {
-                        saveContactToStorage(p);
-                        setData(prev => {
-                          const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
-                          clone.contacts[idx] = { ...clone.contacts[idx], _saved: true };
-                          return clone;
-                        });
-                      }} disabled={p._saved} style={{ padding:'6px 10px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: p._saved ? '#4b5563' : '#10b981' }}>
+                      <button onClick={() => saveContact(p, idx)} disabled={p._saved} style={{ padding:'6px 8px', borderRadius:4, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: p._saved ? '#4b5563' : '#10b981', fontSize:12 }}>
                         {p._saved ? 'Saved' : 'Save'}
                       </button>
                     ) : null }
@@ -294,13 +319,18 @@ export default function HomePage() {
 
               <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:14 }}>
                 <div style={{ flex:1, display:'flex', alignItems:'center', background:'#fff', borderRadius:8, border:'1px solid #e6edf3', padding:6 }}>
-                  <input aria-label='domain' value={domain} onChange={e => setDomain(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') loadDomain(domain); }} placeholder='Enter domain, e.g. coca-cola.com' style={{ border:0, outline:0, padding:'12px 14px', fontSize:15, width:'100%', background:'transparent' }} />
+                  <input aria-label='domain' value={domain} onChange={e => setDomain(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') loadDomain(domain, true); }} placeholder='Enter domain, e.g. coca-cola.com' style={{ border:0, outline:0, padding:'12px 14px', fontSize:15, width:'100%', background:'transparent' }} />
                 </div>
 
-                <button onClick={() => loadDomain(domain)} style={{ background:'#2563eb', color:'#fff', border:'none', padding:'10px 14px', borderRadius:6, fontWeight:700, cursor:'pointer' }}>Search</button>
+                <button onClick={() => loadDomain(domain, true)} style={{ background:'#2563eb', color:'#fff', border:'none', padding:'10px 14px', borderRadius:6, fontWeight:700, cursor:'pointer' }}>Search</button>
               </div>
 
               <div style={{ color:'#6b7280', fontSize:13, marginBottom:12 }}>
+                <nav style={{ display:'flex', gap:12, marginBottom:8 }}>
+                  <Link href="/"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Home</a></Link>
+                  <Link href="/plans"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Plans</a></Link>
+                  <Link href="/about"><a style={{ color:'#2563eb', textDecoration:'underline' }}>About</a></Link>
+                </nav>
                 Want to take us for a test drive? Click any of these to see results live or enter your own search above.
                 <div style={{ marginTop:8, display:'flex', gap:12, flexWrap:'wrap' }}>
                   {SAMPLE_DOMAINS.map(d => (<a key={d} href='#' onClick={(e)=>{e.preventDefault(); loadDomain(d);}} style={{ fontSize:13 }}>{d}</a>))}
@@ -321,9 +351,11 @@ export default function HomePage() {
                   <div style={{ color:'#6b7280', fontSize:13 }}>
                     { data ? `Showing ${data.shown || (data.contacts && data.contacts.length) || 0} of ${data.total || (data.contacts && data.contacts.length) || 0} results.` : 'Showing results' }
                   </div>
+
                   { data && (Number(data.total) > Number(data.shown)) ? (
-                    <Link href='/plans'><a style={{ color:'#2563eb', textDecoration:'underline' }}>Upgrade to see all</a></Link>
+                    <Link href='/plans'><a style={{ color:'#2563eb', textDecoration:'underline', marginLeft:8 }}>Upgrade to see all {data.total}</a></Link>
                   ) : null }
+
                   <div style={{ marginLeft:8, color:'#9ca3af', fontSize:12 }}>Powered by AI</div>
                 </div>
 
