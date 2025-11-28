@@ -1,11 +1,14 @@
 import React from 'react';
 import CorporateProfile from './CorporateProfile';
 
-// RightPanel: raise slightly so it visually aligns with left column.
-// We use a negative top margin to nudge it up ~1/4 inch (approx 18px).
+// RightPanel: align with left column by matching the same top spacer height used there.
+// Use a spacer so the visual top aligns with the main left content.
 export default function RightPanel({ domain, data }) {
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:12, alignItems:'stretch', marginTop: '-18px' }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:12, alignItems:'stretch' }}>
+      {/* Spacer to align top with left column header (matches left column spacing) */}
+      <div style={{ height:28 }} />
+
       <CorporateProfile domain={domain} data={data} />
 
       {/* only show illustration when present */}
