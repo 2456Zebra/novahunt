@@ -24,6 +24,22 @@ export default function Account() {
     }
   }, []);
 
+  function unsubscribe() {
+    if (!account) return;
+    const updated = { ...account, unsubscribed: true };
+    localStorage.setItem('nh_account', JSON.stringify(updated));
+    setAccount(updated);
+    alert('You have been unsubscribed from marketing emails (demo).');
+  }
+
+  function signOut() {
+    try {
+      localStorage.removeItem('nh_isSignedIn');
+      // keep account persisted but signed out
+    } catch {}
+    window.location.href = '/';
+  }
+
   return (
     <div style={{ padding:32, fontFamily:'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
       <div style={{ maxWidth:900, margin:'0 auto' }}>
@@ -62,6 +78,11 @@ export default function Account() {
             </div>
           </div>
         )}
+
+        <div style={{ marginTop:18 }}>
+          <button onClick={unsubscribe} style={{ background:'#ef4444', color:'#fff', border:'none', padding:'8px 12px', borderRadius:6, cursor:'pointer' }}>Unsubscribe</button>
+          <button onClick={signOut} style={{ marginLeft:12, background:'#111827', color:'#fff', border:'none', padding:'8px 12px', borderRadius:6, cursor:'pointer' }}>Sign out</button>
+        </div>
       </div>
     </div>
   );
