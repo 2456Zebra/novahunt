@@ -1,14 +1,44 @@
 // pages/api/enrich-company.js
-// Enrichment pipeline with in-memory TTL cache
-// Preference: Wikipedia -> Google Knowledge Graph (optional) -> OG/meta scraping
-// Returns { domain, description, image, url, source }
+// Enrichment: try OG/title to derive a good query, then Wikipedia (preferred), then KG, then OG/meta scraping.
+// 10 minute in-memory cache to reduce calls.
 
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL_MS = 10 * 60 * 1000;
 const cache = new Map();
-
 function now() { return Date.now(); }
 
+async function fetchRootHtml(domain) {
+  const urls = [`https://${domain}`, `https://www.${domain}`, `http://${domain}`, `http://www.${domain}`];
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, { method: 'GET', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NovaHunt/1.0)' }, redirect:'follow' });
+      if (r.ok) {
+        const text = await r.text();
+        return { html: text, url: r.url || u };
+      }
+    } catch (e) {
+      // ignore and try next
+    }
+  }
+  return null;
+}
+
+function extractMetaField(html, names) {
+  if (!html) return '';
+  for (const n of names) {
+    const re = new RegExp(`<meta[^>]+(?:property|name)=['"]${n}['"][^>]*content=['"]([^'"]+)['"]`, 'i');
+    const m = re.exec(html);
+    if (m && m[1]) return m[1].trim();
+  }
+  // try <title>
+  if (names.includes('og:title') || names.includes('title')) {
+    const t = /<title[^>]*>([^<]+)<\/title>/i.exec(html);
+    if (t && t[1]) return t[1].trim();
+  }
+  return '';
+}
+
 async function tryWikipedia(query) {
+  if (!query || query.trim().length < 2) return null;
   try {
     const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
     const r = await fetch(searchUrl);
@@ -24,9 +54,7 @@ async function tryWikipedia(query) {
     const description = sj.extract || sj.description || '';
     const image = sj.thumbnail && sj.thumbnail.source ? sj.thumbnail.source : null;
     const url = sj.content_urls && sj.content_urls.desktop && sj.content_urls.desktop.page ? sj.content_urls.desktop.page : null;
-    if (description || image) {
-      return { description, image, url, source: 'wikipedia' };
-    }
+    if (description || image) return { description, image, url, source: 'wikipedia' };
   } catch (err) {
     // ignore
   }
@@ -43,25 +71,33 @@ export default async function handler(req, res) {
     return res.status(200).json(cached.value);
   }
 
-  // Build candidates to try on Wikipedia: inferred variations
-  const domainParts = domain.split('.');
-  const base = domainParts.slice(0, domainParts.length - 1).join(' ');
-  const inferredName = base.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  const alt1 = domain.split('.')[0].replace(/-/g, ' '); // coca-cola
-  const alt2 = domain.replace(/\.(com|net|org|co|io|ai)$/, '').replace(/-/g, ' ');
-
-  const wikiCandidates = [inferredName, alt1, alt2];
-
-  for (const q of wikiCandidates) {
-    if (!q || q.trim().length < 2) continue;
-    const w = await tryWikipedia(q);
-    if (w) {
-      cache.set(cacheKey, { ts: now(), value: { domain, ...w } });
-      return res.status(200).json({ domain, ...w });
-    }
+  // 1) quick fetch root HTML to get og:title/title for a good wiki query
+  const root = await fetchRootHtml(domain);
+  let ogTitle = '';
+  if (root && root.html) {
+    ogTitle = extractMetaField(root.html, ['og:title', 'twitter:title', 'title']);
   }
 
-  // Google Knowledge Graph fallback (if key present)
+  // Try Wikipedia using ogTitle, then inferred names
+  if (ogTitle) {
+    const w = await tryWikipedia(ogTitle);
+    if (w) { cache.set(cacheKey, { ts: now(), value: { domain, ...w } }); return res.status(200).json({ domain, ...w }); }
+  }
+
+  // If ogTitle failed, try multiple inferred queries
+  const parts = domain.split('.');
+  const base = parts.slice(0, parts.length - 1).join(' ');
+  const inferredName = base.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const alt1 = parts[0].replace(/-/g, ' ');
+  const alt2 = domain.replace(/\.(com|net|org|co|io|ai)$/, '').replace(/-/g, ' ');
+  const candidates = [inferredName, alt1, alt2];
+
+  for (const q of candidates) {
+    const w = await tryWikipedia(q);
+    if (w) { cache.set(cacheKey, { ts: now(), value: { domain, ...w } }); return res.status(200).json({ domain, ...w }); }
+  }
+
+  // Google KG fallback
   const GOOGLE_KEY = process.env.GOOGLE_API_KEY || process.env.GOOGLE_KG_KEY;
   if (GOOGLE_KEY) {
     try {
@@ -85,67 +121,23 @@ export default async function handler(req, res) {
     }
   }
 
-  // Final fallback: OG/meta scraping
-  const urlsToTry = [
-    `https://${domain}`,
-    `https://www.${domain}`,
-    `http://${domain}`,
-    `http://www.${domain}`
-  ];
-
-  let html = null;
-  let finalUrl = null;
-
-  for (const u of urlsToTry) {
-    try {
-      const r = await fetch(u, { method: 'GET', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NovaHunt/1.0)' }, redirect: 'follow' });
-      if (r.ok) {
-        html = await r.text();
-        finalUrl = r.url || u;
-        break;
-      }
-    } catch (err) {
-      // try next
-    }
-  }
-
-  function extractMeta(htmlText, nameCandidates) {
-    if (!htmlText) return '';
-    for (const name of nameCandidates) {
-      const re = new RegExp(`<meta[^>]+(?:property|name)=(?:'|")${name}(?:'|")[^>]*content=(?:'|")([^'"]+)(?:'|")`, 'i');
-      const m = re.exec(htmlText);
-      if (m && m[1]) return m[1].trim();
-    }
-    return '';
-  }
-
-  if (html) {
-    const ogDescription = extractMeta(html, ['og:description','description','twitter:description']);
-    const ogTitle = extractMeta(html, ['og:title','twitter:title','title']);
-    const ogImage = extractMeta(html, ['og:image','twitter:image','image']);
-    const faviconMatch = /<link[^>]+rel=(?:'|")icon(?:'|")[^>]*href=(?:'|")([^'"]+)(?:'|")/i.exec(html);
-    const favicon = faviconMatch ? faviconMatch[1] : null;
-
-    function normalizeUrl(src) {
+  // OG/meta fallback using root fetch data
+  if (root && root.html) {
+    const ogDescription = extractMetaField(root.html, ['og:description','description','twitter:description']);
+    const ogImage = extractMetaField(root.html, ['og:image','twitter:image','image']);
+    function normalize(src) {
       if (!src) return null;
       try {
-        const u = new URL(src, finalUrl || `https://${domain}`);
+        const u = new URL(src, root.url || `https://${domain}`);
         return u.toString();
-      } catch {
-        return null;
-      }
+      } catch { return null; }
     }
-
-    const description = ogDescription || ogTitle || '';
-    const image = normalizeUrl(ogImage) || normalizeUrl(favicon) || null;
-
-    const out = { domain, description, image, url: finalUrl || `https://${domain}`, source: 'og' };
+    const out = { domain, description: ogDescription || '', image: normalize(ogImage) || null, url: root.url || null, source: 'og' };
     cache.set(cacheKey, { ts: now(), value: out });
-    if (description || image) return res.status(200).json(out);
+    if (out.description || out.image) return res.status(200).json(out);
   }
 
-  // nothing found
-  const empty = { domain, description: '', image: null, url: null, source: 'none' };
+  const empty = { domain, description:'', image:null, url:null, source:'none' };
   cache.set(cacheKey, { ts: now(), value: empty });
   return res.status(200).json(empty);
 }
