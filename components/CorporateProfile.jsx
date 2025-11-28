@@ -1,7 +1,7 @@
 import React from 'react';
 
-// CorporateProfile: uses enrichment narrative (safe, paraphrased).
-// Larger visual footprint so the right panel feels more substantial.
+// CorporateProfile updated to avoid duplicate raw copy.
+// Shows short sanitized description; shows longer 'About' narrative only if it differs
 
 function getFact(data, keys) {
   if (!data) return '';
@@ -11,6 +11,12 @@ function getFact(data, keys) {
     if (data.facts && data.facts[k]) return data.facts[k];
   }
   return '';
+}
+
+function sanitize(text) {
+  if (!text) return '';
+  // remove repetitive whitespace, trim
+  return text.replace(/\s+/g,' ').trim();
 }
 
 export default function CorporateProfile({ domain, data }) {
@@ -28,11 +34,14 @@ export default function CorporateProfile({ domain, data }) {
     return val ? { label, value: val } : null;
   }).filter(Boolean);
 
-  // larger logo area for visual weight
   const logoSrc = data?.logo || (domain ? `https://logo.clearbit.com/${domain}?size=400` : null) || (data?.image || (data?.enrichment && data.enrichment.image)) || null;
 
-  const narrative = data?.narrative || (data?.enrichment && data.enrichment.narrative) || '';
-  const shortDesc = data?.description || (data?.enrichment && data.enrichment.description) || '';
+  const shortDesc = sanitize(data?.description || (data?.enrichment && data.enrichment.description) || '');
+  const narrative = sanitize(data?.narrative || (data?.enrichment && data.enrichment.narrative) || '');
+
+  // avoid duplication: if narrative contains shortDesc verbatim, prefer narrative only once
+  const showShort = shortDesc && (!narrative || !narrative.includes(shortDesc));
+  const showNarrative = narrative && narrative.length > 120 && (!shortDesc || !shortDesc.includes(narrative));
 
   return (
     <>
@@ -65,14 +74,14 @@ export default function CorporateProfile({ domain, data }) {
           </div>
         </div>
 
-        { shortDesc ? (
+        { showShort ? (
           <div style={{ marginTop:14, borderTop:'1px solid #f1f5f9', paddingTop:12, color:'#374151', fontSize:14, lineHeight:1.5 }}>
             {shortDesc}
           </div>
         ) : null }
       </div>
 
-      { narrative && narrative.length > 120 ? (
+      { showNarrative ? (
         <div style={{ marginTop:12, background:'#fff', border:'1px solid #e6edf3', borderRadius:8, padding:16, fontSize:14, color:'#374151' }}>
           <div style={{ fontWeight:700, marginBottom:8 }}>About {companyName}</div>
           <div style={{ lineHeight:1.6 }}>{narrative}</div>
