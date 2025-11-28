@@ -1,10 +1,10 @@
 // pages/api/enrich-company.js
-// Enrichment pipeline (free): prefer Wikidata + Wikipedia for structured facts and a friendly narrative.
-// Fallback: Google KG (optional) then OG/meta scraping.
-// Produces: { domain, name, description (short sanitized), narrative (composed), image, url, source, facts }
-// In-memory TTL cache (preview). Swap to Redis for production if needed.
+// Enrichment pipeline (free): prefer Wikidata + Wikipedia (longer extract) for structured facts and a friendly narrative.
+// Fallback: OpenCorporates (facts), then OG/meta scraping.
+// Produces: { domain, name, description (short), narrative (composed), image, url, source, facts }
+// Simple in-memory TTL cache for preview.
 
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL_MS = 10 * 60 * 1000;
 const cache = new Map();
 
 function now() { return Date.now(); }
@@ -32,7 +32,6 @@ function extractMetaField(html, names) {
     const m = re.exec(html);
     if (m && m[1]) return m[1].trim();
   }
-  // try <title>
   if (names.includes('og:title') || names.includes('title')) {
     const t = /<title[^>]*>([^<]+)<\/title>/i.exec(html);
     if (t && t[1]) return t[1].trim();
@@ -93,34 +92,35 @@ async function tryWikidata(domain, nameCandidates=[]) {
           };
           return { source: 'wikidata', facts, name: enLabel };
         } catch (e) {
-          // continue to next hit
+          // continue
         }
       }
     } catch (err) {
-      // ignore and continue
+      // ignore
     }
   }
   return null;
 }
 
-async function tryWikipediaSummary(query) {
-  if (!query || query.trim().length < 2) return null;
+async function tryWikipediaLongExtract(title) {
+  if (!title) return null;
   try {
-    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
-    const r = await fetch(searchUrl);
+    // Use action=query + prop=extracts + explaintext + exintro + exchars to get a longer intro
+    const url = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exintro=1&exchars=1500&titles=${encodeURIComponent(title)}&format=json&origin=*`;
+    const r = await fetch(url);
     if (!r.ok) return null;
     const j = await r.json();
-    const hits = j && j.query && j.query.search ? j.query.search : [];
-    if (!hits || hits.length === 0) return null;
-    const title = hits[0].title;
-    const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
-    const s = await fetch(summaryUrl);
-    if (!s.ok) return null;
-    const sj = await s.json();
-    const description = sj.extract || sj.description || '';
-    const image = sj.thumbnail && sj.thumbnail.source ? sj.thumbnail.source : null;
-    const url = sj.content_urls && sj.content_urls.desktop && sj.content_urls.desktop.page ? sj.content_urls.desktop.page : null;
-    if (description || image) return { description, image, url, source: 'wikipedia', title };
+    const pages = j && j.query && j.query.pages ? j.query.pages : null;
+    if (!pages) return null;
+    const keys = Object.keys(pages);
+    if (!keys || keys.length === 0) return null;
+    const p = pages[keys[0]];
+    const extract = p && p.extract ? p.extract.trim() : '';
+    // thumbnail fetch (if exists)
+    let image = null;
+    if (p && p.thumbnail && p.thumbnail.source) image = p.thumbnail.source;
+    const pageUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`;
+    if (extract || image) return { description: extract, image, url: pageUrl, source: 'wikipedia', title };
   } catch (err) {
     // ignore
   }
@@ -132,8 +132,8 @@ function paraphraseShort(description) {
   let t = description.replace(/\b(©|®|™)\b/g, '');
   t = t.replace(/(Shop|Buy|Order)[\s\S]{0,200}$/i, '');
   const sentences = t.split(/(?<=[.?!])\s+/);
-  const take = sentences.slice(0, 2).join(' ').trim();
-  return take.length ? take : t.slice(0, 240);
+  const take = sentences.slice(0, 3).join(' ').trim();
+  return take.length ? take : t.slice(0, 400);
 }
 
 function composeNarrative({ name, facts = {}, summary = '' }) {
@@ -158,15 +158,38 @@ function composeNarrative({ name, facts = {}, summary = '' }) {
     if (s && s !== lead) extra = s;
   }
   const narrative = [lead, extra].filter(Boolean).join(' ');
-  if (!narrative || narrative.trim().length < 20) return `${name} is an organization you can learn more about by visiting their website.`;
+  if (!narrative || narrative.trim().length < 30) return `${name} is an organization you can learn more about by visiting their website.`;
   return narrative;
+}
+
+async function tryOpenCorporates(query) {
+  try {
+    const url = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query)}`;
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const j = await r.json();
+    const results = j && j.results && j.results.companies ? j.results.companies : [];
+    if (!results || results.length === 0) return null;
+    const c = results[0].company;
+    const facts = {
+      name: c && c.name,
+      jurisdiction_code: c && c.jurisdiction_code,
+      company_number: c && c.company_number,
+      incorporation_date: c && c.incorporation_date,
+      source: 'opencorporates',
+      raw: { registered_address: c.registered_address }
+    };
+    return { source: 'opencorporates', facts };
+  } catch (err) {
+    return null;
+  }
 }
 
 export default async function handler(req, res) {
   const domain = (req.query.domain || '').toString().trim().toLowerCase();
   if (!domain) return res.status(400).json({ error: 'Missing domain query' });
 
-  const cacheKey = `enrich2:${domain}`;
+  const cacheKey = `enrich3:${domain}`;
   const cached = cache.get(cacheKey);
   if (cached && (now() - cached.ts) < CACHE_TTL_MS) {
     return res.status(200).json(cached.value);
@@ -189,21 +212,36 @@ export default async function handler(req, res) {
     wikidataResult = await tryWikidata(domain, candidates);
   } catch (err) { /* ignore */ }
 
-  let wikiSummary = null;
+  let wikiLong = null;
   try {
-    for (const q of candidates) {
-      if (!q) continue;
-      const w = await tryWikipediaSummary(q);
-      if (w) { wikiSummary = w; break; }
+    // prefer ogTitle or wikidata name as title candidate
+    const titleCandidate = (ogTitle) || (wikidataResult && wikidataResult.name) || candidates[0];
+    if (titleCandidate) {
+      wikiLong = await tryWikipediaLongExtract(titleCandidate);
+    }
+    // if wikiLong missing, try other candidates
+    if (!wikiLong) {
+      for (const q of candidates) {
+        if (!q) continue;
+        const w = await tryWikipediaLongExtract(q);
+        if (w) { wikiLong = w; break; }
+      }
     }
   } catch (err) { /* ignore */ }
+
+  // OpenCorporates fallback for additional facts
+  let oc = null;
+  try {
+    oc = await tryOpenCorporates(candidates[0] || inferredName);
+  } catch {}
 
   const facts = wikidataResult ? (wikidataResult.facts || {}) : {};
   if (!facts.official_website && root && root.url) facts.official_website = root.url;
   if (!facts.image && ogImage) facts.image = ogImage;
+  if (!facts.incorporation_date && oc && oc.facts && oc.facts.incorporation_date) facts.incorporation_date = oc.facts.incorporation_date;
 
-  const name = wikidataResult?.name || (wikiSummary && wikiSummary.title) || (candidates[0] || domainParts[0] || domain);
-  const summaryText = wikiSummary ? wikiSummary.description || '' : (ogDescription || '');
+  const name = wikidataResult?.name || (wikiLong && wikiLong.title) || (candidates[0] || domainParts[0] || domain);
+  const summaryText = wikiLong ? (wikiLong.description || '') : (ogDescription || '');
   const narrative = composeNarrative({ name, facts, summary: summaryText });
 
   const out = {
@@ -211,9 +249,9 @@ export default async function handler(req, res) {
     name,
     description: summaryText ? paraphraseShort(summaryText) : '',
     narrative,
-    image: facts.image || (wikiSummary && wikiSummary.image) || ogImage || null,
-    url: facts.official_website || (wikiSummary && wikiSummary.url) || (root && root.url) || null,
-    source: wikiSummary ? 'wikipedia' : (wikidataResult ? 'wikidata' : (ogDescription ? 'og' : 'none')),
+    image: facts.image || (wikiLong && wikiLong.image) || ogImage || null,
+    url: facts.official_website || (wikiLong && wikiLong.url) || (root && root.url) || null,
+    source: wikiLong ? 'wikipedia' : (wikidataResult ? 'wikidata' : (oc ? 'opencorporates' : (ogDescription ? 'og' : 'none'))),
     facts
   };
 
