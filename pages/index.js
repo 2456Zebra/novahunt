@@ -1,3 +1,7 @@
+// pages/index.js (UI tweaks)
+// - Upgrade link shown inline after "Showing X of Y" when data.total > data.shown
+// - Reveal button slightly smaller
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import RightPanel from '../components/RightPanel';
@@ -68,7 +72,7 @@ export default function HomePage() {
     if (q) loadDomain(q);
     else if (last) loadDomain(last);
     else loadDomain('coca-cola.com');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadDomain(d) {
@@ -86,8 +90,7 @@ export default function HomePage() {
         company.contacts = (payload.contacts || company.contacts || []).map(c => ({ ...c, _revealed: false, _saved: false }));
         company.total = payload.total || (company.contacts && company.contacts.length) || 0;
         company.shown = payload.shown || company.contacts.length || 0;
-
-        // enrichment fallback (wikipedia -> KG -> OG/meta)
+        // enrichment
         if ((!company.description || !company.logo) && key) {
           try {
             const e = await fetch(`/api/enrich-company?domain=${encodeURIComponent(key)}`);
@@ -121,6 +124,20 @@ export default function HomePage() {
     setLoading(false);
   }
 
+  function handleReveal(idx) {
+    const signedIn = userIsSignedIn();
+    if (!signedIn) {
+      try { localStorage.setItem('nh_lastDomain', domain); } catch {}
+      window.location.href = '/plans';
+      return;
+    }
+    setData(prev => {
+      const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
+      clone.contacts[idx] = { ...clone.contacts[idx], _revealed: true };
+      return clone;
+    });
+  }
+
   async function saveContact(contact, idx) {
     try {
       saveContactToStorage(contact);
@@ -140,20 +157,6 @@ export default function HomePage() {
       console.error('saveContact failed', err);
       alert('Save failed');
     }
-  }
-
-  function handleReveal(idx) {
-    const signedIn = userIsSignedIn();
-    if (!signedIn) {
-      try { localStorage.setItem('nh_lastDomain', domain); } catch {}
-      window.location.href = '/plans';
-      return;
-    }
-    setData(prev => {
-      const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
-      clone.contacts[idx] = { ...clone.contacts[idx], _revealed: true };
-      return clone;
-    });
   }
 
   function renderContacts(list) {
@@ -213,7 +216,7 @@ export default function HomePage() {
                       window.open('https://www.google.com/search?q=' + q, '_blank');
                     }} style={{ fontSize:12, color:'#6b7280', textTransform:'lowercase', cursor:'pointer', textDecoration:'none' }}>source</a>
 
-                    <button onClick={() => handleReveal(idx)} style={{ padding:'6px 10px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb' }}>
+                    <button onClick={() => handleReveal(idx)} style={{ padding:'5px 8px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb', fontSize:13 }}>
                       Reveal
                     </button>
 
@@ -246,7 +249,7 @@ export default function HomePage() {
 
   return (
     <ErrorBoundary>
-      <main style={{ padding: '24px 20px', background:'#fbfcfd', minHeight:'100vh', fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto' }}>
+      <main style={{ padding: '24px 20px', background:'#fbfcfd', minHeight:'100vh', fontFamily: 'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <header style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:20 }}>
             <div style={{ maxWidth:760 }}>
@@ -255,7 +258,7 @@ export default function HomePage() {
 
               <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:14 }}>
                 <div style={{ flex:1, display:'flex', alignItems:'center', background:'#fff', borderRadius:8, border:'1px solid #e6edf3', padding:6 }}>
-                  <input aria-label="domain" value={domain} onChange={e => setDomain(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') loadDomain(domain); }} placeholder="Enter domain, e.g. coca-cola.com" style={{ border:0, outline:0, padding:'12px 14px', fontSize:15, width:'100%', background:'transparent' }} />
+                  <input aria-label='domain' value={domain} onChange={e => setDomain(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') loadDomain(domain); }} placeholder='Enter domain, e.g. coca-cola.com' style={{ border:0, outline:0, padding:'12px 14px', fontSize:15, width:'100%', background:'transparent' }} />
                 </div>
 
                 <button onClick={() => loadDomain(domain)} style={{ background:'#2563eb', color:'#fff', border:'none', padding:'10px 14px', borderRadius:6, fontWeight:700, cursor:'pointer' }}>Search</button>
@@ -264,18 +267,18 @@ export default function HomePage() {
               <div style={{ color:'#6b7280', fontSize:13, marginBottom:12 }}>
                 Want to take us for a test drive? Click any of these to see results live or enter your own search above.
                 <div style={{ marginTop:8, display:'flex', gap:12, flexWrap:'wrap' }}>
-                  {SAMPLE_DOMAINS.map(d => (<a key={d} href="#" onClick={(e)=>{e.preventDefault(); loadDomain(d);}} style={{ fontSize:13 }}>{d}</a>))}
+                  {SAMPLE_DOMAINS.map(d => (<a key={d} href='#' onClick={(e)=>{e.preventDefault(); loadDomain(d);}} style={{ fontSize:13 }}>{d}</a>))}
                 </div>
               </div>
             </div>
 
             <div style={{ alignSelf:'flex-start', fontSize:13 }}>
               <nav style={{ display:'flex', gap:12 }}>
-                <Link href="/"><a style={{ textDecoration:'underline', color:'#2563eb' }}>Home</a></Link>
-                <Link href="/plans"><a style={{ textDecoration:'underline', color:'#2563eb' }}>Plans</a></Link>
-                <Link href="/about"><a style={{ textDecoration:'underline', color:'#2563eb' }}>About</a></Link>
-                <Link href="/signin"><a style={{ textDecoration:'underline', color:'#2563eb' }}>SignIn</a></Link>
-                <Link href="/plans"><a style={{ textDecoration:'underline', color:'#2563eb' }}>SignUp</a></Link>
+                <Link href='/'><a style={{ textDecoration:'underline', color:'#2563eb' }}>Home</a></Link>
+                <Link href='/plans'><a style={{ textDecoration:'underline', color:'#2563eb' }}>Plans</a></Link>
+                <Link href='/about'><a style={{ textDecoration:'underline', color:'#2563eb' }}>About</a></Link>
+                <Link href='/signin'><a style={{ textDecoration:'underline', color:'#2563eb' }}>SignIn</a></Link>
+                <Link href='/plans'><a style={{ textDecoration:'underline', color:'#2563eb' }}>SignUp</a></Link>
               </nav>
             </div>
           </header>
@@ -289,8 +292,8 @@ export default function HomePage() {
                   <div style={{ color:'#6b7280', fontSize:13 }}>
                     { data ? `Showing ${data.shown || (data.contacts && data.contacts.length) || 0} of ${data.total || (data.contacts && data.contacts.length) || 0} results.` : 'Showing results' }
                   </div>
-                  { data && data.total && data.total > (data.shown || (data.contacts && data.contacts.length) || 0) ? (
-                    <Link href="/plans"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Upgrade to see all</a></Link>
+                  { data && data.total && (Number(data.total) > Number(data.shown)) ? (
+                    <Link href='/plans'><a style={{ color:'#2563eb', textDecoration:'underline' }}>Upgrade to see all</a></Link>
                   ) : null }
                   <div style={{ marginLeft:8, color:'#9ca3af', fontSize:12 }}>Powered by AI</div>
                 </div>
