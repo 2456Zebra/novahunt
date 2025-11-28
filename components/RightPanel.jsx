@@ -1,17 +1,11 @@
 import React from 'react';
 import CorporateProfile from './CorporateProfile';
 
-// RightPanel: simplified and aligned.
-// - No "contacts found" summary or edit/upload control.
-// - Spacer reduced so right panel lines up with left column.
-// - Illustration only displayed if present.
-
+// RightPanel: raise slightly so it visually aligns with left column.
+// We use a negative top margin to nudge it up ~1/4 inch (approx 18px).
 export default function RightPanel({ domain, data }) {
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:12, alignItems:'stretch' }}>
-      {/* spacer set to 0 so right column aligns exactly with left column content */}
-      <div style={{ height:0 }} />
-
+    <div style={{ display:'flex', flexDirection:'column', gap:12, alignItems:'stretch', marginTop: '-18px' }}>
       <CorporateProfile domain={domain} data={data} />
 
       {/* only show illustration when present */}
