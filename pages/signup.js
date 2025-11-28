@@ -1,70 +1,55 @@
 import React, { useState } from 'react';
-import { useRouter } from 'next/router';
+import Link from 'next/link';
 
-export default function SignUpPage() {
-  const router = useRouter();
+export default function Signup() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  async function onSubmit(e) {
-    e && e.preventDefault && e.preventDefault();
-    setBusy(true);
-    setError('');
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!email) { alert('Enter an email'); return; }
+    setSubmitting(true);
+
+    // Demo: create local demo account
     try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Signup failed');
-      // server sets nh_session cookie; redirect to account
-      router.replace('/account');
+      const account = {
+        email,
+        plan: 'Free',
+        searches: 0,
+        reveals: 0,
+        createdAt: Date.now()
+      };
+      localStorage.setItem('nh_isSignedIn', '1');
+      localStorage.setItem('nh_account', JSON.stringify(account));
+      // redirect to homepage
+      window.location.href = '/';
     } catch (err) {
-      setError(err.message || 'Signup failed');
-    } finally {
-      setBusy(false);
+      alert('Signup failed (demo).');
+      setSubmitting(false);
     }
   }
 
   return (
-    <main style={{ padding: 24, maxWidth: 640, margin: '40px auto' }}>
-      <h1>Create an account</h1>
-      <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12 }}>
-        <label style={{ fontSize: 14 }}>Email</label>
-        <input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          type="email"
-          placeholder="you@example.com"
-          required
-          style={{ padding: '12px 14px', fontSize: 16, borderRadius: 8, border: '1px solid #e6e6e6' }}
-        />
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f8fafc', fontFamily:'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
+      <div style={{ width:420, background:'#fff', borderRadius:10, boxShadow:'0 6px 18px rgba(8,15,29,0.06)', padding:28 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+          <h2 style={{ margin:0, fontSize:22 }}>Create your NovaHunt account</h2>
+          <Link href="/"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Back to homepage</a></Link>
+        </div>
 
-        <label style={{ fontSize: 14 }}>Password</label>
-        <input
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          type="password"
-          placeholder="Choose a strong password"
-          required
-          style={{ padding: '12px 14px', fontSize: 16, borderRadius: 8, border: '1px solid #e6e6e6' }}
-        />
+        <form onSubmit={handleSubmit}>
+          <label style={{ display:'block', marginBottom:8, fontSize:13 }}>Email</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" style={{ width:'100%', padding:'10px 12px', borderRadius:8, border:'1px solid #e6edf3', marginBottom:12 }} />
 
-        {error ? <div style={{ color: 'red' }}>{error}</div> : null}
-
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="submit" style={{ flex: 1, padding: '12px 14px', borderRadius: 8, background: '#111827', color: '#fff', border: 'none' }} disabled={busy}>
-            {busy ? 'Creating account…' : 'Create account'}
+          <button type="submit" disabled={submitting} style={{ width:'100%', background:'#2563eb', color:'#fff', padding:'10px', borderRadius:8, border:'none', fontWeight:700 }}>
+            {submitting ? 'Creating…' : 'Create free account'}
           </button>
-        </div>
+        </form>
 
-        <div style={{ color: '#6b7280', fontSize: 13 }}>
-          By signing up you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy policy</a>.
+        <div style={{ marginTop:14, textAlign:'center', color:'#6b7280', fontSize:13 }}>
+          Already have an account? <Link href="/signin"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Sign in</a></Link>
         </div>
-      </form>
-    </main>
+      </div>
+    </div>
   );
 }
