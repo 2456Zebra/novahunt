@@ -296,11 +296,9 @@ export default function HomePage() {
                           Showing {data.shown || (data.contacts && data.contacts.length) || 0} of {data.total || (data.contacts && data.contacts.length) || 0} results.
                         </span>
 
-                        { data && Number(data.total) > Number(data.shown) ? (
-                          <Link href="/plans">
-                            <a style={{ color:'#ff6b00', textDecoration:'underline', marginLeft:6 }}>Upgrade to see all</a>
-                          </Link>
-                        ) : null }
+                        <Link href="/plans">
+                          <a style={{ color:'#ff6b00', textDecoration:'underline', marginLeft:6 }}>Upgrade to see all</a>
+                        </Link>
                       </>
                     ) : <span>Showing results</span> }
                   </div>
