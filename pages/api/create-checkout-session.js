@@ -1,8 +1,7 @@
 // pages/api/create-checkout-session.js
-// Accepts either { priceId } OR { plan } in the request body.
-// If a plan slug is provided, it resolves that to a Stripe Price id using a map.
-// You can configure the map via an environment variable PRICE_MAP as JSON string:
-// PRICE_MAP='{"starter":"price_1SW1uNGyuj9BgGEUEuHiifyT","pro":"price_ABC...","team":"price_DEF..."}'
+// Accepts either { priceId } OR { plan }.
+// If plan === 'free' it returns a url to redirect the user to account creation (no Stripe session).
+// Map Stripe Price IDs via PRICE_MAP env or the fallback map below.
 
 import Stripe from 'stripe';
 
@@ -15,11 +14,11 @@ function loadPriceMap() {
       console.warn('PRICE_MAP env present but invalid JSON. Ignoring.', e);
     }
   }
-  // Fallback map — replace these values with your real Stripe Price IDs if you choose to edit code.
+  // FALLBACK - replace these placeholders with real price IDs if you edit code.
   return {
     starter: 'price_1SW1uNGyuj9BgGEUEuHiifyT',
-    pro: 'price_REPLACE_WITH_PRO_PRICE_ID',   // <-- replace
-    team: 'price_REPLACE_WITH_TEAM_PRICE_ID', // <-- replace
+    pro: 'price_REPLACE_WITH_PRO_PRICE_ID',   // <-- replace or use PRICE_MAP env
+    team: 'price_REPLACE_WITH_TEAM_PRICE_ID', // <-- replace or use PRICE_MAP env
   };
 }
 
@@ -30,7 +29,13 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
     let { priceId, email, plan } = body;
 
-    // If a plan slug was provided, map it to a priceId
+    // Handle free plan: redirect to signup flow instead of creating Stripe session
+    if (!priceId && plan === 'free') {
+      // Update '/create-account' to your actual sign-up path if different
+      return res.status(200).json({ id: null, url: '/create-account' });
+    }
+
+    // Resolve plan slug -> priceId
     const priceMap = loadPriceMap();
     if (!priceId && plan && typeof plan === 'string') {
       priceId = priceMap[plan];
@@ -40,7 +45,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Validate final priceId
     if (!priceId || typeof priceId !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid priceId in request body' });
     }
