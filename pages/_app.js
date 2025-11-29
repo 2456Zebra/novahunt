@@ -1,34 +1,58 @@
-// pages/_app.js
-// Minimal app wrapper: do NOT render the site-wide Header so page-level headers remain the single header.
-// Keeps ErrorBoundary and site footer. Removed Terms and Privacy links as requested.
+import React, { useEffect, useState } from 'react';
+import '../styles/globals.css'; // adjust if you use a different stylesheet path
+import useMounted from '../lib/useMounted';
 
-import React from 'react';
-import App from 'next/app';
-import ErrorBoundary from '../components/ErrorBoundary';
+/*
+  Temporary defensive _app.js:
+  - Renders nothing until client mount (avoids hydration mismatch crashes)
+  - Catches runtime errors with an ErrorBoundary so the app stays interactive
+  - Logs errors to console for easier debugging
 
-function Footer() {
-  return (
-    <footer style={{ marginTop:40, padding:20, borderTop:'1px solid #e6edf3', background:'#fbfcfd', textAlign:'center', color:'#6b7280', fontSize:13 }}>
-      <div style={{ maxWidth:1100, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}>
-        <div>© 2026 NovaHunt</div>
-        <div style={{ display:'flex', gap:12 }}>
-          <a href="/contact" style={{ color:'#6b7280', textDecoration:'underline' }}>Contact</a>
+  Replace your existing pages/_app.js with this while you debug the root cause.
+  This is a short-term mitigation — we'll still need to find and fix the real render error.
+*/
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, errorInfo: null };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, info) {
+    console.error('Unhandled render error caught by ErrorBoundary:', error, info);
+    this.setState({ errorInfo: info });
+    // Optionally report to a logging service here
+  }
+  render() {
+    if (this.state.hasError) {
+      // Render a minimal fallback UI but do not block other user interactions
+      return (
+        <div style={{ padding: 24, fontFamily:'Inter,system-ui, -apple-system, Roboto' }}>
+          <h2>Something went wrong</h2>
+          <p>We caught an unexpected error. Please reload the page. If the problem persists, contact support.</p>
         </div>
-      </div>
-    </footer>
-  );
+      );
+    }
+    return this.props.children;
+  }
 }
 
-class MyApp extends App {
-  render() {
-    const { Component, pageProps } = this.props;
-    return (
-      <ErrorBoundary>
-        <Component {...pageProps} />
-        <Footer />
-      </ErrorBoundary>
-    );
+function MyApp({ Component, pageProps }) {
+  const mounted = useMounted();
+
+  // Wait until client mount to avoid hydration mismatches causing React invariants
+  if (!mounted) {
+    // Minimal SSR fallback to preserve layout quickly; avoid rendering interactive code before mount
+    return <div style={{ minHeight: '60vh' }} />;
   }
+
+  return (
+    <ErrorBoundary>
+      <Component {...pageProps} />
+    </ErrorBoundary>
+  );
 }
 
 export default MyApp;
