@@ -71,7 +71,6 @@ export default async function handler(req, res) {
     }
   } catch (err) {
     console.error('Webhook processing error', err);
-    // Do not return non-2xx here if you want Stripe to retry; handle as appropriate.
   }
 
   res.status(200).json({ received: true });
