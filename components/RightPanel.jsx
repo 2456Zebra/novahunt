@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
 
 /*
- RightPanel (client-friendly)
+ Client-friendly RightPanel
  - Prefers `company` prop when provided.
- - If no prop, reads the last loaded company from localStorage ('nh_company')
-   or falls back to domain from 'nh_lastDomain' (default 'coca-cola.com').
- - Ensures it doesn't expand/push layout: no absolute/fixed height; stays top-aligned.
+ - Otherwise reads last-loaded company from localStorage 'nh_company' (written by pages/index.js).
+ - Falls back to nh_lastDomain or 'coca-cola.com'.
+ - Keeps layout flow so it doesn't push or mis-align the left column.
 */
 
 function readLocalCompany() {
   try {
     const raw = localStorage.getItem('nh_company');
     if (raw) return JSON.parse(raw);
-  } catch (e) { /* ignore */ }
+  } catch (e) { /* ignore parse errors */ }
   return null;
 }
 
@@ -24,17 +24,14 @@ export default function RightPanel({ company }) {
       setClientCompany(company);
       return;
     }
-    // Only run in browser
     if (typeof window === 'undefined') return;
 
-    // Try to read the last-loaded company saved by pages that fetch data client-side
     const fromStorage = readLocalCompany();
     if (fromStorage) {
       setClientCompany(fromStorage);
       return;
     }
 
-    // Fallback: read last domain or default to coca-cola.com
     const lastDomain = localStorage.getItem('nh_lastDomain') || 'coca-cola.com';
     setClientCompany({ name: lastDomain, domain: lastDomain, description: '', website: `https://${lastDomain}` });
   }, [company]);
@@ -62,7 +59,6 @@ export default function RightPanel({ company }) {
           box-sizing: border-box;
         }
         .rp-inner {
-          /* Prevent the panel from stretching/shoving; keep content flow natural */
           display: flex;
           flex-direction: column;
           gap: 8px;
