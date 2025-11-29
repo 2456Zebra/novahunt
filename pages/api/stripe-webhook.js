@@ -9,12 +9,11 @@ export const config = {
 };
 
 async function buffer(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    req.on('data', (c) => chunks.push(c));
-    req.on('end', () => resolve(Buffer.concat(chunks)));
-    req.on('error', (err) => reject(err));
-  });
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks);
 }
 
 export default async function handler(req, res) {
@@ -27,13 +26,14 @@ export default async function handler(req, res) {
     const raw = await buffer(req);
 
     if (process.env.STRIPE_WEBHOOK_SECRET && sig) {
+      // Verify signature when secret provided
       event = stripe.webhooks.constructEvent(raw, sig, process.env.STRIPE_WEBHOOK_SECRET);
     } else {
       // No signature secret configured: fall back to parsing JSON (less secure)
       event = JSON.parse(raw.toString('utf8'));
     }
 
-    // Handle events: keep handlers fast and idempotent
+    // Handle events quickly and idempotently
     switch (event.type) {
       case 'checkout.session.completed':
         console.info('[webhook] checkout.session.completed', event.data.object.id);
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
         console.info('[webhook] unhandled event type', event.type);
     }
 
-    // Respond 200 quickly to acknowledge
+    // Acknowledge receipt
     res.status(200).json({ received: true });
   } catch (err) {
     console.error('[stripe-webhook] error', err && err.message ? err.message : err);
