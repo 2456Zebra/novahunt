@@ -1,39 +1,40 @@
 import React, { useState } from 'react';
 
 /*
-  UpgradeButton
-  - Preferred: pass priceId prop
-  - Fallbacks: plan slug or productId in data attributes or props are supported by server handler
-  - Usage examples:
+  UpgradeButton (defensive)
+  - Prefers prop priceId
+  - Falls back to data-price-id, data-product, or data-plan (in that order)
+  - Sends plan/product/price to API so the server can resolve priceId using env mappings
+  - Usage:
     <UpgradeButton priceId={plan.price?.id} email={user?.email} label="Subscribe" />
-    <UpgradeButton label="Pro" data-plan="pro" />
+    or
+    <button data-plan="pro" data-product="prod_ABC..." className="upgrade-button">Subscribe</button>
 */
 
-export default function UpgradeButton({ priceId: propPriceId, email, label = 'Upgrade', 'data-plan': dataPlan, 'data-product': dataProduct }) {
+export default function UpgradeButton({ priceId: propPriceId, email, label = 'Upgrade' }) {
   const [loading, setLoading] = useState(false);
 
   const startCheckout = async (e) => {
     setLoading(true);
     try {
-      // Prefer priceId prop; otherwise pick up dataset attributes on the button
-      const btn = e && e.currentTarget ? e.currentTarget : null;
-      const domPlan = btn && btn.dataset && btn.dataset.plan;
+      const btn = (e && e.currentTarget) || (e && e.target) || null;
+      const domPrice = btn && btn.dataset && (btn.dataset.priceId || btn.dataset.price);
       const domProduct = btn && btn.dataset && btn.dataset.product;
-      const domPrice = btn && btn.dataset && btn.dataset.priceId;
+      const domPlan = btn && btn.dataset && btn.dataset.plan;
 
       const payload = {};
       if (propPriceId) payload.priceId = propPriceId;
       else if (domPrice) payload.priceId = domPrice;
-      else if (dataPlan || domPlan) payload.plan = dataPlan || domPlan;
-      else if (dataProduct || domProduct) payload.productId = dataProduct || domProduct;
+      else if (domProduct) payload.productId = domProduct;
+      else if (domPlan) payload.plan = domPlan;
 
       if (email) payload.email = email;
 
-      console.info('UpgradeButton: payload', payload);
+      console.info('UpgradeButton: outgoing payload', payload);
 
-      if (!payload.priceId && !payload.plan && !payload.productId) {
-        console.error('UpgradeButton: no priceId, plan or productId available', payload);
-        alert('Configuration error: pricing not available. Please contact support.');
+      if (!payload.priceId && !payload.productId && !payload.plan) {
+        console.error('UpgradeButton: no price/product/plan available', payload);
+        alert('Pricing configuration missing. Please contact support.');
         setLoading(false);
         return;
       }
@@ -46,17 +47,24 @@ export default function UpgradeButton({ priceId: propPriceId, email, label = 'Up
 
       const text = await res.text();
       let json = null;
-      try { json = JSON.parse(text); } catch (err) { /* ignore */ }
+      try { json = JSON.parse(text); } catch (_) {}
 
       if (!res.ok) {
         console.error('create-checkout-session failed', res.status, text);
-        alert(`Could not start checkout: ${json?.error || json?.message || res.statusText}`);
+        const message = (json && (json.error || json.message)) || 'Could not start checkout. Try again.';
+        // Show diagnostics-friendly message
+        alert(`Could not start checkout: ${message}`);
         setLoading(false);
         return;
       }
 
-      if (json && json.url) window.location.href = json.url;
-      else { console.error('Unexpected response', text); alert('Could not start checkout. Try again.'); setLoading(false); }
+      if (json && json.url) {
+        window.location.href = json.url;
+      } else {
+        console.error('Unexpected response from create-checkout-session', text);
+        alert('Could not start checkout: unexpected server response.');
+        setLoading(false);
+      }
     } catch (err) {
       console.error('UpgradeButton error', err);
       alert('Could not start checkout. Try again.');
@@ -71,8 +79,6 @@ export default function UpgradeButton({ priceId: propPriceId, email, label = 'Up
       data-price-id={propPriceId || ''}
       className="upgrade-button"
       aria-busy={loading}
-      data-plan={dataPlan || ''}
-      data-product={dataProduct || ''}
     >
       {loading ? 'Starting…' : label}
     </button>
