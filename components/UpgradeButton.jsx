@@ -1,43 +1,42 @@
 import React, { useState } from 'react';
 
 /*
-  Defensive UpgradeButton
-  - Accepts priceId and email props (preferred)
-  - Falls back to data-plan-price-id on the button or nearest ancestor
-  - Logs outgoing payload so you can inspect what is sent
-  - Shows a loading state and friendly error messages
-  - Usage: <UpgradeButton priceId={plan.price?.id || plan.priceId} email={user?.email} label="Subscribe" />
+  UpgradeButton
+  - Preferred: pass priceId prop
+  - Fallbacks: plan slug or productId in data attributes or props are supported by server handler
+  - Usage examples:
+    <UpgradeButton priceId={plan.price?.id} email={user?.email} label="Subscribe" />
+    <UpgradeButton label="Pro" data-plan="pro" />
 */
 
-export default function UpgradeButton({ priceId: propPriceId, email, label = 'Upgrade' }) {
+export default function UpgradeButton({ priceId: propPriceId, email, label = 'Upgrade', 'data-plan': dataPlan, 'data-product': dataProduct }) {
   const [loading, setLoading] = useState(false);
-
-  const findPriceIdFromDom = (el) => {
-    if (!el) return null;
-    let cur = el;
-    while (cur && cur !== document.body) {
-      if (cur.dataset && cur.dataset.planPriceId) return cur.dataset.planPriceId;
-      cur = cur.parentElement;
-    }
-    return null;
-  };
 
   const startCheckout = async (e) => {
     setLoading(true);
     try {
-      const domPriceId = findPriceIdFromDom(e && e.currentTarget ? e.currentTarget : e && e.target);
-      console.info('UpgradeButton.startCheckout: propPriceId=', propPriceId, 'domPriceId=', domPriceId);
-      const priceId = propPriceId || domPriceId || null;
+      // Prefer priceId prop; otherwise pick up dataset attributes on the button
+      const btn = e && e.currentTarget ? e.currentTarget : null;
+      const domPlan = btn && btn.dataset && btn.dataset.plan;
+      const domProduct = btn && btn.dataset && btn.dataset.product;
+      const domPrice = btn && btn.dataset && btn.dataset.priceId;
 
-      if (!priceId || typeof priceId !== 'string') {
-        console.error('UpgradeButton: missing or invalid priceId', { propPriceId, domPriceId });
-        alert('Configuration error: price not available. Please contact support.');
+      const payload = {};
+      if (propPriceId) payload.priceId = propPriceId;
+      else if (domPrice) payload.priceId = domPrice;
+      else if (dataPlan || domPlan) payload.plan = dataPlan || domPlan;
+      else if (dataProduct || domProduct) payload.productId = dataProduct || domProduct;
+
+      if (email) payload.email = email;
+
+      console.info('UpgradeButton: payload', payload);
+
+      if (!payload.priceId && !payload.plan && !payload.productId) {
+        console.error('UpgradeButton: no priceId, plan or productId available', payload);
+        alert('Configuration error: pricing not available. Please contact support.');
         setLoading(false);
         return;
       }
-
-      const payload = { priceId, email };
-      console.info('UpgradeButton: sending payload to /api/create-checkout-session', payload);
 
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -47,24 +46,17 @@ export default function UpgradeButton({ priceId: propPriceId, email, label = 'Up
 
       const text = await res.text();
       let json = null;
-      try { json = JSON.parse(text); } catch (err) { /* not JSON */ }
+      try { json = JSON.parse(text); } catch (err) { /* ignore */ }
 
       if (!res.ok) {
-        const errMsg = (json && (json.error || json.message)) || res.statusText || 'Could not start checkout';
         console.error('create-checkout-session failed', res.status, text);
-        alert(`Could not start checkout: ${errMsg}`);
+        alert(`Could not start checkout: ${json?.error || json?.message || res.statusText}`);
         setLoading(false);
         return;
       }
 
-      if (json && json.url) {
-        // Redirect to Stripe Checkout
-        window.location.href = json.url;
-      } else {
-        console.error('Unexpected response from create-checkout-session', text);
-        alert('Could not start checkout: unexpected server response.');
-        setLoading(false);
-      }
+      if (json && json.url) window.location.href = json.url;
+      else { console.error('Unexpected response', text); alert('Could not start checkout. Try again.'); setLoading(false); }
     } catch (err) {
       console.error('UpgradeButton error', err);
       alert('Could not start checkout. Try again.');
@@ -76,9 +68,11 @@ export default function UpgradeButton({ priceId: propPriceId, email, label = 'Up
     <button
       onClick={startCheckout}
       disabled={loading}
-      data-plan-price-id={propPriceId || ''}
+      data-price-id={propPriceId || ''}
       className="upgrade-button"
       aria-busy={loading}
+      data-plan={dataPlan || ''}
+      data-product={dataProduct || ''}
     >
       {loading ? 'Starting…' : label}
     </button>
