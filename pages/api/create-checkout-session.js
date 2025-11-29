@@ -2,7 +2,7 @@
 // Accepts either { priceId } OR { plan } in the request body.
 // If a plan slug is provided, it resolves that to a Stripe Price id using a map.
 // You can configure the map via an environment variable PRICE_MAP as JSON string:
-// PRICE_MAP='{"starter":"price_1SW1uNGyuj9BgGEUEuHiifyT","pro":"price_ABC..."}'
+// PRICE_MAP='{"starter":"price_1SW1uNGyuj9BgGEUEuHiifyT","pro":"price_ABC...","team":"price_DEF..."}'
 
 import Stripe from 'stripe';
 
@@ -15,10 +15,11 @@ function loadPriceMap() {
       console.warn('PRICE_MAP env present but invalid JSON. Ignoring.', e);
     }
   }
-  // Fallback map — edit these values to match your Stripe Price ids.
+  // Fallback map — replace these values with your real Stripe Price IDs if you choose to edit code.
   return {
-    starter: 'price_1SW1uNGyuj9BgGEUEuHiifyT', // <- replace with your real starter price id if different
-    // pro: 'price_xxx',
+    starter: 'price_1SW1uNGyuj9BgGEUEuHiifyT',
+    pro: 'price_REPLACE_WITH_PRO_PRICE_ID',   // <-- replace
+    team: 'price_REPLACE_WITH_TEAM_PRICE_ID', // <-- replace
   };
 }
 
