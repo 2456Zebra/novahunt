@@ -1,25 +1,25 @@
 // pages/api/create-checkout-session.js
-// Accepts either { priceId } OR { plan } in the request body.
-// If plan === 'free' returns a url to the signup flow instead of creating a Stripe session.
-// Map plan slugs to Stripe Price IDs via PRICE_MAP env (JSON) or the fallback map below.
+// Accepts { priceId } OR { plan } OR { productId }.
+// If given productId, it auto-resolves an active price for that product using the Stripe API.
+// If plan === 'free' returns a frontend signup url (no Stripe session).
+//
+// Env used:
+// - STRIPE_SECRET_KEY
+// - PRICE_MAP (optional JSON mapping of plan slug -> priceId or productId)
+// - SUCCESS_URL (contains {CHECKOUT_SESSION_ID})
+// - CANCEL_URL
 
 import Stripe from 'stripe';
 
 function loadPriceMap() {
   const fromEnv = process.env.PRICE_MAP;
-  if (fromEnv) {
-    try {
-      return JSON.parse(fromEnv);
-    } catch (e) {
-      console.warn('PRICE_MAP env present but invalid JSON. Ignoring.', e);
-    }
+  if (!fromEnv) return {};
+  try {
+    return JSON.parse(fromEnv);
+  } catch (e) {
+    console.warn('PRICE_MAP env present but invalid JSON. Ignoring.', e);
+    return {};
   }
-  // Fallback map — replace these with your real Stripe Price IDs if you want them hard-coded.
-  return {
-    starter: 'price_1SW1uNGyuj9BgGEUEuHiifyT',
-    pro: 'price_REPLACE_WITH_PRO_PRICE_ID',
-    team: 'price_REPLACE_WITH_TEAM_PRICE_ID',
-  };
 }
 
 export default async function handler(req, res) {
@@ -27,40 +27,56 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
-    let { priceId, email, plan } = body;
+    let { priceId, email, plan, productId } = body;
 
-    // Handle free plan: return frontend signup url (no Stripe session)
+    // Quick free plan short-circuit
     if (!priceId && plan === 'free') {
-      return res.status(200).json({ id: null, url: '/create-account' }); // update path if needed
+      // Return frontend signup URL (no Stripe session)
+      return res.status(200).json({ id: null, url: '/create-account' });
     }
 
-    // Resolve plan slug -> priceId
+    // Resolve plan slug -> priceId or productId via PRICE_MAP
     const priceMap = loadPriceMap();
-    if (!priceId && plan && typeof plan === 'string') {
-      priceId = priceMap[plan];
-      if (!priceId) {
-        console.warn('Unknown plan slug received:', plan);
-        return res.status(400).json({ error: `Unknown plan: ${plan}` });
+    if (plan && priceMap[plan]) {
+      const mapped = priceMap[plan];
+      // allow mapping to either a price_... or a product_...
+      if (mapped.startsWith('price_')) priceId = mapped;
+      else if (mapped.startsWith('prod_') || mapped.startsWith('prod-')) productId = mapped;
+    }
+
+    // If productId provided but no priceId, use Stripe to find an active price
+    const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+    if (!STRIPE_SECRET_KEY) {
+      console.error('STRIPE_SECRET_KEY missing');
+      return res.status(500).json({ error: 'Server misconfiguration: STRIPE_SECRET_KEY missing' });
+    }
+    const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' });
+
+    if (!priceId && productId) {
+      // Find an active price for the product (prefer recurring/subscription prices)
+      const prices = await stripe.prices.list({
+        product: productId,
+        active: true,
+        limit: 10,
+      });
+      // Try to find recurring price first, otherwise any price
+      const recurring = prices.data.find(p => p.recurring);
+      const chosen = recurring || prices.data[0];
+      if (chosen) priceId = chosen.id;
+      else {
+        console.warn('No active price found for productId', productId);
+        return res.status(400).json({ error: `No active price found for product ${productId}` });
       }
     }
 
-    // Validate final priceId
     if (!priceId || typeof priceId !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid priceId in request body' });
     }
 
-    // Required environment
-    const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
     const SUCCESS_URL = process.env.SUCCESS_URL || 'https://www.novahunt.ai/checkout-success?session_id={CHECKOUT_SESSION_ID}';
     const CANCEL_URL = process.env.CANCEL_URL || 'https://www.novahunt.ai/plans';
 
-    if (!STRIPE_SECRET_KEY) {
-      console.error('STRIPE_SECRET_KEY not configured in environment');
-      return res.status(500).json({ error: 'Server misconfiguration: STRIPE_SECRET_KEY missing' });
-    }
-
-    // Create Stripe session
-    const stripe = new Stripe(STRIPE_SECRET_KEY);
+    // Create Stripe Checkout Session (subscription mode)
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',
@@ -73,9 +89,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ id: session.id, url: session.url });
   } catch (err) {
     console.error('create-checkout-session error:', err && err.stack ? err.stack : err);
-    if (err && err.statusCode) {
-      return res.status(err.statusCode).json({ error: err.message });
-    }
+    if (err && err.statusCode) return res.status(err.statusCode).json({ error: err.message });
     return res.status(500).json({ error: 'Internal server error', message: err && err.message ? err.message : '' });
   }
 }
