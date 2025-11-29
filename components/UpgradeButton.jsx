@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 
 /*
-  Defensive UpgradeButton:
-  - Accepts priceId and email props
-  - If priceId missing, tries to read data-plan-price-id from the button/closest ancestor
-  - Logs exactly what is being sent to the server so you can see why the server returned "Missing priceId"
-  - Keeps friendly UI and error messages
+  Defensive UpgradeButton
+  - Accepts priceId and email props (preferred)
+  - Falls back to data-plan-price-id on the button or nearest ancestor
+  - Logs outgoing payload so you can inspect what is sent
+  - Shows a loading state and friendly error messages
+  - Usage: <UpgradeButton priceId={plan.price?.id || plan.priceId} email={user?.email} label="Subscribe" />
 */
 
 export default function UpgradeButton({ priceId: propPriceId, email, label = 'Upgrade' }) {
@@ -13,7 +14,6 @@ export default function UpgradeButton({ priceId: propPriceId, email, label = 'Up
 
   const findPriceIdFromDom = (el) => {
     if (!el) return null;
-    // walk up to find data-plan-price-id
     let cur = el;
     while (cur && cur !== document.body) {
       if (cur.dataset && cur.dataset.planPriceId) return cur.dataset.planPriceId;
@@ -24,13 +24,10 @@ export default function UpgradeButton({ priceId: propPriceId, email, label = 'Up
 
   const startCheckout = async (e) => {
     setLoading(true);
-
     try {
-      // Prefer prop, then dataset on button/ancestors
       const domPriceId = findPriceIdFromDom(e && e.currentTarget ? e.currentTarget : e && e.target);
+      console.info('UpgradeButton.startCheckout: propPriceId=', propPriceId, 'domPriceId=', domPriceId);
       const priceId = propPriceId || domPriceId || null;
-
-      console.info('UpgradeButton.startCheckout: priceId prop=', propPriceId, 'domPriceId=', domPriceId);
 
       if (!priceId || typeof priceId !== 'string') {
         console.error('UpgradeButton: missing or invalid priceId', { propPriceId, domPriceId });
@@ -50,16 +47,18 @@ export default function UpgradeButton({ priceId: propPriceId, email, label = 'Up
 
       const text = await res.text();
       let json = null;
-      try { json = JSON.parse(text); } catch (_) { /* ignore */ }
+      try { json = JSON.parse(text); } catch (err) { /* not JSON */ }
 
       if (!res.ok) {
+        const errMsg = (json && (json.error || json.message)) || res.statusText || 'Could not start checkout';
         console.error('create-checkout-session failed', res.status, text);
-        alert(`Could not start checkout: ${json && (json.error || json.message) ? (json.error || json.message) : res.statusText}`);
+        alert(`Could not start checkout: ${errMsg}`);
         setLoading(false);
         return;
       }
 
       if (json && json.url) {
+        // Redirect to Stripe Checkout
         window.location.href = json.url;
       } else {
         console.error('Unexpected response from create-checkout-session', text);
