@@ -1,3 +1,7 @@
+// Homepage based on your production layout with one small addition:
+// after building `company`, persist it to localStorage as 'nh_company'
+// so the client RightPanel can pick it up and show the corporate profile immediately.
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import RightPanel from '../components/RightPanel';
@@ -104,6 +108,9 @@ export default function HomePage() {
         const savedEmails = new Set(saved.map(s => s.email));
         company.contacts = company.contacts.map(c => ({ ...c, _saved: savedEmails.has(c.email) }));
 
+        // Persist the company so client-side RightPanel picks it up immediately
+        try { localStorage.setItem('nh_company', JSON.stringify(company)); } catch (e) { /* ignore */ }
+
         setData(company);
         setLoading(false);
         try {
@@ -117,7 +124,9 @@ export default function HomePage() {
       console.warn('find-company failed', err);
     }
 
-    setData({ name: key, domain: key, contacts: [], total: 0, shown: 0, enrichment: { description: '', image: null } });
+    const fallback = { name: key, domain: key, contacts: [], total: 0, shown: 0, enrichment: { description: '', image: null } };
+    try { localStorage.setItem('nh_company', JSON.stringify(fallback)); } catch (e) { /* ignore */ }
+    setData(fallback);
     setLoading(false);
   }
 
