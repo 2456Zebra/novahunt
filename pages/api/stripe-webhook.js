@@ -36,7 +36,6 @@ export default async function handler(req, res) {
     // Handle events: keep handlers fast and idempotent
     switch (event.type) {
       case 'checkout.session.completed':
-        // Provision user, mark subscription, etc.
         console.info('[webhook] checkout.session.completed', event.data.object.id);
         break;
       case 'invoice.payment_succeeded':
@@ -50,7 +49,6 @@ export default async function handler(req, res) {
     res.status(200).json({ received: true });
   } catch (err) {
     console.error('[stripe-webhook] error', err && err.message ? err.message : err);
-    // Return 400 for signature verification failure or parsing errors
     res.status(400).send(`Webhook error: ${err && err.message ? err.message : 'unknown'}`);
   }
 }
