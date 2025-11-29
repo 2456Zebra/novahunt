@@ -1,53 +1,75 @@
 // pages/api/create-checkout-session.js
-// Robust version: validates input, checks env, logs detailed errors, and returns helpful HTTP codes.
+// Accepts either { priceId } OR { plan } in the request body.
+// If a plan slug is provided, it resolves that to a Stripe Price id using a map.
+// You can configure the map via an environment variable PRICE_MAP as JSON string:
+// PRICE_MAP='{"starter":"price_1SW1uNGyuj9BgGEUEuHiifyT","pro":"price_ABC..."}'
 
 import Stripe from 'stripe';
+
+function loadPriceMap() {
+  const fromEnv = process.env.PRICE_MAP;
+  if (fromEnv) {
+    try {
+      return JSON.parse(fromEnv);
+    } catch (e) {
+      console.warn('PRICE_MAP env present but invalid JSON. Ignoring.', e);
+    }
+  }
+  // Fallback map — edit these values to match your Stripe Price ids.
+  return {
+    starter: 'price_1SW1uNGyuj9BgGEUEuHiifyT', // <- replace with your real starter price id if different
+    // pro: 'price_xxx',
+  };
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
-    const { priceId, email } = body;
+    let { priceId, email, plan } = body;
 
-    // Basic validation
+    // If a plan slug was provided, map it to a priceId
+    const priceMap = loadPriceMap();
+    if (!priceId && plan && typeof plan === 'string') {
+      priceId = priceMap[plan];
+      if (!priceId) {
+        console.warn('Unknown plan slug received:', plan);
+        return res.status(400).json({ error: `Unknown plan: ${plan}` });
+      }
+    }
+
+    // Validate final priceId
     if (!priceId || typeof priceId !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid priceId in request body' });
     }
 
-    // Check required env
     const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-    const SUCCESS_URL = process.env.SUCCESS_URL;
+    const SUCCESS_URL = process.env.SUCCESS_URL || 'https://www.novahunt.ai/checkout-success?session_id={CHECKOUT_SESSION_ID}';
+    const CANCEL_URL = process.env.CANCEL_URL || 'https://www.novahunt.ai/plans';
+
     if (!STRIPE_SECRET_KEY) {
       console.error('STRIPE_SECRET_KEY not configured in environment');
       return res.status(500).json({ error: 'Server misconfiguration: STRIPE_SECRET_KEY missing' });
     }
-    if (!SUCCESS_URL || !SUCCESS_URL.includes('{CHECKOUT_SESSION_ID}')) {
-      console.warn('SUCCESS_URL missing or does not include {CHECKOUT_SESSION_ID}', SUCCESS_URL);
-      // Not fatal for tests, but warn and continue — Stripe requires the placeholder to be useful.
-    }
 
-    const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' });
+    const stripe = new Stripe(STRIPE_SECRET_KEY);
 
-    // Create checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      mode: 'subscription', // or 'payment' depending on your use
+      mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
       customer_email: email || undefined,
       success_url: SUCCESS_URL,
-      cancel_url: process.env.CANCEL_URL || `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.novahunt.ai'}/plans`,
+      cancel_url: CANCEL_URL,
     });
 
     return res.status(200).json({ id: session.id, url: session.url });
   } catch (err) {
-    // Detailed server logs for Vercel (this helps us diagnose the 500)
     console.error('create-checkout-session error:', err && err.stack ? err.stack : err);
-    // If it's a Stripe API error with a status code, propagate a friendly message
     if (err && err.statusCode) {
-      return res.status(err.statusCode).json({ error: err.message, type: err.type || 'stripe_error' });
+      return res.status(err.statusCode).json({ error: err.message });
     }
-    // Generic 500
     return res.status(500).json({ error: 'Internal server error', message: err && err.message ? err.message : '' });
   }
 }
