@@ -1,45 +1,40 @@
 import React, { useEffect, useState } from 'react';
 
 /*
- Client-friendly RightPanel
- - Prefers `company` prop when provided.
- - Otherwise reads last-loaded company from localStorage 'nh_company' (written by pages/index.js).
- - Falls back to nh_lastDomain or 'coca-cola.com'.
- - Keeps layout flow so it doesn't push or mis-align the left column.
+  Defensive RightPanel:
+  - Prefers `company` prop when provided (pages/index.js should pass `data`).
+  - Otherwise reads 'nh_company' or 'nh_lastDomain' from localStorage (safe client fallback).
+  - Keeps layout flow and won't push/expand the left content.
 */
-
 function readLocalCompany() {
   try {
     const raw = localStorage.getItem('nh_company');
     if (raw) return JSON.parse(raw);
-  } catch (e) { /* ignore parse errors */ }
+  } catch (e) {}
   return null;
 }
 
 export default function RightPanel({ company }) {
-  const [clientCompany, setClientCompany] = useState(company || null);
+  const [c, setC] = useState(company || null);
 
   useEffect(() => {
     if (company) {
-      setClientCompany(company);
+      setC(company);
       return;
     }
     if (typeof window === 'undefined') return;
-
-    const fromStorage = readLocalCompany();
-    if (fromStorage) {
-      setClientCompany(fromStorage);
+    const stored = readLocalCompany();
+    if (stored) {
+      setC(stored);
       return;
     }
-
     const lastDomain = localStorage.getItem('nh_lastDomain') || 'coca-cola.com';
-    setClientCompany({ name: lastDomain, domain: lastDomain, description: '', website: `https://${lastDomain}` });
+    setC({ name: lastDomain, domain: lastDomain, description: '', website: `https://${lastDomain}` });
   }, [company]);
 
-  const c = clientCompany || {};
-  const name = c.name || c.domain || 'coca-cola.com';
-  const description = c.description || 'Find hiring signals with NovaHunt';
-  const website = c.website || (c.domain ? `https://${c.domain}` : 'https://novahunt.ai');
+  const name = (c && (c.name || c.domain)) || 'coca-cola.com';
+  const description = (c && (c.description || (c.enrichment && c.enrichment.description))) || 'Find hiring signals with NovaHunt';
+  const website = (c && (c.website || (c.domain ? `https://${c.domain}` : null))) || 'https://novahunt.ai';
 
   return (
     <aside className="right-panel">
@@ -53,20 +48,17 @@ export default function RightPanel({ company }) {
 
       <style jsx>{`
         .right-panel {
+          width: 320px;
           padding: 12px;
           background: #fff;
           border-left: 1px solid #f1f1f1;
           box-sizing: border-box;
+          align-self: flex-start;
         }
-        .rp-inner {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          align-items: flex-start;
-        }
-        .company-name { font-weight: 700; font-size: 16px; margin-bottom: 2px; }
-        .company-desc { color: #666; font-size: 13px; line-height: 1.3; }
-        .company-link { color: #0645AD; text-decoration: underline; word-break: break-all; }
+        .rp-inner { display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
+        .company-name { font-weight:700; font-size:16px; }
+        .company-desc { color:#666; font-size:13px; line-height:1.3; }
+        .company-link { color:#0645AD; text-decoration:underline; word-break:break-all; }
       `}</style>
     </aside>
   );
