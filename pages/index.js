@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import RightPanel from '../components/RightPanel';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 const SAMPLE_DOMAINS = ['coca-cola.com','fordmodels.com','unitedtalent.com','wilhelmina.com','nfl.com'];
@@ -237,7 +238,7 @@ export default function HomePage() {
     { icon: '👗', title: 'Model → Agency', text: 'Find modelling agencies and casting contacts to book your next shoot.' },
     { icon: '🎭', title: 'Actor → Agent', text: 'Locate talent agents and casting directors for auditions.' },
     { icon: '💼', title: 'Freelancer → Clients', text: 'Locate hiring managers and decision makers for contract work.' },
-    { icon: '🎵', title: 'Musician → Gigs', text: 'Find booking agents, promoters, and venues to book shows.' },
+    { icon: '🎵', title: 'Musician → Gigs', text: 'Locate booking agents, promoters, and venues to book shows.' },
     { icon: '🏷️', title: 'Seller → Leads', text: 'Discover sales contacts to scale your outreach and win that next contract.' },
     { icon: '📣', title: 'Influencer → Sponsors', text: 'Find brand contacts and PR reps to land sponsorships and collabs.' },
     { icon: '📸', title: 'Photographer → Clients', text: 'Find art directors, magazines, and brands who hire photographers.' },
@@ -326,7 +327,9 @@ export default function HomePage() {
               </div>
             </section>
 
-            {/* RightPanel removed here to avoid duplication — Layout renders the RightPanel */}
+            <aside>
+              <RightPanel domain={domain} data={data} />
+            </aside>
           </div>
         </div>
       </main>
