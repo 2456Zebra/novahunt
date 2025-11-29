@@ -1,7 +1,9 @@
 // pages/api/complete-checkout.js
 // Validates a Stripe Checkout Session and returns a simple account object.
-// If STRIPE_SECRET_KEY is provided in env, this will fetch the session from Stripe.
-// Improves error messages to hint at common issues (missing placeholder, test/live key mismatch).
+// This is useful as a fallback when a client returns with session_id in the URL.
+// Environment:
+// - STRIPE_SECRET_KEY (sk_test_... or sk_live_...)
+// Note: production-grade approach should rely on webhooks (see pages/api/webhooks.js).
 
 export default async function handler(req, res) {
   const { session_id } = req.query || {};
@@ -26,9 +28,7 @@ export default async function handler(req, res) {
 
     if (!stripeRes.ok) {
       const text = await stripeRes.text().catch(() => '');
-      // Log the full Stripe response server-side (Vercel logs). Useful for correlating with Stripe dashboard request log.
       console.error(`Stripe API error fetching session ${session_id}:`, stripeRes.status, text);
-      // Provide a helpful message to the client including common causes
       if (stripeRes.status === 404) {
         return res.status(502).send(`Stripe API error: ${stripeRes.status} ${text} — common causes: session id invalid or secret key mismatch (test vs live).`);
       }
@@ -39,8 +39,7 @@ export default async function handler(req, res) {
     const email = (session.customer_details && session.customer_details.email) || session.customer_email || null;
     const paymentStatus = session.payment_status || session.status || 'unknown';
 
-    // Normally: create/update user in DB, attach stripe ids, etc.
-    // Demo: return an account object derived from the session
+    // In production: create/update account in DB here.
     const account = {
       email: email || `stripe_user_${session_id.slice(0,8)}@novahunt.ai`,
       plan: 'Pro',
