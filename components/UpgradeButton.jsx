@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
 
 /*
-  UpgradeButton (defensive)
-  - Prefers prop priceId
-  - Falls back to data-price-id, data-product, or data-plan (in that order)
-  - Sends plan/product/price to API so the server can resolve priceId using env mappings
-  - Usage:
-    <UpgradeButton priceId={plan.price?.id} email={user?.email} label="Subscribe" />
-    or
-    <button data-plan="pro" data-product="prod_ABC..." className="upgrade-button">Subscribe</button>
+  Defensive UpgradeButton:
+  - Prefer prop priceId
+  - Fallbacks: data-price-id, data-product, data-plan
+  - Shows server error details in the alert so you can see the real reason checkout failed.
 */
 
 export default function UpgradeButton({ priceId: propPriceId, email, label = 'Upgrade' }) {
@@ -51,9 +47,9 @@ export default function UpgradeButton({ priceId: propPriceId, email, label = 'Up
 
       if (!res.ok) {
         console.error('create-checkout-session failed', res.status, text);
-        const message = (json && (json.error || json.message)) || 'Could not start checkout. Try again.';
-        // Show diagnostics-friendly message
-        alert(`Could not start checkout: ${message}`);
+        // Show helpful diagnostics to the user so you can paste the error here
+        const serverMessage = (json && (json.error || json.message)) || text || res.statusText;
+        alert(`Could not start checkout: ${serverMessage}`);
         setLoading(false);
         return;
       }
@@ -62,12 +58,12 @@ export default function UpgradeButton({ priceId: propPriceId, email, label = 'Up
         window.location.href = json.url;
       } else {
         console.error('Unexpected response from create-checkout-session', text);
-        alert('Could not start checkout: unexpected server response.');
+        alert(`Could not start checkout: unexpected server response. ${text}`);
         setLoading(false);
       }
     } catch (err) {
       console.error('UpgradeButton error', err);
-      alert('Could not start checkout. Try again.');
+      alert(`Could not start checkout. Try again. (${err && err.message ? err.message : 'unknown error'})`);
       setLoading(false);
     }
   };
