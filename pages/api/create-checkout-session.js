@@ -1,7 +1,7 @@
 // pages/api/create-checkout-session.js
-// Accepts either { priceId } OR { plan }.
-// If plan === 'free' it returns a url to redirect the user to account creation (no Stripe session).
-// Map Stripe Price IDs via PRICE_MAP env or the fallback map below.
+// Accepts either { priceId } OR { plan } in the request body.
+// If plan === 'free' returns a url to the signup flow instead of creating a Stripe session.
+// Map plan slugs to Stripe Price IDs via PRICE_MAP env (JSON) or the fallback map below.
 
 import Stripe from 'stripe';
 
@@ -14,11 +14,11 @@ function loadPriceMap() {
       console.warn('PRICE_MAP env present but invalid JSON. Ignoring.', e);
     }
   }
-  // FALLBACK - replace these placeholders with real price IDs if you edit code.
+  // Fallback map — replace these with your real Stripe Price IDs if you want them hard-coded.
   return {
     starter: 'price_1SW1uNGyuj9BgGEUEuHiifyT',
-    pro: 'price_REPLACE_WITH_PRO_PRICE_ID',   // <-- replace or use PRICE_MAP env
-    team: 'price_REPLACE_WITH_TEAM_PRICE_ID', // <-- replace or use PRICE_MAP env
+    pro: 'price_REPLACE_WITH_PRO_PRICE_ID',
+    team: 'price_REPLACE_WITH_TEAM_PRICE_ID',
   };
 }
 
@@ -29,10 +29,9 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
     let { priceId, email, plan } = body;
 
-    // Handle free plan: redirect to signup flow instead of creating Stripe session
+    // Handle free plan: return frontend signup url (no Stripe session)
     if (!priceId && plan === 'free') {
-      // Update '/create-account' to your actual sign-up path if different
-      return res.status(200).json({ id: null, url: '/create-account' });
+      return res.status(200).json({ id: null, url: '/create-account' }); // update path if needed
     }
 
     // Resolve plan slug -> priceId
@@ -45,10 +44,12 @@ export default async function handler(req, res) {
       }
     }
 
+    // Validate final priceId
     if (!priceId || typeof priceId !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid priceId in request body' });
     }
 
+    // Required environment
     const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
     const SUCCESS_URL = process.env.SUCCESS_URL || 'https://www.novahunt.ai/checkout-success?session_id={CHECKOUT_SESSION_ID}';
     const CANCEL_URL = process.env.CANCEL_URL || 'https://www.novahunt.ai/plans';
@@ -58,8 +59,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Server misconfiguration: STRIPE_SECRET_KEY missing' });
     }
 
+    // Create Stripe session
     const stripe = new Stripe(STRIPE_SECRET_KEY);
-
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',
