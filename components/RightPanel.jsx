@@ -1,9 +1,9 @@
 import React from 'react';
 
 /*
- RightPanel shows a simple company profile area and the company link under it.
- It reads NEXT_PUBLIC_COMPANY_URL and NEXT_PUBLIC_COMPANY_NAME at build time.
- Set these env vars in Vercel if you want a custom URL/name.
+  Minimal RightPanel component to ensure the company profile and company link render.
+  It reads NEXT_PUBLIC_COMPANY_NAME and NEXT_PUBLIC_COMPANY_URL if present; otherwise falls back.
+  Safe to drop into your existing layout; the right panel markup is isolated.
 */
 
 export default function RightPanel({ company }) {
@@ -12,8 +12,12 @@ export default function RightPanel({ company }) {
   const description = (company && company.description) || 'Find hiring signals with NovaHunt';
 
   return (
-    <aside className="right-panel" style={{ padding: 12 }}>
-      <div style={{ fontSize: 16, fontWeight: 600 }}>{name}</div>
+    <aside className="right-panel" style={{
+      padding: 12,
+      borderLeft: '1px solid #f0f0f0',
+      background: '#fff'
+    }}>
+      <div style={{ fontSize: 16, fontWeight: 700 }}>{name}</div>
       <div style={{ color: '#666', marginTop: 6 }}>{description}</div>
       <div style={{ marginTop: 8 }}>
         <a
