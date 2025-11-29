@@ -1,9 +1,15 @@
-/* Global styles restore (links, layout, underline normalization). Merge if you already have a file. */
+/* Add to the end of styles/globals.css as a temporary stopgap:
+   hide duplicated header/footer/company blocks so the page looks correct while we fix the root cause.
+   This assumes the "first" header/footer are correct. Remove this when duplicates are removed in code.
+*/
 
-html, body, #__next { height: 100%; margin: 0; }
-a { color: #0645AD; text-decoration: underline; }
-.test-drive-prompt { font-size: 18px; line-height: 1.4; }
-.forgot-link { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; color: #0645AD; }
-.container { display:flex; align-items:flex-start; gap:24px; padding:24px; }
-.left-panel { flex:1; min-width:300px; }
-.right-panel { width:320px; margin-top:0 !important; }
+/* hide any second header/footer if they appear repeated */
+header + header { display: none !important; }       /* if a second header is immediately after the first */
+footer + footer { display: none !important; }       /* hide second footer if duplicated */
+
+/* if the company block repeats, hide the second copy based on repeated text */
+.right-panel-wrapper + .right-panel-wrapper,
+.right-panel + .right-panel { display: none !important; }
+
+/* generic last-resort: hide any immediate duplicate nav lists following each other */
+nav + nav { display: none !important; }
