@@ -1,16 +1,14 @@
 import React from 'react';
-import Header from './Header';
 import Footer from './Footer';
 import RightPanel from './RightPanel';
 
 /*
-  Main Layout: single source-of-truth for the right panel (prevents duplicates).
-  Pages that previously rendered RightPanel themselves should remove their local RightPanel render.
+  Layout WITHOUT rendering Header.
+  Pages render their own header/nav (keeps your clean links intact).
 */
 export default function Layout({ children, pageProps = {} }) {
   return (
     <div className="site-root">
-      <Header />
       <div className="container">
         <main className="left-panel">
           {children}
