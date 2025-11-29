@@ -58,14 +58,13 @@ export default async function handler(req, res) {
   try {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
-      // TODO: Provision the user, create subscription record, email receipt, etc.
-      // Ensure idempotency: check DB if session.id already processed.
       console.log('Webhook: checkout.session.completed', {
         id: session.id,
         email: session.customer_email,
         mode: session.mode,
         subscription: session.subscription || null,
       });
+      // TODO: idempotent provisioning (DB check) and any post-checkout actions
     } else {
       console.log('Webhook: unhandled event type', event.type);
     }
