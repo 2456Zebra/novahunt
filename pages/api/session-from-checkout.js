@@ -1,22 +1,18 @@
-// pages/api/session-from-checkout.js
-// Lightweight post-checkout redirect handler.
-// Usage as Stripe SUCCESS_URL:
-//   https://yourdomain.com/api/session-from-checkout?session_id={CHECKOUT_SESSION_ID}
-//
-// What it does:
-// 1) Retrieves the Stripe checkout session.
-// 2) Reads session.customer_email (if present).
-// 3) Sets a demo cookie nh_user_email so the frontend can show the signed-in email.
-// 4) Redirects to homepage (or another URL).
-//
-// Important: This is a minimal demo/proof-of-concept to make users appear "signed in" after checkout.
-// For production you should replace step 3 with real user provisioning and an authenticated session.
-
 import Stripe from 'stripe';
+
+/*
+  TEMPORARY DEBUGGING endpoint.
+  - Retrieves Stripe checkout session by session_id.
+  - Sets a client cookie nh_user_email (Path=/; Max-Age; SameSite=Lax; Secure).
+  - Redirects to / with checkout_email query param so you can confirm the server saw the email.
+  IMPORTANT: This exposes the email in the URL for debugging only. Remove/replace with the
+  secure version once we've diagnosed the problem.
+*/
 
 export default async function handler(req, res) {
   const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
   if (!STRIPE_SECRET_KEY) {
+    console.error('session-from-checkout: STRIPE_SECRET_KEY missing');
     return res.status(500).send('Server misconfiguration: STRIPE_SECRET_KEY missing');
   }
   const stripe = new Stripe(STRIPE_SECRET_KEY);
@@ -26,19 +22,23 @@ export default async function handler(req, res) {
 
   try {
     const session = await stripe.checkout.sessions.retrieve(session_id);
+
+    // Grab email if present
     const email = session.customer_email || '';
 
-    // Set a simple cookie so the frontend can detect the signed-in email (demo-only)
-    // Cookie is not secure-signed; replace with your real auth session in production.
-    const cookieValue = encodeURIComponent(email);
-    // Set cookie for 1 year
-    res.setHeader('Set-Cookie', `nh_user_email=${cookieValue}; Path=/; Max-Age=${60 * 60 * 24 * 365}; SameSite=Lax`);
+    // Log minimal diagnostics (Vercel logs will show this)
+    console.info('session-from-checkout: session_id=', session_id, 'email=', email, 'session_exists=', !!session);
 
-    // Optional: You can also set an HttpOnly cookie for server-only checks:
-    // res.setHeader('Set-Cookie', `nh_session=...; HttpOnly; Path=/; Max-Age=...; SameSite=Lax`);
+    // Set the client-visible cookie (no Domain attribute so it attaches to current origin)
+    const cookieValue = encodeURIComponent(email || '');
+    const maxAge = 60 * 60 * 24 * 365; // 1 year
+    const cookie = `nh_user_email=${cookieValue}; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure`;
+    res.setHeader('Set-Cookie', cookie);
 
-    // Redirect to homepage where your UI should detect nh_user_email cookie and show email
-    res.writeHead(302, { Location: '/' });
+    // DEBUG: redirect to homepage including the email as a query param so we can see it in the browser
+    // (temporary — remove this after debugging)
+    const redirectTo = `/?checkout_email=${encodeURIComponent(email || '')}`;
+    res.writeHead(302, { Location: redirectTo });
     return res.end();
   } catch (err) {
     console.error('session-from-checkout error', err && err.message ? err.message : err);
