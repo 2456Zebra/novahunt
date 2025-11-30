@@ -3,6 +3,11 @@
  * Handles incoming Stripe webhook events with signature verification.
  * 
  * Requires STRIPE_WEBHOOK_SECRET environment variable for signature verification.
+ * 
+ * Note: We initialize Stripe with an empty string fallback here rather than throwing
+ * at module load time (like lib/stripe.js) because this file is loaded during the
+ * build process and throwing would break builds in environments without secrets.
+ * The handler validates the webhook secret at runtime instead.
  */
 import Stripe from 'stripe';
 

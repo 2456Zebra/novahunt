@@ -4,7 +4,10 @@ import React, { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
 // Initialize Stripe.js with the publishable key
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
+// Note: Will be null if NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 /**
  * CheckoutButton: accepts priceId and label.
@@ -17,6 +20,11 @@ export default function CheckoutButton({ priceId, label = 'Upgrade' }) {
   async function startCheckout() {
     if (!priceId) {
       alert('Price ID is missing. Please contact the site admin.');
+      return;
+    }
+
+    if (!stripePromise) {
+      alert('Stripe is not configured. Please set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.');
       return;
     }
 
