@@ -11,24 +11,16 @@ export default function CheckoutButton({ priceId, children }) {
     if (loading) return;
     if (!priceId) {
       console.error('Checkout aborted: priceId is missing');
-      alert('Developer: priceId is not configured. See console.');
+      alert('Please select a product before checking out.');
       return;
     }
 
     setLoading(true);
     try {
-      // Send priceId in three ways to make server-side resolution robust:
-      // 1) JSON body, 2) query param, 3) X-Price-Id header
-      const url = `/api/create-checkout-session?priceId=${encodeURIComponent(priceId)}`;
       const payload = { priceId };
-      console.log('Checkout payload:', payload, 'URL:', url);
-
-      const res = await fetch(url, {
+      const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Price-Id': priceId,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -37,7 +29,6 @@ export default function CheckoutButton({ priceId, children }) {
       });
 
       if (!res.ok) {
-        // Surface server-provided message if available
         const serverMessage = data && (data.error || JSON.stringify(data));
         console.error('Server error creating checkout session:', serverMessage);
         alert(`Could not start checkout: ${serverMessage}`);
