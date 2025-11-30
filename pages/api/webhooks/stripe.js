@@ -1,5 +1,5 @@
 import { buffer } from 'micro';
-import stripe from '../../lib/stripe';
+import stripe from '../../../lib/stripe'; // <-- must point to repo-root /lib/stripe.js
 
 export const config = {
   api: {
