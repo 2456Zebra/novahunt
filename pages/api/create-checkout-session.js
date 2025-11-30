@@ -1,9 +1,19 @@
-// Robust create-checkout-session:
-// - Accepts priceId (body or query or header) OR planId (body or query or header) and maps plan -> price via data/price-map.json
-// - Logs request details for quick debugging in Vercel logs
-// - Does NOT use any test fallback; mapping must be filled with your real production price IDs
+// Robust create-checkout-session that determines whether the chosen price(s) are recurring
+// and creates a Checkout Session with mode 'subscription' for recurring prices or 'payment' for one-time prices.
+// Supports resolving plan -> price via data/price-map.json.
 import stripe from '../../lib/stripe';
 import priceMap from '../../data/price-map.json';
+
+async function isPriceRecurring(priceId) {
+  try {
+    const price = await stripe.prices.retrieve(priceId);
+    return !!price.recurring; // truthy if recurring (object) otherwise false
+  } catch (err) {
+    console.error('Error retrieving price from Stripe:', priceId, err && err.message);
+    // If we cannot retrieve price, assume not recurring to avoid blocking non-subscription flow.
+    return false;
+  }
+}
 
 function resolvePriceFromPlan(planId) {
   if (!planId) return null;
@@ -13,24 +23,19 @@ function resolvePriceFromPlan(planId) {
 export default async function handler(req, res) {
   console.log('--- create-checkout-session called ---');
   console.log('method:', req.method);
-  console.log('url:', req.url);
   console.log('query:', req.query || {});
 
-  // show only safe header previews
+  // Light header preview
   console.log('headers preview:', {
     'content-type': req.headers['content-type'],
     'x-price-id': req.headers['x-price-id'],
     'x-plan-id': req.headers['x-plan-id']
   });
 
-  // attempt to inspect body
+  // Normalize body
   let body = req.body || {};
-  try {
-    if (typeof body === 'string' && body.length) {
-      try { body = JSON.parse(body); } catch (e) { /* ignore */ }
-    }
-  } catch (e) {
-    console.log('error reading body:', e.message);
+  if (typeof body === 'string' && body.length) {
+    try { body = JSON.parse(body); } catch (e) { /* ignore */ }
   }
   console.log('body preview:', body && Object.keys(body).length ? body : null);
 
@@ -40,7 +45,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Priority: explicit priceId (body) -> priceId (query) -> header -> planId-> query plan -> header plan
+    // Resolve explicit priceId or planId from multiple sources
     const priceIdFromBody = body && body.priceId;
     const priceIdFromQuery = req.query && req.query.priceId;
     const priceIdFromHeader = req.headers && (req.headers['x-price-id'] || req.headers['X-Price-Id']);
@@ -58,9 +63,14 @@ export default async function handler(req, res) {
       resolvePriceFromPlan(planIdFromHeader) ||
       null;
 
-    // Allow explicit line_items in body (if provided, use them instead)
+    // If caller supplied explicit line_items (array), use them; otherwise build from resolvedPriceId
     const explicitLineItems = body && body.line_items;
-    const lineItems = explicitLineItems || (resolvedPriceId ? [{ price: resolvedPriceId, quantity: 1 }] : null);
+    let lineItems = null;
+    if (explicitLineItems && Array.isArray(explicitLineItems) && explicitLineItems.length > 0) {
+      lineItems = explicitLineItems;
+    } else if (resolvedPriceId) {
+      lineItems = [{ price: resolvedPriceId, quantity: 1 }];
+    }
 
     if (!lineItems) {
       console.log('-> Missing priceId/plan mapping. Resolved values:', {
@@ -73,25 +83,35 @@ export default async function handler(req, res) {
       });
       return res.status(400).json({
         error: 'Missing priceId',
-        message:
-          'Request must include a Stripe priceId (price_...) or a planId that exists in data/price-map.json.',
-        details: {
-          priceIdFromBody,
-          priceIdFromQuery,
-          priceIdFromHeader,
-          planIdFromBody,
-          planIdFromQuery,
-          planIdFromHeader
-        }
+        message: 'Request must include a Stripe priceId (price_...) or a planId that exists in data/price-map.json.'
       });
     }
 
-    console.log('-> Creating session with lineItems:', lineItems);
+    // Determine whether any price in lineItems is recurring
+    // Collect all priceIds from lineItems where item.price is a string id
+    const priceIdsToCheck = lineItems
+      .map((it) => (it && typeof it.price === 'string' ? it.price : null))
+      .filter(Boolean);
+
+    let anyRecurring = false;
+    for (const pid of priceIdsToCheck) {
+      /* eslint-disable no-await-in-loop */
+      const recurring = await isPriceRecurring(pid);
+      if (recurring) {
+        anyRecurring = true;
+        break;
+      }
+      /* eslint-enable no-await-in-loop */
+    }
+
+    const mode = anyRecurring ? 'subscription' : 'payment';
+    console.log('-> Creating session; mode:', mode, 'lineItems:', lineItems);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
-      mode: 'payment',
+      mode,
+      // For subscription mode, Stripe will create a subscription from the provided recurring price
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL || ''}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || ''}/cancel`,
     });
