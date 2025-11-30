@@ -1,89 +1,87 @@
-import { useEffect, useState } from 'react';
 import CheckoutButton from '../components/CheckoutButton';
 
-function formatPrice(amount, currency) {
-  if (typeof amount !== 'number') return '—';
-  const value = amount / 100;
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(value);
-  } catch {
-    return `${value} ${currency}`;
-  }
-}
+const PLANS = [
+  {
+    id: 'team_monthly',
+    priceId: 'price_replace_with_team_monthly', // <- REPLACE with your Stripe Price ID
+    title: 'NovaHunt Team',
+    priceLabel: '$199.00 / month',
+    subtitle: '3,000 searches / 1,500 reveals per month',
+  },
+  {
+    id: 'pro_monthly',
+    priceId: 'price_replace_with_pro_monthly', // <- REPLACE with your Stripe Price ID
+    title: 'NovaHunt Pro',
+    priceLabel: '$49.99 / month',
+    subtitle: '1,000 searches / 500 reveals per month',
+  },
+  {
+    id: 'starter_monthly',
+    priceId: 'price_replace_with_starter_monthly', // <- REPLACE with your Stripe Price ID
+    title: 'NovaHunt Starter',
+    priceLabel: '$9.99 / month',
+    subtitle: '300 searches / 150 reveals per month',
+  },
+  {
+    id: 'pro_alt_monthly',
+    priceId: 'price_replace_with_pro_alt_monthly', // <- REPLACE with your Stripe Price ID
+    title: 'NovaHunt.ai PRO',
+    priceLabel: '$10.00 / month',
+    subtitle: 'AI-powered lookup: fast email discovery',
+  },
+];
 
 export default function PlansPage() {
-  const [prices, setPrices] = useState([]);
-  const [selectedPriceId, setSelectedPriceId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch('/api/stripe/prices');
-        const data = await res.json();
-        if (res.ok && data.prices && data.prices.length) {
-          // Deduplicate by price id (should be unique already, but be safe)
-          const seen = new Map();
-          data.prices.forEach((p) => {
-            if (!seen.has(p.id)) seen.set(p.id, p);
-          });
-          const unique = Array.from(seen.values());
-          setPrices(unique);
-          setSelectedPriceId(unique[0] ? unique[0].id : null);
-        } else {
-          setPrices([]);
-          setSelectedPriceId(null);
-        }
-      } catch (err) {
-        console.error('Failed to load prices', err);
-        setError('Could not load plans at this time.');
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
-
   return (
-    <main style={{ padding: '2rem' }}>
-      <h1>Choose a plan</h1>
+    <main style={{ padding: '2rem', maxWidth: 1100, margin: '0 auto' }}>
+      <h1 style={{ marginBottom: '1rem' }}>Choose a plan</h1>
 
-      {loading && <p>Loading plans…</p>}
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '1rem',
+          alignItems: 'stretch',
+        }}
+      >
+        {PLANS.map((plan) => (
+          <section
+            key={plan.id}
+            style={{
+              border: '1px solid #e6e6e6',
+              borderRadius: 8,
+              padding: '1rem 1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              background: '#fff',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            }}
+          >
+            <div>
+              <h2 style={{ margin: '0 0 .5rem 0', fontSize: '1.125rem' }}>{plan.title}</h2>
+              <div style={{ color: '#111', fontWeight: 700, marginBottom: '.5rem' }}>{plan.priceLabel}</div>
+              <div style={{ color: '#555', marginBottom: '1rem' }}>{plan.subtitle}</div>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#444' }}>
+                <li>Fast email search</li>
+                <li>CSV export</li>
+                <li>Priority support</li>
+              </ul>
+            </div>
 
-      {!loading && prices.length === 0 && (
-        <div>
-          <p>No active prices found. Ensure your Stripe products & prices are created and STRIPE_SECRET_KEY is set on the server.</p>
-        </div>
-      )}
+            <div style={{ marginTop: '1rem' }}>
+              <CheckoutButton priceId={plan.priceId}>
+                Sign up — {plan.priceLabel.split(' ')[0]}
+              </CheckoutButton>
+            </div>
+          </section>
+        ))}
+      </div>
 
-      {!loading && prices.length > 0 && (
-        <form onSubmit={(e) => e.preventDefault()}>
-          <fieldset>
-            <legend>Plans</legend>
-            {prices.map((p) => (
-              <label key={p.id} style={{ display: 'block', margin: '8px 0' }}>
-                <input
-                  type="radio"
-                  name="plan"
-                  value={p.id}
-                  checked={selectedPriceId === p.id}
-                  onChange={() => setSelectedPriceId(p.id)}
-                />{' '}
-                <strong>{p.product?.name || p.nickname || p.id}</strong>{' '}
-                — {formatPrice(p.unit_amount, p.currency)}{' '}
-                {p.recurring ? <em> / {p.recurring.interval}</em> : <span> (one-time)</span>}{' '}
-                {p.product?.description ? <span style={{ color: '#666' }}> — {p.product.description}</span> : null}
-              </label>
-            ))}
-          </fieldset>
-
-          <div style={{ marginTop: '1rem' }}>
-            <CheckoutButton priceId={selectedPriceId}>Sign up / Checkout</CheckoutButton>
-          </div>
-        </form>
-      )}
+      <p style={{ marginTop: '1rem', color: '#666', fontSize: '.95rem' }}>
+        Note: Replace the placeholder price IDs (price_replace_with_...) in this file with the exact Stripe Price IDs
+        for each plan (they start with "price_"). Do not commit secret keys — set Stripe keys in Vercel env vars.
+      </p>
     </main>
   );
 }
