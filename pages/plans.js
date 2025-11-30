@@ -8,7 +8,7 @@ const PLANS = [
     title: 'NovaHunt Free',
     priceLabel: 'Free',
     subtitle: 'Explore NovaHunt with limited monthly searches',
-    features: ['50 searches / 25 reveals per month', 'Community support', 'CSV export (limited)'],
+    features: ['5 searches / 3 reveals per month', 'Community support'],
     badge: 'Free',
     recommended: false,
   },
@@ -18,7 +18,7 @@ const PLANS = [
     title: 'NovaHunt Starter',
     priceLabel: '$9.99 / month',
     subtitle: 'For individuals getting started with prospecting',
-    features: ['300 searches / 150 reveals per month', 'CSV export', 'Email support'],
+    features: ['100 searches / 50 reveals per month', 'Email support'],
     badge: 'Popular',
     recommended: false,
   },
@@ -28,7 +28,7 @@ const PLANS = [
     title: 'NovaHunt Pro',
     priceLabel: '$49.99 / month',
     subtitle: 'Advanced search volume and priority support',
-    features: ['1,000 searches / 500 reveals per month', 'Priority support', 'Team seats (basic)'],
+    features: ['1,000 searches / 500 reveals per month', 'Priority support', 'CSV export'],
     badge: 'Most popular',
     recommended: true,
   },
@@ -58,7 +58,6 @@ const cardStyle = {
 
 export default function PlansPage() {
   useEffect(() => {
-    // for analytics or simple debug: page viewed
     if (typeof window !== 'undefined') {
       console.log('Plans page loaded');
     }
@@ -153,27 +152,10 @@ export default function PlansPage() {
               {plan.priceId ? (
                 <div style={{ display: 'flex', gap: '.5rem' }}>
                   <CheckoutButton priceId={plan.priceId}>
-                    {plan.recommended ? 'Get Pro' : `Sign up — ${plan.priceLabel.split(' ')[0]}`}
+                    {`Sign Up — ${plan.priceLabel.split(' ')[0]}`}
                   </CheckoutButton>
-                  <a
-                    href="/contact"
-                    style={{
-                      display: 'inline-block',
-                      padding: '10px 14px',
-                      borderRadius: 6,
-                      textDecoration: 'none',
-                      border: '1px solid #e6e6e6',
-                      color: '#333',
-                      background: '#fff',
-                      fontSize: '.95rem',
-                      alignSelf: 'center',
-                    }}
-                  >
-                    Contact sales
-                  </a>
                 </div>
               ) : (
-                // Free plan CTA
                 <div style={{ display: 'flex', gap: '.5rem' }}>
                   <a
                     href="/signup"
@@ -190,38 +172,12 @@ export default function PlansPage() {
                   >
                     Get started — Free
                   </a>
-                  <a
-                    href="/signin"
-                    style={{
-                      display: 'inline-block',
-                      padding: '10px 14px',
-                      borderRadius: 6,
-                      textDecoration: 'none',
-                      border: '1px solid #e6e6e6',
-                      color: '#333',
-                      background: '#fff',
-                      fontSize: '.95rem',
-                      alignSelf: 'center',
-                    }}
-                  >
-                    Sign in
-                  </a>
                 </div>
               )}
             </div>
           </article>
         ))}
       </section>
-
-      <footer style={{ marginTop: '1rem', color: '#666', fontSize: '.95rem' }}>
-        <p>
-          Need an enterprise plan with higher limits or a custom contract? <a href="/contact">Contact our sales team</a>.
-        </p>
-        <p style={{ marginTop: '.5rem' }}>
-          Reminder: replace the placeholder price IDs (price_replace_with_...) in this file with the exact Stripe Price IDs
-          for each paid plan (they start with "price_"). Do not commit secret keys — set Stripe keys in Vercel env vars.
-        </p>
-      </footer>
     </main>
   );
 }
