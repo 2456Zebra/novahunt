@@ -1,5 +1,5 @@
 import { buffer } from 'micro';
-import stripe from '../../../lib/stripe'; // <-- must point to repo-root /lib/stripe.js
+import stripe from '../../../lib/stripe';
 
 export const config = {
   api: {
@@ -27,6 +27,7 @@ export default async function handler(req, res) {
     switch (event.type) {
       case 'checkout.session.completed':
         console.log('Checkout session completed', event.data.object.id);
+        // Place production fulfillment logic here (send receipt, provision product, etc.)
         break;
       default:
         console.log(`Unhandled event type ${event.type}`);
