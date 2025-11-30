@@ -1,0 +1,5 @@
+{
+  "basic": "price_replace_with_real_basic",
+  "pro": "price_replace_with_real_pro",
+  "enterprise": "price_replace_with_real_enterprise"
+}
