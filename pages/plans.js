@@ -1,87 +1,227 @@
 import CheckoutButton from '../components/CheckoutButton';
+import { useEffect } from 'react';
 
 const PLANS = [
   {
-    id: 'team_monthly',
-    priceId: 'price_replace_with_team_monthly', // <- REPLACE with your Stripe Price ID
-    title: 'NovaHunt Team',
-    priceLabel: '$199.00 / month',
-    subtitle: '3,000 searches / 1,500 reveals per month',
+    id: 'free',
+    priceId: null, // Free plan — no Stripe checkout
+    title: 'NovaHunt Free',
+    priceLabel: 'Free',
+    subtitle: 'Explore NovaHunt with limited monthly searches',
+    features: ['50 searches / 25 reveals per month', 'Community support', 'CSV export (limited)'],
+    badge: 'Free',
+    recommended: false,
   },
   {
-    id: 'pro_monthly',
-    priceId: 'price_replace_with_pro_monthly', // <- REPLACE with your Stripe Price ID
-    title: 'NovaHunt Pro',
-    priceLabel: '$49.99 / month',
-    subtitle: '1,000 searches / 500 reveals per month',
-  },
-  {
-    id: 'starter_monthly',
+    id: 'starter',
     priceId: 'price_replace_with_starter_monthly', // <- REPLACE with your Stripe Price ID
     title: 'NovaHunt Starter',
     priceLabel: '$9.99 / month',
-    subtitle: '300 searches / 150 reveals per month',
+    subtitle: 'For individuals getting started with prospecting',
+    features: ['300 searches / 150 reveals per month', 'CSV export', 'Email support'],
+    badge: 'Popular',
+    recommended: false,
   },
   {
-    id: 'pro_alt_monthly',
-    priceId: 'price_replace_with_pro_alt_monthly', // <- REPLACE with your Stripe Price ID
-    title: 'NovaHunt.ai PRO',
-    priceLabel: '$10.00 / month',
-    subtitle: 'AI-powered lookup: fast email discovery',
+    id: 'pro',
+    priceId: 'price_replace_with_pro_monthly', // <- REPLACE with your Stripe Price ID
+    title: 'NovaHunt Pro',
+    priceLabel: '$49.99 / month',
+    subtitle: 'Advanced search volume and priority support',
+    features: ['1,000 searches / 500 reveals per month', 'Priority support', 'Team seats (basic)'],
+    badge: 'Most popular',
+    recommended: true,
+  },
+  {
+    id: 'enterprise',
+    priceId: 'price_replace_with_enterprise_monthly', // <- REPLACE with your Stripe Price ID
+    title: 'NovaHunt Enterprise',
+    priceLabel: '$199.00 / month',
+    subtitle: 'Full power for teams and heavy usage',
+    features: ['3,000 searches / 1,500 reveals per month', 'Dedicated support & SLAs', 'Custom integrations'],
+    badge: 'Enterprise',
+    recommended: false,
   },
 ];
 
+const cardStyle = {
+  border: '1px solid #e8e8e8',
+  borderRadius: 10,
+  padding: '1.25rem',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  background: '#fff',
+  boxShadow: '0 6px 18px rgba(12,18,26,0.04)',
+  minHeight: 220,
+};
+
 export default function PlansPage() {
+  useEffect(() => {
+    // for analytics or simple debug: page viewed
+    if (typeof window !== 'undefined') {
+      console.log('Plans page loaded');
+    }
+  }, []);
+
   return (
     <main style={{ padding: '2rem', maxWidth: 1100, margin: '0 auto' }}>
-      <h1 style={{ marginBottom: '1rem' }}>Choose a plan</h1>
+      <header style={{ marginBottom: '1.25rem' }}>
+        <h1 style={{ margin: 0 }}>Choose a plan</h1>
+        <p style={{ marginTop: '.5rem', color: '#555' }}>
+          Start free or pick a plan that fits your team's prospecting needs. Upgrade or cancel anytime.
+        </p>
+      </header>
 
-      <div
+      <section
+        aria-label="Pricing plans"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
           gap: '1rem',
-          alignItems: 'stretch',
         }}
       >
         {PLANS.map((plan) => (
-          <section
-            key={plan.id}
-            style={{
-              border: '1px solid #e6e6e6',
-              borderRadius: 8,
-              padding: '1rem 1.25rem',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              background: '#fff',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-            }}
-          >
+          <article key={plan.id} style={cardStyle} aria-labelledby={`plan-${plan.id}-title`}>
             <div>
-              <h2 style={{ margin: '0 0 .5rem 0', fontSize: '1.125rem' }}>{plan.title}</h2>
-              <div style={{ color: '#111', fontWeight: 700, marginBottom: '.5rem' }}>{plan.priceLabel}</div>
-              <div style={{ color: '#555', marginBottom: '1rem' }}>{plan.subtitle}</div>
-              <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#444' }}>
-                <li>Fast email search</li>
-                <li>CSV export</li>
-                <li>Priority support</li>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <h2 id={`plan-${plan.id}-title`} style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>
+                  {plan.title}
+                </h2>
+
+                <div style={{ textAlign: 'right' }}>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      color: '#111',
+                      marginBottom: 6,
+                    }}
+                  >
+                    {plan.priceLabel}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '.85rem',
+                      color: '#666',
+                    }}
+                  >
+                    {plan.subtitle}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '.75rem', display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                {plan.recommended && (
+                  <span
+                    style={{
+                      background: '#0b74ff',
+                      color: 'white',
+                      padding: '4px 8px',
+                      borderRadius: 999,
+                      fontSize: '.8rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Recommended
+                  </span>
+                )}
+
+                <span
+                  style={{
+                    background: '#f3f4f6',
+                    color: '#333',
+                    padding: '4px 8px',
+                    borderRadius: 999,
+                    fontSize: '.8rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  {plan.badge}
+                </span>
+              </div>
+
+              <ul style={{ marginTop: '1rem', paddingLeft: '1.2rem', color: '#333' }}>
+                {plan.features.map((f, i) => (
+                  <li key={i} style={{ marginBottom: 6 }}>
+                    {f}
+                  </li>
+                ))}
               </ul>
             </div>
 
             <div style={{ marginTop: '1rem' }}>
-              <CheckoutButton priceId={plan.priceId}>
-                Sign up — {plan.priceLabel.split(' ')[0]}
-              </CheckoutButton>
+              {plan.priceId ? (
+                <div style={{ display: 'flex', gap: '.5rem' }}>
+                  <CheckoutButton priceId={plan.priceId}>
+                    {plan.recommended ? 'Get Pro' : `Sign up — ${plan.priceLabel.split(' ')[0]}`}
+                  </CheckoutButton>
+                  <a
+                    href="/contact"
+                    style={{
+                      display: 'inline-block',
+                      padding: '10px 14px',
+                      borderRadius: 6,
+                      textDecoration: 'none',
+                      border: '1px solid #e6e6e6',
+                      color: '#333',
+                      background: '#fff',
+                      fontSize: '.95rem',
+                      alignSelf: 'center',
+                    }}
+                  >
+                    Contact sales
+                  </a>
+                </div>
+              ) : (
+                // Free plan CTA
+                <div style={{ display: 'flex', gap: '.5rem' }}>
+                  <a
+                    href="/signup"
+                    style={{
+                      display: 'inline-block',
+                      padding: '10px 16px',
+                      borderRadius: 6,
+                      textDecoration: 'none',
+                      background: '#0b74ff',
+                      color: '#fff',
+                      fontWeight: 600,
+                    }}
+                    aria-label="Get started for free"
+                  >
+                    Get started — Free
+                  </a>
+                  <a
+                    href="/signin"
+                    style={{
+                      display: 'inline-block',
+                      padding: '10px 14px',
+                      borderRadius: 6,
+                      textDecoration: 'none',
+                      border: '1px solid #e6e6e6',
+                      color: '#333',
+                      background: '#fff',
+                      fontSize: '.95rem',
+                      alignSelf: 'center',
+                    }}
+                  >
+                    Sign in
+                  </a>
+                </div>
+              )}
             </div>
-          </section>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <p style={{ marginTop: '1rem', color: '#666', fontSize: '.95rem' }}>
-        Note: Replace the placeholder price IDs (price_replace_with_...) in this file with the exact Stripe Price IDs
-        for each plan (they start with "price_"). Do not commit secret keys — set Stripe keys in Vercel env vars.
-      </p>
+      <footer style={{ marginTop: '1rem', color: '#666', fontSize: '.95rem' }}>
+        <p>
+          Need an enterprise plan with higher limits or a custom contract? <a href="/contact">Contact our sales team</a>.
+        </p>
+        <p style={{ marginTop: '.5rem' }}>
+          Reminder: replace the placeholder price IDs (price_replace_with_...) in this file with the exact Stripe Price IDs
+          for each paid plan (they start with "price_"). Do not commit secret keys — set Stripe keys in Vercel env vars.
+        </p>
+      </footer>
     </main>
   );
 }
