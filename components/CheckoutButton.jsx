@@ -1,11 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+
+// Initialize Stripe.js with the publishable key
+// Note: Will be null if NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 /**
  * CheckoutButton: accepts priceId and label.
- * - Posts to /api/create-checkout (proxy) with x-nh-session header from localStorage.
- * - Shows detailed server error messages to the user.
+ * Uses @stripe/stripe-js to load Stripe and redirectToCheckout.
+ * Posts to /api/create-checkout-session to create a Checkout Session.
  */
 export default function CheckoutButton({ priceId, label = 'Upgrade' }) {
   const [loading, setLoading] = useState(false);
@@ -16,40 +23,43 @@ export default function CheckoutButton({ priceId, label = 'Upgrade' }) {
       return;
     }
 
+    if (!stripePromise) {
+      alert('Stripe is not configured. Please set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const sessionValue = localStorage.getItem('nh_session') || '';
-      const res = await fetch('/api/create-checkout', {
+      // Create a Checkout Session on the server
+      const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-nh-session': sessionValue,
         },
-        body: JSON.stringify({
-          priceId,
-        }),
+        body: JSON.stringify({ priceId }),
       });
 
-      let payload = null;
-      try {
-        payload = await res.json();
-      } catch (e) {
-        // non-JSON response
-      }
+      const data = await res.json();
 
       if (!res.ok) {
-        const msg = (payload && (payload.error || payload.message)) || `Server returned ${res.status}`;
-        throw new Error(msg);
+        throw new Error(data.error || `Server returned ${res.status}`);
       }
 
-      if (payload && payload.url) {
-        window.location.href = payload.url;
-        return;
+      // Redirect to Stripe Checkout using the session ID
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error('Stripe.js failed to load');
       }
 
-      throw new Error('Missing checkout URL in server response');
+      const { error } = await stripe.redirectToCheckout({
+        sessionId: data.id,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
     } catch (err) {
-      console.error('Checkout error', err);
+      console.error('Checkout error:', err);
       alert('Unable to start checkout: ' + (err?.message || 'unknown error'));
     } finally {
       setLoading(false);
