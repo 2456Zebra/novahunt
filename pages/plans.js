@@ -1,88 +1,114 @@
-import { useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import CheckoutButton from '../components/CheckoutButton';
 
+// Simple Plans page that fetches available prices (from /api/stripe/prices)
+// and posts priceId when user signs up. This guarantees the API receives priceId.
 export default function PlansPage() {
-  const [loadingPlan, setLoadingPlan] = useState('');
+  const [prices, setPrices] = useState([]);
+  const [selectedPriceId, setSelectedPriceId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState('');
 
-  async function startCheckout(planKey) {
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/stripe/prices');
+        const data = await res.json();
+        if (res.ok && data.prices && data.prices.length) {
+          setPrices(data.prices);
+          setSelectedPriceId(data.prices[0].id);
+        } else {
+          setPrices([]);
+        }
+      } catch (err) {
+        console.error('Failed to load prices', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const handleSignup = async () => {
+    setMessage('');
+    if (!selectedPriceId) {
+      setMessage('Please select a plan.');
+      return;
+    }
+
     try {
-      setLoadingPlan(planKey);
+      // Explicitly call the create-checkout-session API with JSON { priceId }
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planKey })
+        body: JSON.stringify({ priceId: selectedPriceId, planId: selectedPriceId }) // send both for compatibility
       });
-      const body = await res.json();
+      const data = await res.json().catch(() => ({ error: 'Invalid JSON response' }));
+
       if (!res.ok) {
-        alert('Could not start checkout: ' + (body?.error || 'unknown'));
-        setLoadingPlan('');
+        console.error('Checkout start failed', data);
+        setMessage(`Could not start checkout: ${data.error || JSON.stringify(data)}`);
         return;
       }
-      if (body.url) window.location.href = body.url;
-      else { alert('Checkout session created but no redirect URL returned.'); setLoadingPlan(''); }
+
+      // If using redirectToCheckout on the client, CheckoutButton covers it.
+      // For this simple flow we'll redirect using the session id via stripe.js
+      const stripePublic = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+      if (!stripePublic) {
+        setMessage('Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in environment.');
+        return;
+      }
+
+      // Use CheckoutButton component to handle redirect (or just show success)
+      // Here we simply return success (CheckoutButton will run the redirect normally in /checkout flow)
+      setMessage('Checkout session created. Redirecting…');
+      // Redirect to /checkout page which uses CheckoutButton component, passing selectedPriceId via query:
+      const nextUrl = `/checkout?priceId=${encodeURIComponent(selectedPriceId)}`;
+      window.location.href = nextUrl;
     } catch (err) {
-      console.error('checkout error', err);
-      alert('Could not start checkout. Try again.');
-      setLoadingPlan('');
+      console.error('Signup error', err);
+      setMessage(`Error: ${err.message || err.toString()}`);
     }
-  }
+  };
 
   return (
-    <main style={{ maxWidth: 980, margin: '48px auto', padding: '0 16px', paddingBottom: 64 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 8 }}>
-        <h1 style={{ margin:0 }}>Plans & Pricing</h1>
-        <Link href="/"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Back to homepage</a></Link>
-      </div>
+    <main style={{ padding: '2rem' }}>
+      <h1>Choose a plan</h1>
 
-      <p style={{ color: '#374151', marginTop: 8 }}>
-        Try NovaHunt free, then upgrade for higher monthly quotas and faster results.
-      </p>
+      {loading && <p>Loading plans…</p>}
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16, marginTop: 24 }}>
-        <div style={{ border: '1px solid #e6e6e6', padding: 16, borderRadius: 8 }}>
-          <h3 style={{ marginTop: 0 }}>Free</h3>
-          <p style={{ margin: 0 }}>5 searches / 2 reveals per month</p>
-          <div style={{ marginTop: 12 }}>
-            <a href="/signup" style={{ padding: '8px 12px', background: '#e5e7eb', color: '#111', borderRadius: 6, textDecoration: 'none' }}>Create free account</a>
-          </div>
+      {!loading && prices.length === 0 && (
+        <div>
+          <p>No active prices found. Ensure your Stripe products & prices are created and STRIPE_SECRET_KEY is set on the server.</p>
         </div>
+      )}
 
-        <div style={{ border: '1px solid #e6e6e6', padding: 16, borderRadius: 8 }}>
-          <h3 style={{ marginTop: 0 }}>Starter</h3>
-          <div style={{ fontSize: 24, fontWeight: 800 }}>$9.99/mo</div>
-          <p style={{ marginTop: 8 }}>300 searches / 150 reveals per month</p>
-          <div style={{ marginTop: 12 }}>
-            <button onClick={() => startCheckout('starter')} disabled={loadingPlan !== ''} style={{ padding: '8px 12px', background: '#007bff', color: '#fff', borderRadius: 6, border: 'none' }}>
-              {loadingPlan === 'starter' ? 'Starting…' : 'Choose Starter'}
-            </button>
-          </div>
-        </div>
+      {!loading && prices.length > 0 && (
+        <form onSubmit={(e) => { e.preventDefault(); handleSignup(); }}>
+          <fieldset>
+            <legend>Plans</legend>
+            {prices.map((p) => (
+              <label key={p.id} style={{ display: 'block', margin: '8px 0' }}>
+                <input
+                  type="radio"
+                  name="plan"
+                  value={p.id}
+                  checked={selectedPriceId === p.id}
+                  onChange={() => setSelectedPriceId(p.id)}
+                />{' '}
+                <strong>{p.product?.name || p.nickname || p.id}</strong>{' '}
+                — {typeof p.unit_amount === 'number' ? `${(p.unit_amount / 100).toFixed(2)} ${p.currency.toUpperCase()}` : '—'}
+              </label>
+            ))}
+          </fieldset>
 
-        <div style={{ border: '2px solid #f97316', padding: 16, borderRadius: 8, background: '#fffaf0', position: 'relative' }}>
-          <div style={{ position: 'absolute', right: 12, top: 12, background: '#f97316', color: '#fff', padding: '6px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
-            Most Popular
+          <div style={{ marginTop: '1rem' }}>
+            <button type="submit">Sign up / Checkout</button>
           </div>
-          <h3 style={{ marginTop: 0 }}>Pro</h3>
-          <div style={{ fontSize: 24, fontWeight: 800 }}>$49.99/mo</div>
-          <p style={{ marginTop: 8 }}>1,000 searches / 500 reveals per month</p>
-          <div style={{ marginTop: 12 }}>
-            <button onClick={() => startCheckout('pro')} disabled={loadingPlan !== ''} style={{ padding: '8px 12px', background: '#f97316', color: '#fff', borderRadius: 6, border: 'none' }}>
-              {loadingPlan === 'pro' ? 'Starting…' : 'Choose Pro'}
-            </button>
-          </div>
-        </div>
+        </form>
+      )}
 
-        <div style={{ border: '1px solid #e6e6e6', padding: 16, borderRadius: 8 }}>
-          <h3 style={{ marginTop: 0 }}>Team</h3>
-          <div style={{ fontSize: 24, fontWeight: 800 }}>$199/mo</div>
-          <p style={{ marginTop: 8 }}>3,000 searches / 1,500 reveals per month</p>
-          <div style={{ marginTop: 12 }}>
-            <button onClick={() => startCheckout('team')} disabled={loadingPlan !== ''} style={{ padding: '8px 12px', background: '#111827', color: '#fff', borderRadius: 6, border: 'none' }}>
-              {loadingPlan === 'team' ? 'Starting…' : 'Start Team Trial'}
-            </button>
-          </div>
-        </div>
-      </section>
+      {message && <p style={{ marginTop: '1rem', color: 'crimson' }}>{message}</p>}
     </main>
   );
 }
