@@ -14,7 +14,8 @@ const PLANS = [
   },
   {
     id: 'starter',
-    priceId: 'price_replace_with_starter_monthly', // <- REPLACE with your Stripe Price ID
+    // Set this in Vercel: NEXT_PUBLIC_PRICE_STARTER
+    priceId: process.env.NEXT_PUBLIC_PRICE_STARTER || null,
     title: 'NovaHunt Starter',
     priceLabel: '$9.99 / month',
     subtitle: 'For individuals getting started with prospecting',
@@ -24,7 +25,8 @@ const PLANS = [
   },
   {
     id: 'pro',
-    priceId: 'price_replace_with_pro_monthly', // <- REPLACE with your Stripe Price ID
+    // Set this in Vercel: NEXT_PUBLIC_PRICE_PRO
+    priceId: process.env.NEXT_PUBLIC_PRICE_PRO || null,
     title: 'NovaHunt Pro',
     priceLabel: '$49.99 / month',
     subtitle: 'Advanced search volume and priority support',
@@ -34,11 +36,12 @@ const PLANS = [
   },
   {
     id: 'enterprise',
-    priceId: 'price_replace_with_enterprise_monthly', // <- REPLACE with your Stripe Price ID
+    // Set this in Vercel: NEXT_PUBLIC_PRICE_ENTERPRISE
+    priceId: process.env.NEXT_PUBLIC_PRICE_ENTERPRISE || null,
     title: 'NovaHunt Enterprise',
     priceLabel: '$199.00 / month',
     subtitle: 'Full power for teams and heavy usage',
-    features: ['3,000 searches / 1,500 reveals per month', 'Dedicated support & SLAs', 'Custom integrations'],
+    features: ['3,000 searches / 1,500 reveals per month', 'Dedicated support', 'CSV export'],
     badge: 'Enterprise',
     recommended: false,
   },
@@ -68,7 +71,7 @@ export default function PlansPage() {
       <header style={{ marginBottom: '1.25rem' }}>
         <h1 style={{ margin: 0 }}>Choose a plan</h1>
         <p style={{ marginTop: '.5rem', color: '#555' }}>
-          Start free or pick a plan that fits your team's prospecting needs. Upgrade or cancel anytime.
+          Start free or pick a plan that fits your prospecting needs. Upgrade or cancel anytime.
         </p>
       </header>
 
