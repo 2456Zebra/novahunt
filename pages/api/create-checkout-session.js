@@ -1,41 +1,31 @@
-import Stripe from 'stripe';
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
-
-function getRequestOrigin(req) {
-  const origin = req.headers.origin || (req.headers.referer ? (() => {
-    try { const u = new URL(req.headers.referer); return `${u.protocol}//${u.host}`; } catch { return null; }
-  })() : null);
-  if (origin) return origin.replace(/\/$/, '');
-  if (process.env.SUCCESS_URL_BASE) return process.env.SUCCESS_URL_BASE.replace(/\/$/, '');
-  return (req.headers['x-forwarded-proto'] ? `${req.headers['x-forwarded-proto']}://` : '') + (req.headers.host || '');
-}
+import stripe from '../../lib/stripe';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).end('Method Not Allowed');
+  }
 
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const { priceId, email } = body;
-    if (!priceId) return res.status(400).json({ error: 'Missing priceId' });
+    const body = req.body || {};
+    const { priceId, line_items } = body;
+    const lineItems = line_items || (priceId ? [{ price: priceId, quantity: 1 }] : null);
 
-    const origin = getRequestOrigin(req);
-    const successBase = origin || process.env.SUCCESS_URL_BASE || 'https://novahunt.ai';
-    const success_url = `${successBase}/api/session-from-checkout?session_id={CHECKOUT_SESSION_ID}`;
-    const cancel_url = `${successBase}/plans`;
+    if (!lineItems) {
+      return res.status(400).json({ error: 'Missing priceId' });
+    }
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      mode: 'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url,
-      cancel_url,
-      customer_email: email || undefined,
-      metadata: { origin: origin || '' },
+      line_items: lineItems,
+      mode: 'payment',
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL || ''}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || ''}/cancel`,
     });
 
-    return res.status(200).json({ url: session.url || null, id: session.id });
+    return res.status(200).json({ id: session.id });
   } catch (err) {
-    console.error('[create-checkout-session] error', err && err.message ? err.message : err);
-    return res.status(500).json({ error: (err && err.message) || 'Server error' });
+    console.error('create-checkout-session error', err);
+    return res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 }

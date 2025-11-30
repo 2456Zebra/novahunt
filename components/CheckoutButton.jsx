@@ -1,75 +1,52 @@
-'use client';
+import { useState } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
 
-import React, { useState } from 'react';
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-/**
- * CheckoutButton: accepts priceId and label.
- * - Posts to /api/create-checkout (proxy) with x-nh-session header from localStorage.
- * - Shows detailed server error messages to the user.
- */
-export default function CheckoutButton({ priceId, label = 'Upgrade' }) {
+export default function CheckoutButton({ priceId, children }) {
   const [loading, setLoading] = useState(false);
 
-  async function startCheckout() {
+  const handleClick = async (e) => {
+    e.preventDefault();
+    if (loading) return;
     if (!priceId) {
-      alert('Price ID is missing. Please contact the site admin.');
+      console.error('Checkout aborted: priceId is missing');
+      alert('Checkout is unavailable. Please contact support.');
       return;
     }
 
     setLoading(true);
     try {
-      const sessionValue = localStorage.getItem('nh_session') || '';
-      const res = await fetch('/api/create-checkout', {
+      const payload = { priceId };
+      console.log('Checkout payload:', payload);
+      const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-nh-session': sessionValue,
-        },
-        body: JSON.stringify({
-          priceId,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
-      let payload = null;
-      try {
-        payload = await res.json();
-      } catch (e) {
-        // non-JSON response
-      }
-
+      const data = await res.json();
       if (!res.ok) {
-        const msg = (payload && (payload.error || payload.message)) || `Server returned ${res.status}`;
-        throw new Error(msg);
-      }
-
-      if (payload && payload.url) {
-        window.location.href = payload.url;
+        console.error('Server error creating checkout session:', data);
+        setLoading(false);
         return;
       }
 
-      throw new Error('Missing checkout URL in server response');
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error('Stripe failed to load.');
+
+      const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+      if (error) console.error('Stripe redirect error:', error);
     } catch (err) {
-      console.error('Checkout error', err);
-      alert('Unable to start checkout: ' + (err?.message || 'unknown error'));
+      console.error('Checkout error:', err);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <button
-      onClick={startCheckout}
-      disabled={loading}
-      style={{
-        background: '#111827',
-        color: 'white',
-        padding: '8px 12px',
-        borderRadius: 8,
-        border: 'none',
-        cursor: loading ? 'default' : 'pointer',
-      }}
-    >
-      {loading ? 'Redirecting…' : label}
+    <button onClick={handleClick} disabled={loading}>
+      {children || (loading ? 'Loading…' : 'Checkout')}
     </button>
   );
 }
