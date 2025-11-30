@@ -14,7 +14,9 @@
     "axios": "^1.6.0",
     "cookie": "^0.6.0",
     "@upstash/redis": "1.35.3",
+    "@stripe/stripe-js": "^2.2.0",
     "stripe": "^12.3.0",
+    "micro": "^9.3.4",
     "uuid": "^9.0.0"
   },
   "engines": {
