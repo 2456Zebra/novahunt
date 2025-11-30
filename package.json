@@ -8,12 +8,13 @@
     "start": "next start"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^2.4.0",
+    "@upstash/redis": "1.35.3",
+    "axios": "^1.6.0",
+    "cookie": "^0.6.0",
     "next": "13.5.11",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "axios": "^1.6.0",
-    "cookie": "^0.6.0",
-    "@upstash/redis": "1.35.3",
     "stripe": "^12.3.0",
     "uuid": "^9.0.0"
   },
