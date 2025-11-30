@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
     switch (event.type) {
       case 'checkout.session.completed':
-        console.log('Checkout session completed', event.data.object.id);
+        console.log('Checkout session completed');
         break;
       default:
         console.log(`Unhandled event type ${event.type}`);

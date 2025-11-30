@@ -11,7 +11,7 @@ export default function CheckoutButton({ priceId, children }) {
     if (loading) return;
     if (!priceId) {
       console.error('Checkout aborted: priceId is missing');
-      alert('Developer: priceId is not configured. See console.');
+      alert('Checkout is unavailable. Please contact support.');
       return;
     }
 
