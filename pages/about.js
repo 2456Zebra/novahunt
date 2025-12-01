@@ -7,7 +7,7 @@ export default function AboutPage() {
         padding: 24,
         maxWidth: 900,
         margin: '0 auto',
-        paddingBottom: 96, // added extra space at bottom only
+        paddingBottom: 160, // increased bottom space only (was 96)
         minHeight: '100vh',
         boxSizing: 'border-box',
         background: '#f7f7f8',
