@@ -2,14 +2,12 @@ import React from 'react';
 
 /*
 pages/contact.js
-- Implements the exact changes requested:
-  - Removes the Office block (no NovaHunt.ai / San Francisco text).
-  - Email changed to contact@novahunt.ai (mailto link).
-  - "We usually reply within 1 business day." moved near the top of the card.
-  - Contact card height reduced so it is not overly tall.
-  - Adds a "Back to Home" link in the top-right of the page container.
-  - Centers the whole Contact content both vertically and horizontally on the page.
-- Does NOT modify footer or any other files.
+- Updated per your instructions:
+  1) Removed the "Thank you — we look forward to helping you." line.
+  2) Added "We usually reply within 1 business day." near the bottom (moved).
+  3) Removed the earlier duplicate "We usually reply..." (so it appears only once).
+  4) Replaced the email sentence with: "Thank you for using NovaHunt, you can reach out to us at contact@novahunt.ai"
+- Keeps the Back to Home link and centered layout.
 */
 export default function ContactPage() {
   return (
@@ -53,7 +51,6 @@ export default function ContactPage() {
             padding: 18,
             borderRadius: 8,
             boxSizing: 'border-box',
-            // reduced vertical size
             minHeight: 120,
             display: 'flex',
             flexDirection: 'column',
@@ -66,13 +63,9 @@ export default function ContactPage() {
             </h1>
           </header>
 
-          <p style={{ marginTop: 6, color: '#666' }}>
-            We usually reply within 1 business day.
-          </p>
-
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 8 }}>
             <p style={{ color: '#444', margin: 0 }}>
-              For support and billing inquiries, email{' '}
+              Thank you for using NovaHunt, you can reach out to us at{' '}
               <a
                 href="mailto:contact@novahunt.ai"
                 style={{ color: '#444', textDecoration: 'none', fontWeight: 400 }}
@@ -86,7 +79,7 @@ export default function ContactPage() {
           <div style={{ height: 12 }} />
 
           <div style={{ color: '#999', fontSize: 13, marginTop: 8 }}>
-            Thank you — we look forward to helping you.
+            We usually reply within 1 business day.
           </div>
         </section>
       </div>
