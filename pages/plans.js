@@ -66,46 +66,8 @@ const cardBase = {
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
-  background: '#fff',
+  background: '#fff', // white background for all
   minHeight: 240,
-};
-
-const badgeBase = {
-  background: '#f3f4f6',
-  color: '#333',
-  padding: '4px 8px',
-  borderRadius: 999,
-  fontSize: '.8rem',
-  fontWeight: 600,
-};
-
-const ctaButtonStyle = {
-  padding: '10px 18px',
-  borderRadius: 10,
-  fontWeight: 700,
-  border: 'none',
-  cursor: 'pointer',
-  fontSize: '0.95rem',
-  minWidth: 160,
-  display: 'inline-flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-};
-
-const paidButtonStyle = {
-  ...ctaButtonStyle,
-  background: 'linear-gradient(90deg,#0b74ff,#6b8cff)',
-  color: '#fff',
-  boxShadow: '0 8px 22px rgba(11,116,255,0.12)',
-  transition: 'transform .12s ease, box-shadow .12s ease',
-};
-
-const freeButtonStyle = {
-  ...ctaButtonStyle,
-  background: '#0b74ff',
-  color: '#fff',
-  fontWeight: 700,
-  boxShadow: 'none',
 };
 
 export default function PlansPage() {
@@ -121,33 +83,35 @@ export default function PlansPage() {
         <div>
           <h1 style={{ margin: 0 }}>Choose a plan</h1>
           <p style={{ marginTop: '.5rem', color: '#555' }}>
-            Start free or pick a plan that fits your team's prospecting needs. Upgrade or cancel anytime.
+            Start free or pick a plan that fits your prospecting needs. Upgrade or cancel anytime.
           </p>
         </div>
 
         <div>
           <a
-            href="/dashboard"
+            href="/"
             style={{ color: '#0b74ff', textDecoration: 'none', fontWeight: 600 }}
-            aria-label="Back to Dashboard"
+            aria-label="Back to Home"
           >
-            Back to Dashboard
+            Back to Home
           </a>
         </div>
       </header>
 
       <section aria-label="Pricing plans" style={gridStyle}>
         {PLANS.map((plan) => {
-          // Add special glow to recommended (Pro) plan
-          const proGlow =
-            plan.recommended
-              ? {
-                  boxShadow: '0 12px 36px rgba(138,43,226,0.12), 0 6px 18px rgba(11,116,255,0.06)',
-                  border: '1px solid rgba(138,43,226,0.12)',
-                }
+          // For Pro plan, use a subtle peach background
+          const proPeach =
+            plan.id === 'pro'
+              ? { background: 'linear-gradient(180deg, #fff4ef, #fff6f2)', border: '1px solid rgba(255,160,120,0.18)' }
               : {};
 
-          const cardStyle = { ...cardBase, ...proGlow };
+          // Recommended card subtle glow
+          const recommendedGlow = plan.recommended
+            ? { boxShadow: '0 12px 36px rgba(138,43,226,0.06), 0 6px 18px rgba(11,116,255,0.04)' }
+            : {};
+
+          const cardStyle = { ...cardBase, ...proPeach, ...recommendedGlow };
 
           return (
             <article key={plan.id} style={cardStyle} aria-labelledby={`plan-${plan.id}-title`}>
@@ -179,7 +143,18 @@ export default function PlansPage() {
                     </span>
                   )}
 
-                  <span style={badgeBase}>{plan.badge}</span>
+                  <span
+                    style={{
+                      background: '#f3f4f6',
+                      color: '#333',
+                      padding: '4px 8px',
+                      borderRadius: 999,
+                      fontSize: '.8rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {plan.badge}
+                  </span>
                 </div>
 
                 <ul style={{ marginTop: '1rem', paddingLeft: '1.2rem', color: '#333' }}>
@@ -194,13 +169,7 @@ export default function PlansPage() {
               <div style={{ marginTop: '1rem' }}>
                 {plan.priceId ? (
                   <div style={{ display: 'flex', gap: '.5rem' }}>
-                    {/* Use CheckoutButton but render a decorative wrapper that matches the paidButtonStyle */}
-                    <div
-                      style={{
-                        borderRadius: 10,
-                        overflow: 'hidden',
-                      }}
-                    >
+                    <div style={{ borderRadius: 10, overflow: 'hidden' }}>
                       <CheckoutButton priceId={plan.priceId}>
                         <span
                           style={{
