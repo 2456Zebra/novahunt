@@ -4,9 +4,7 @@ import Router from 'next/router';
 
 /*
 pages/account.js
-- Displays normalized usage/limits from localStorage (matches what signup/signin set).
-- Shows reveal history stored in localStorage (nh_reveals).
-- Sign out button clears client state and redirects to homepage.
+- Now listens for in-tab updates so Usage & Reveal history reflect actions immediately.
 */
 
 export default function AccountPage() {
@@ -15,9 +13,28 @@ export default function AccountPage() {
   const [reveals, setReveals] = useState([]);
 
   useEffect(() => {
-    setEmail(getClientEmail());
-    setUsage(getClientUsage());
-    setReveals(getRevealHistory());
+    const read = () => {
+      setEmail(getClientEmail());
+      setUsage(getClientUsage());
+      setReveals(getRevealHistory());
+    };
+    read();
+
+    function onUpdate(e) {
+      read();
+    }
+
+    window.addEventListener('storage', onUpdate);
+    window.addEventListener('nh_usage_updated', onUpdate);
+    window.addEventListener('nh_reveals_updated', onUpdate);
+    window.addEventListener('nh_auth_changed', onUpdate);
+
+    return () => {
+      window.removeEventListener('storage', onUpdate);
+      window.removeEventListener('nh_usage_updated', onUpdate);
+      window.removeEventListener('nh_reveals_updated', onUpdate);
+      window.removeEventListener('nh_auth_changed', onUpdate);
+    };
   }, []);
 
   function handleSignOut() {
