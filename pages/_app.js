@@ -4,10 +4,14 @@ import Footer from '../components/Footer';
 import { getClientEmail } from '../lib/auth-client';
 
 /*
-pages/_app.js (updated to include small logo)
-- Adds a small logo (public/logo-small.svg) to the left of the nav.
-- Keeps SignIn / SignUp hidden when signed-in and shows HeaderButtons for signed users.
-- No other behavior changes.
+pages/_app.js
+
+Behavior:
+- No top header is rendered for anonymous visitors.
+- After client-side mount, if nh_user_email is present the header appears.
+- The header is minimal: it only contains the right-aligned HeaderButtons (email + dropdown).
+- HeaderButtons is loaded client-side only (ssr: false) so it won't run during SSR/hydration.
+- ErrorBoundary wraps page content so page errors don't break the header when it is shown.
 */
 
 const HeaderButtons = dynamic(() => import('../HeaderButtons'), {
@@ -27,6 +31,7 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     this.setState({ info });
+    // eslint-disable-next-line no-console
     console.error('Client Error Boundary caught:', error, info);
   }
 
@@ -60,12 +65,22 @@ export default function MyApp({ Component, pageProps }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     setMounted(true);
-    setUserEmail(getClientEmail() || null);
+
+    const read = () => {
+      try {
+        const e = getClientEmail();
+        setUserEmail(e || null);
+      } catch (err) {
+        setUserEmail(null);
+      }
+    };
+
+    read();
 
     const onStorage = (e) => {
       if (!e) return;
       if (e.key === 'nh_user_email' || e.key === 'nh_usage' || e.key === 'nh_usage_last_update') {
-        setUserEmail(getClientEmail() || null);
+        read();
       }
     };
 
@@ -81,33 +96,14 @@ export default function MyApp({ Component, pageProps }) {
         a { color: inherit; text-decoration: none; }
       `}</style>
 
-      {/* Top nav: logo + links. SignIn/SignUp shown only when not signed-in */}
-      <header style={{ width: '100%', padding: '12px 20px', boxSizing: 'border-box', background: '#fff', borderBottom: '1px solid #eee', position: 'sticky', top: 0, zIndex: 40 }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <a href="/" aria-label="NovaHunt home" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <img src="/logo-small.svg" alt="NovaHunt" width="28" height="28" style={{ display: 'block' }} />
-            </a>
-
-            <nav style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              <a href="/">Home</a>
-              <a href="/plans">Plans</a>
-              <a href="/about">About</a>
-            </nav>
+      {/* Render header ONLY when client mounted and a user email exists */}
+      {mounted && userEmail ? (
+        <header style={{ width: '100%', padding: '12px 20px', boxSizing: 'border-box', background: '#fff', borderBottom: '1px solid #eee', position: 'sticky', top: 0, zIndex: 40 }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+            <HeaderButtons />
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {!mounted || !userEmail ? (
-              <>
-                <a href="/signin">SignIn</a>
-                <a href="/signup" style={{ fontWeight: 700 }}>SignUp</a>
-              </>
-            ) : (
-              <HeaderButtons />
-            )}
-          </div>
-        </div>
-      </header>
+        </header>
+      ) : null}
 
       <ErrorBoundary>
         <Component {...pageProps} />
