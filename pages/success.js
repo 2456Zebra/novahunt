@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import stripe from '../lib/stripe';
 
 /*
-Success page
-- Retrieves the Checkout Session server-side.
-- Detects purchased price and maps to plan limits.
-- Sets a server-side nh_session cookie (HttpOnly) so the next server-rendered homepage request
-  can detect the signed-in user immediately. Also the Go to Dashboard button writes localStorage (fallback).
+Success page (updated):
+- Server: retrieves Stripe checkout session & line items, detects purchased price, determines plan limits.
+- Server: sets two cookies:
+    - nh_session (HttpOnly) for server-side detection
+    - nh_session_public (NOT HttpOnly) for client-side detection (so ClientAuthHeader can read it)
+- Client: on mount writes nh_user_email and nh_usage to localStorage automatically (so header shows signed-in immediately),
+         and the "Go to Dashboard" button still redirects to '/'.
 */
 
 function detectPlanFromPriceId(priceId) {
@@ -22,7 +24,33 @@ function detectPlanFromPriceId(priceId) {
   return { key: 'unknown', limits: null };
 }
 
-export default function SuccessPage({ session, lineItems, planKey, planLimits, customerEmail, error }) {
+export default function SuccessPage({ session, lineItems, planKey, planLimits, customerEmail, cookiePayload, error }) {
+  useEffect(() => {
+    // On mount, write localStorage so client-side header shows immediately.
+    try {
+      if (customerEmail) localStorage.setItem('nh_user_email', customerEmail);
+      const usage = {
+        searches: (planLimits && planLimits.searches) || 0,
+        reveals: (planLimits && planLimits.reveals) || 0,
+        limitSearches: (planLimits && planLimits.limitSearches) || 0,
+        limitReveals: (planLimits && planLimits.limitReveals) || 0,
+        plan: planKey || 'unknown',
+      };
+      localStorage.setItem('nh_usage', JSON.stringify(usage));
+      // small trigger to notify other tabs/components
+      localStorage.setItem('nh_usage_last_update', Date.now().toString());
+      // Also set a client-visible cookie as fallback (in case server cookie not visible due to domain)
+      try {
+        const json = encodeURIComponent(JSON.stringify(cookiePayload || {}));
+        document.cookie = `nh_session_public=${json}; Path=/; Max-Age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+      } catch (e) {
+        // ignore
+      }
+    } catch (e) {
+      // ignore storage errors
+    }
+  }, [customerEmail, planKey, planLimits, cookiePayload]);
+
   if (error) {
     return (
       <main style={{ padding: '2rem', maxWidth: 800, margin: '0 auto' }}>
@@ -36,19 +64,7 @@ export default function SuccessPage({ session, lineItems, planKey, planLimits, c
   const currency = session?.currency || (session?.payment_intent && session.payment_intent.currency) || 'usd';
 
   const goToDashboard = () => {
-    try {
-      if (customerEmail) localStorage.setItem('nh_user_email', customerEmail);
-      const usage = {
-        searches: (planLimits && planLimits.searches) || 0,
-        reveals: (planLimits && planLimits.reveals) || 0,
-        limitSearches: (planLimits && planLimits.limitSearches) || 0,
-        limitReveals: (planLimits && planLimits.limitReveals) || 0,
-        plan: planKey || 'unknown',
-      };
-      localStorage.setItem('nh_usage', JSON.stringify(usage));
-    } catch (e) {
-      // ignore storage errors
-    }
+    // localStorage already set on mount; just navigate to home
     window.location.href = '/';
   };
 
@@ -149,27 +165,32 @@ export async function getServerSideProps(context) {
 
     const customerEmail = (session && (session.customer_details && session.customer_details.email)) || session.customer_email || null;
 
-    // Create nh_session cookie for server-side detection on next request
+    // Prepare cookie payload
+    const cookiePayload = {
+      email: customerEmail || '',
+      plan: detected.key || 'unknown',
+      limitSearches: (detected.limits && detected.limits.limitSearches) || 0,
+      limitReveals: (detected.limits && detected.limits.limitReveals) || 0,
+    };
+
+    // Create nh_session (HttpOnly) and nh_session_public (readable by JS)
     try {
-      const cookiePayload = {
-        email: customerEmail || '',
-        plan: detected.key || 'unknown',
-        limitSearches: (detected.limits && detected.limits.limitSearches) || 0,
-        limitReveals: (detected.limits && detected.limits.limitReveals) || 0,
-      };
       const cookieVal = encodeURIComponent(JSON.stringify(cookiePayload));
-      const maxAge = 60 * 60 * 24 * 7;
-      const cookieStr = `nh_session=${cookieVal}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+      const maxAge = 60 * 60 * 24 * 7; // 7 days
+
+      const httpOnlyCookie = `nh_session=${cookieVal}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+      const publicCookie = `nh_session_public=${cookieVal}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+
       const prev = context.res.getHeader('Set-Cookie');
       if (prev) {
         const arr = Array.isArray(prev) ? prev.slice() : [String(prev)];
-        arr.push(cookieStr);
+        arr.push(httpOnlyCookie, publicCookie);
         context.res.setHeader('Set-Cookie', arr);
       } else {
-        context.res.setHeader('Set-Cookie', cookieStr);
+        context.res.setHeader('Set-Cookie', [httpOnlyCookie, publicCookie]);
       }
     } catch (cookieErr) {
-      console.warn('Failed to set nh_session cookie:', cookieErr && cookieErr.message ? cookieErr.message : cookieErr);
+      console.warn('Failed to set session cookies:', cookieErr && cookieErr.message ? cookieErr.message : cookieErr);
     }
 
     return {
@@ -179,6 +200,7 @@ export async function getServerSideProps(context) {
         planKey: detected.key,
         planLimits: detected.limits,
         customerEmail,
+        cookiePayload,
       },
     };
   } catch (err) {
