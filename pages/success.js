@@ -2,19 +2,11 @@ import React from 'react';
 import stripe from '../lib/stripe';
 
 /*
-  Success page (updated)
-
-  Behavior:
-  - Server: retrieves the Stripe Checkout Session and line items (server-side).
-  - Server: detects which plan was purchased (compares price id to NEXT_PUBLIC_PRICE_* env vars).
-  - Server: sets a secure, HttpOnly cookie `nh_session` containing basic user info (email + plan + limits).
-             This allows your server-rendered homepage to detect the signed-in user on first load.
-  - Client: "Go to Dashboard" button also writes a client-visible localStorage key (nh_user_email / nh_usage)
-            for UIs that read localStorage instead of cookies, then navigates to '/'.
-  Notes:
-  - The cookie is HttpOnly and cannot be read by client-side JavaScript (for security). The localStorage
-    write is done to support client-side-only UI approaches as a fallback.
-  - Ensure your production domain serves over HTTPS so the Secure cookie is honored.
+Success page
+- Retrieves the Checkout Session server-side.
+- Detects purchased price and maps to plan limits.
+- Sets a server-side nh_session cookie (HttpOnly) so the next server-rendered homepage request
+  can detect the signed-in user immediately. Also the Go to Dashboard button writes localStorage (fallback).
 */
 
 function detectPlanFromPriceId(priceId) {
@@ -43,7 +35,6 @@ export default function SuccessPage({ session, lineItems, planKey, planLimits, c
   const amountTotal = session?.amount_total;
   const currency = session?.currency || (session?.payment_intent && session.payment_intent.currency) || 'usd';
 
-  // Client action: set localStorage then navigate to homepage
   const goToDashboard = () => {
     try {
       if (customerEmail) localStorage.setItem('nh_user_email', customerEmail);
@@ -58,7 +49,6 @@ export default function SuccessPage({ session, lineItems, planKey, planLimits, c
     } catch (e) {
       // ignore storage errors
     }
-    // Navigate to homepage (your real site). Server will also receive the nh_session cookie set below.
     window.location.href = '/';
   };
 
@@ -142,30 +132,24 @@ export async function getServerSideProps(context) {
   }
 
   try {
-    // Retrieve the session and expand payment_intent so we can show currency/amount
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['payment_intent'],
     });
 
-    // Retrieve line items and expand price.product so we have names
     const lineItemsObj = await stripe.checkout.sessions.listLineItems(sessionId, { limit: 100, expand: ['data.price.product'] });
     const lineItems = lineItemsObj && lineItemsObj.data ? lineItemsObj.data : [];
 
-    // Determine purchased price id (first line item)
     let purchasedPriceId = null;
     if (lineItems.length > 0) {
       const firstPrice = lineItems[0].price;
       purchasedPriceId = (firstPrice && firstPrice.id) || (firstPrice && firstPrice.price && firstPrice.price.id) || null;
     }
 
-    // Map purchasedPriceId -> plan key & limits
     const detected = detectPlanFromPriceId(purchasedPriceId);
 
-    // Determine customer email
     const customerEmail = (session && (session.customer_details && session.customer_details.email)) || session.customer_email || null;
 
-    // Create a server-side cookie so server-rendered homepage can detect signed-in user on first load.
-    // Cookie payload: { email, plan: detected.key, limitSearches, limitReveals }
+    // Create nh_session cookie for server-side detection on next request
     try {
       const cookiePayload = {
         email: customerEmail || '',
@@ -174,13 +158,10 @@ export async function getServerSideProps(context) {
         limitReveals: (detected.limits && detected.limits.limitReveals) || 0,
       };
       const cookieVal = encodeURIComponent(JSON.stringify(cookiePayload));
-      const maxAge = 60 * 60 * 24 * 7; // 7 days
-      // Set a secure, HttpOnly cookie for server-side detection.
+      const maxAge = 60 * 60 * 24 * 7;
       const cookieStr = `nh_session=${cookieVal}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
-      // If there are existing Set-Cookie headers, preserve them:
       const prev = context.res.getHeader('Set-Cookie');
       if (prev) {
-        // ensure we set an array of cookies
         const arr = Array.isArray(prev) ? prev.slice() : [String(prev)];
         arr.push(cookieStr);
         context.res.setHeader('Set-Cookie', arr);
