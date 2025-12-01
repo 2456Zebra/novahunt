@@ -1,63 +1,107 @@
-import React, { useState } from 'react';
-import Link from 'next/link';
+import { useState } from 'react';
+import { ensureUsageForPlan } from '../components/UsageEnforcer';
 
-export default function Signup() {
+/*
+Simple signup page that:
+- fixes the sign-up form layout (password field won't overflow)
+- on successful signup (mock or real) sets nh_user_email and nh_usage in localStorage
+  so user is immediately signed in on redirect to homepage.
+Important:
+- If you have a real server signup endpoint, replace the mock POST below with the real request
+  and only set localStorage after server returns success. This file ensures layout and local sign-in.
+*/
+
+export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPwd, setShowPwd] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [plan, setPlan] = useState('free');
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState('');
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) { alert('Please enter email and password'); return; }
-    setSubmitting(true);
+    setMsg('');
+    if (!email || !password) {
+      setMsg('Please enter email and password.');
+      return;
+    }
 
+    setLoading(true);
     try {
-      const account = {
-        email,
-        password,
-        plan: 'Free',
-        searches: 0,
-        reveals: 0,
-        unsubscribed: false,
-        createdAt: Date.now()
-      };
-      localStorage.setItem('nh_isSignedIn', '1');
-      localStorage.setItem('nh_account', JSON.stringify(account));
+      // TODO: replace with real signup POST to your backend if present.
+      // Example:
+      // const res = await fetch('/api/signup', { method: 'POST', body: JSON.stringify({ email, password, plan }) });
+      // if (!res.ok) throw new Error('Signup failed');
+
+      // For now assume signup success. Set localStorage so homepage will show signed-in state.
+      try {
+        localStorage.setItem('nh_user_email', email);
+        // ensure default usage structure for chosen plan
+        const usage = ensureUsageForPlan(plan);
+        // if plan chosen isn't free, overwrite limits from plan defaults
+        usage.plan = plan;
+        localStorage.setItem('nh_usage', JSON.stringify(usage));
+      } catch (err) {
+        // ignore storage errors
+      }
+
+      // Redirect to homepage (signed-in)
       window.location.href = '/';
     } catch (err) {
-      alert('Signup failed (demo).');
-      setSubmitting(false);
+      setMsg(err.message || 'Signup failed');
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f8fafc', fontFamily:'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
-      <div style={{ width:420, background:'#fff', borderRadius:10, boxShadow:'0 6px 18px rgba(8,15,29,0.06)', padding:28 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-          <h2 style={{ margin:0, fontSize:22 }}>Create your NovaHunt account</h2>
-          <Link href="/plans"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Back to Plans</a></Link>
-        </div>
+    <main style={{ padding: 24, maxWidth: 680, margin: '0 auto' }}>
+      <h1 style={{ marginTop: 0 }}>Create an account</h1>
+      <form onSubmit={handleSubmit} style={{ background: '#fff', border: '1px solid #eee', padding: 20, borderRadius: 8 }}>
+        <label style={{ display: 'block', marginBottom: 12 }}>
+          Email
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ display: 'block', width: '100%', padding: '10px 12px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6', boxSizing: 'border-box' }}
+            required
+          />
+        </label>
 
-        <form onSubmit={handleSubmit}>
-          <label style={{ display:'block', marginBottom:8, fontSize:13 }}>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" style={{ width:'100%', padding:'10px 12px', borderRadius:8, border:'1px solid #e6edf3', marginBottom:12 }} />
+        <label style={{ display: 'block', marginBottom: 12 }}>
+          Password
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ display: 'block', width: '100%', padding: '10px 12px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6', boxSizing: 'border-box' }}
+            required
+          />
+        </label>
 
-          <label style={{ display:'block', marginBottom:8, fontSize:13 }}>Password</label>
-          <div style={{ position:'relative' }}>
-            <input type={showPwd ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Choose a password" style={{ width:'100%', padding:'10px 38px 10px 12px', borderRadius:8, border:'1px solid #e6edf3', marginBottom:12 }} />
-            <button type="button" onClick={() => setShowPwd(s => !s)} style={{ position:'absolute', right:8, top:8, border:'none', background:'transparent', cursor:'pointer' }}>{showPwd ? '🙈' : '👁️'}</button>
-          </div>
+        <label style={{ display: 'block', marginBottom: 12 }}>
+          Plan
+          <select value={plan} onChange={(e) => setPlan(e.target.value)} style={{ display: 'block', width: '100%', padding: '10px 12px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6' }}>
+            <option value="free">Free</option>
+            <option value="starter">Starter</option>
+            <option value="pro">Pro</option>
+            <option value="enterprise">Enterprise</option>
+          </select>
+        </label>
 
-          <button type="submit" disabled={submitting} style={{ width:'100%', background:'#2563eb', color:'#fff', padding:'10px', borderRadius:8, border:'none', fontWeight:700 }}>
-            {submitting ? 'Creating…' : 'Create free account'}
+        {msg && <div style={{ color: 'crimson', marginBottom: 12 }}>{msg}</div>}
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button type="submit" disabled={loading} style={{ padding: '10px 14px', borderRadius: 8, background: '#0b74ff', color: '#fff', border: 'none', fontWeight: 700 }}>
+            {loading ? 'Creating…' : 'Create account'}
           </button>
-        </form>
 
-        <div style={{ marginTop:14, textAlign:'center', color:'#6b7280', fontSize:13 }}>
-          Already have an account? <Link href="/signin"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Sign in</a></Link>
+          <a href="/" style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', color: '#333', display: 'inline-flex', alignItems: 'center' }}>
+            Cancel
+          </a>
         </div>
-      </div>
-    </div>
+      </form>
+    </main>
   );
 }
