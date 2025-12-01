@@ -4,11 +4,10 @@ import Footer from '../components/Footer';
 import { getClientEmail } from '../lib/auth-client';
 
 /*
-pages/_app.js (updated)
-- Removes the NovaHunt brand from the header as requested.
-- When anonymous (not signed-in) the top navigation shows only Home / Plans / About / Sign in / Sign up.
-- When signed-in, Sign In / Sign Up are hidden and the HeaderButtons client-side account UI appears on the right.
-- HeaderButtons remains dynamically loaded (ssr: false).
+pages/_app.js (updated to include small logo)
+- Adds a small logo (public/logo-small.svg) to the left of the nav.
+- Keeps SignIn / SignUp hidden when signed-in and shows HeaderButtons for signed users.
+- No other behavior changes.
 */
 
 const HeaderButtons = dynamic(() => import('../HeaderButtons'), {
@@ -82,14 +81,20 @@ export default function MyApp({ Component, pageProps }) {
         a { color: inherit; text-decoration: none; }
       `}</style>
 
-      {/* Top nav: brand removed per request. Show simple nav; hide SignIn/SignUp when signed-in */}
+      {/* Top nav: logo + links. SignIn/SignUp shown only when not signed-in */}
       <header style={{ width: '100%', padding: '12px 20px', boxSizing: 'border-box', background: '#fff', borderBottom: '1px solid #eee', position: 'sticky', top: 0, zIndex: 40 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <nav style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <a href="/">Home</a>
-            <a href="/plans">Plans</a>
-            <a href="/about">About</a>
-          </nav>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <a href="/" aria-label="NovaHunt home" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <img src="/logo-small.svg" alt="NovaHunt" width="28" height="28" style={{ display: 'block' }} />
+            </a>
+
+            <nav style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+              <a href="/">Home</a>
+              <a href="/plans">Plans</a>
+              <a href="/about">About</a>
+            </nav>
+          </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {!mounted || !userEmail ? (
