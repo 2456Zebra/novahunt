@@ -2,11 +2,19 @@ import React from 'react';
 import stripe from '../lib/stripe';
 
 /*
-  Success page:
-  - Retrieves Checkout Session and line items server-side.
-  - Detects which price was purchased (compares price id to NEXT_PUBLIC_PRICE_* env vars).
-  - Maps to plan limits and returns them as props.
-  - Client-side "Go to Dashboard" button stores nh_user_email and nh_usage in localStorage then navigates to '/'.
+  Success page (updated)
+
+  Behavior:
+  - Server: retrieves the Stripe Checkout Session and line items (server-side).
+  - Server: detects which plan was purchased (compares price id to NEXT_PUBLIC_PRICE_* env vars).
+  - Server: sets a secure, HttpOnly cookie `nh_session` containing basic user info (email + plan + limits).
+             This allows your server-rendered homepage to detect the signed-in user on first load.
+  - Client: "Go to Dashboard" button also writes a client-visible localStorage key (nh_user_email / nh_usage)
+            for UIs that read localStorage instead of cookies, then navigates to '/'.
+  Notes:
+  - The cookie is HttpOnly and cannot be read by client-side JavaScript (for security). The localStorage
+    write is done to support client-side-only UI approaches as a fallback.
+  - Ensure your production domain serves over HTTPS so the Secure cookie is honored.
 */
 
 function detectPlanFromPriceId(priceId) {
@@ -48,9 +56,9 @@ export default function SuccessPage({ session, lineItems, planKey, planLimits, c
       };
       localStorage.setItem('nh_usage', JSON.stringify(usage));
     } catch (e) {
-      console.warn('Could not set localStorage', e);
+      // ignore storage errors
     }
-    // Navigate to your actual homepage
+    // Navigate to homepage (your real site). Server will also receive the nh_session cookie set below.
     window.location.href = '/';
   };
 
@@ -134,7 +142,7 @@ export async function getServerSideProps(context) {
   }
 
   try {
-    // Retrieve the session and expand line item price.product
+    // Retrieve the session and expand payment_intent so we can show currency/amount
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['payment_intent'],
     });
@@ -155,6 +163,33 @@ export async function getServerSideProps(context) {
 
     // Determine customer email
     const customerEmail = (session && (session.customer_details && session.customer_details.email)) || session.customer_email || null;
+
+    // Create a server-side cookie so server-rendered homepage can detect signed-in user on first load.
+    // Cookie payload: { email, plan: detected.key, limitSearches, limitReveals }
+    try {
+      const cookiePayload = {
+        email: customerEmail || '',
+        plan: detected.key || 'unknown',
+        limitSearches: (detected.limits && detected.limits.limitSearches) || 0,
+        limitReveals: (detected.limits && detected.limits.limitReveals) || 0,
+      };
+      const cookieVal = encodeURIComponent(JSON.stringify(cookiePayload));
+      const maxAge = 60 * 60 * 24 * 7; // 7 days
+      // Set a secure, HttpOnly cookie for server-side detection.
+      const cookieStr = `nh_session=${cookieVal}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+      // If there are existing Set-Cookie headers, preserve them:
+      const prev = context.res.getHeader('Set-Cookie');
+      if (prev) {
+        // ensure we set an array of cookies
+        const arr = Array.isArray(prev) ? prev.slice() : [String(prev)];
+        arr.push(cookieStr);
+        context.res.setHeader('Set-Cookie', arr);
+      } else {
+        context.res.setHeader('Set-Cookie', cookieStr);
+      }
+    } catch (cookieErr) {
+      console.warn('Failed to set nh_session cookie:', cookieErr && cookieErr.message ? cookieErr.message : cookieErr);
+    }
 
     return {
       props: {
