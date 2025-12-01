@@ -1,46 +1,100 @@
 import React from 'react';
 
-/*
-About page (restored-style)
-- Clean, neutral about page without footer duplication.
-- Adds paddingBottom so the bottom link is not flush to the viewport edge.
-- If you prefer I can restore an exact historical version from your git history — provide the commit SHA or I can guide you through the git UI restore.
-*/
 export default function AboutPage() {
   return (
-    <main style={{ padding: 24, maxWidth: 1100, margin: '0 auto', paddingBottom: 96, minHeight: '100vh', boxSizing: 'border-box' }}>
-      <header style={{ marginBottom: 18 }}>
+    <main
+      style={{
+        padding: 24,
+        maxWidth: 900,
+        margin: '0 auto',
+        paddingBottom: 96, // added extra space at bottom only
+        minHeight: '100vh',
+        boxSizing: 'border-box',
+        background: '#f7f7f8',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <h1 style={{ margin: 0 }}>About NovaHunt</h1>
-        <p style={{ marginTop: 8, color: '#666' }}>
-          NovaHunt helps teams discover B2B contacts faster and with more confidence.
-        </p>
-      </header>
+        <a
+          href="/"
+          style={{
+            padding: '8px 12px',
+            borderRadius: 8,
+            border: '1px solid #e6e6e6',
+            background: '#fff',
+            color: '#333',
+            textDecoration: 'none',
+            fontWeight: 600,
+            fontSize: 13,
+            alignSelf: 'center'
+          }}
+        >
+          Back to homepage
+        </a>
+      </div>
 
-      <section style={{ background: '#fff', border: '1px solid #eee', padding: 18, borderRadius: 8 }}>
-        <h2 style={{ marginTop: 0 }}>Our mission</h2>
-        <p style={{ color: '#444' }}>
-          We make prospecting faster, more reliable, and easier to scale by combining smart search, contact discovery, and simple exports.
-        </p>
+      <p style={{ color: '#444', marginTop: 8 }}>
+        NovaHunt helps creatives and small teams find the right contacts to get things done — landing representation, booking gigs, or winning new clients.
+      </p>
 
-        <h3 style={{ marginTop: 16 }}>What we build</h3>
-        <ul>
-          <li>Search by domain and discover people</li>
-          <li>Reveal verified emails</li>
-          <li>CSV export for outreach lists</li>
+      <section style={{ marginTop: 18, background: '#fff', border: '1px solid #eee', padding: 18, borderRadius: 8 }}>
+        <ul style={{ listStyle: 'none', paddingLeft: 0, margin: 0 }}>
+          <li style={{ marginBottom: 14 }}>
+            <strong>For Models</strong>
+            <div style={{ color: '#444' }}>Locate modelling agencies, casting contacts, and booking managers so you can pitch and audition with confidence. <span aria-hidden>👗</span></div>
+          </li>
+
+          <li style={{ marginBottom: 14 }}>
+            <strong>For Actors</strong>
+            <div style={{ color: '#444' }}>Search agents and casting directors to discover auditions and representation opportunities. <span aria-hidden>🎭</span></div>
+          </li>
+
+          <li style={{ marginBottom: 14 }}>
+            <strong>For Musicians</strong>
+            <div style={{ color: '#444' }}>Discover promoters, venues, and booking agents to land shows and grow your audience. <span aria-hidden>🎵</span></div>
+          </li>
+
+          <li style={{ marginBottom: 14 }}>
+            <strong>For Freelancers &amp; Creatives</strong>
+            <div style={{ color: '#444' }}>Locate hiring managers and decision-makers to pitch your services and win work. <span aria-hidden>💼</span></div>
+          </li>
+
+          <li style={{ marginBottom: 14 }}>
+            <strong>For Photographers</strong>
+            <div style={{ color: '#444' }}>Find art directors, magazines and brands that hire photographers for shoots and campaigns. <span aria-hidden>📸</span></div>
+          </li>
+
+          <li style={{ marginBottom: 14 }}>
+            <strong>For Founders</strong>
+            <div style={{ color: '#444' }}>Reach investors, mentors, and partners who can help you grow your idea into a business. <span aria-hidden>🚀</span></div>
+          </li>
+
+          <li style={{ marginBottom: 14 }}>
+            <strong>For Influencers</strong>
+            <div style={{ color: '#444' }}>Find brand PR and sponsorship contacts that can help you land paid collaborations. <span aria-hidden>📣</span></div>
+          </li>
+
+          <li style={{ marginBottom: 14 }}>
+            <strong>For Sellers</strong>
+            <div style={{ color: '#444' }}>Discover the right buyer contacts and procurement leads to accelerate sales. <span aria-hidden>🏷️</span></div>
+          </li>
+
+          <li style={{ marginBottom: 0 }}>
+            <strong>For Event Planners</strong>
+            <div style={{ color: '#444' }}>Locate venue contacts, caterers, and vendors to plan and execute successful events. <span aria-hidden>📋</span></div>
+          </li>
         </ul>
+      </section>
 
-        <h3 style={{ marginTop: 16 }}>Contact</h3>
+      <section style={{ marginTop: 18 }}>
+        <h2 style={{ marginTop: 0 }}>Our promise</h2>
         <p style={{ color: '#444' }}>
-          Questions? Email us at <a href="mailto:support@novahunt.ai" style={{ color: '#0b74ff' }}>support@novahunt.ai</a>.
+          We help you find the right person to contact — fast. The right panel gives friendly context while the left column provides the actionable contacts.
         </p>
 
-        <div style={{ height: 28 }} />
-
-        <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 16 }}>
-          <p style={{ color: '#999', fontSize: 13, marginTop: 8 }}>
-            Built with care by the NovaHunt team.
-          </p>
-        </div>
+        <p style={{ color: '#444', marginTop: 12 }}>
+          Sign up and let us help you make your dreams and ambitions come true!
+        </p>
       </section>
     </main>
   );
