@@ -1,89 +1,148 @@
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
-function readSavedContacts() {
-  try {
-    const raw = localStorage.getItem('novahunt.savedContacts') || '[]';
-    return JSON.parse(raw);
-  } catch { return []; }
-}
-
-export default function Account() {
-  const [saved, setSaved] = useState(null);
-  const [account, setAccount] = useState(null);
+/*
+Account page
+- Reads nh_user_email and nh_usage from localStorage and renders editable fields for Searches and Reveals usage/limits.
+- On Save updates localStorage and attempts POST to /api/update-usage (best-effort).
+*/
+export default function AccountPage() {
+  const [email, setEmail] = useState('');
+  const [usage, setUsage] = useState({ searches: 0, reveals: 0, limitSearches: 0, limitReveals: 0, plan: null });
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     try {
-      const a = localStorage.getItem('nh_account');
-      if (a) setAccount(JSON.parse(a));
-      const s = readSavedContacts();
-      setSaved(s);
-    } catch {
-      setAccount(null);
-      setSaved([]);
+      const e = localStorage.getItem('nh_user_email') || '';
+      const uRaw = localStorage.getItem('nh_usage');
+      const u = uRaw ? JSON.parse(uRaw) : null;
+      setEmail(e);
+      if (u) setUsage(u);
+    } catch (err) {
+      // ignore
     }
   }, []);
 
-  function unsubscribe() {
-    if (!account) return;
-    const updated = { ...account, unsubscribed: true };
-    localStorage.setItem('nh_account', JSON.stringify(updated));
-    setAccount(updated);
-    alert('You have been unsubscribed from marketing emails (demo).');
-  }
+  const handleChange = (field, value) => {
+    setUsage((prev) => ({ ...prev, [field]: Number.isFinite(Number(value)) ? Number(value) : value }));
+  };
 
-  function signOut() {
+  const save = async () => {
+    setSaving(true);
+    setMessage('');
     try {
-      localStorage.removeItem('nh_isSignedIn');
-      // keep account persisted but signed out
-    } catch {}
-    window.location.href = '/';
-  }
+      const newUsage = { ...usage };
+      localStorage.setItem('nh_usage', JSON.stringify(newUsage));
+
+      // Try to POST to server API if implemented
+      try {
+        const res = await fetch('/api/update-usage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, usage: newUsage }),
+        });
+        if (res.ok) {
+          setMessage('Saved.');
+        } else {
+          setMessage('Saved locally.');
+        }
+      } catch (err) {
+        setMessage('Saved locally.');
+      }
+    } catch (err) {
+      setMessage('Save failed.');
+    } finally {
+      setSaving(false);
+      // Notify other tabs/components via a small localStorage trigger
+      try {
+        localStorage.setItem('nh_usage_last_update', Date.now().toString());
+      } catch (e) {}
+    }
+  };
 
   return (
-    <div style={{ padding:32, fontFamily:'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
-      <div style={{ maxWidth:900, margin:'0 auto' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-          <h1 style={{ margin:0 }}>Account</h1>
-          <Link href="/"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Back to homepage</a></Link>
+    <main style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
+      <h1>Account</h1>
+      <p style={{ color: '#666' }}>Signed in as: <strong>{email || '—'}</strong></p>
+
+      <section style={{ marginTop: 18, padding: 16, borderRadius: 8, border: '1px solid #eee', background: '#fff' }}>
+        <h2 style={{ marginTop: 0 }}>Usage & Limits</h2>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <label>
+            Searches used
+            <input
+              type="number"
+              value={usage.searches || 0}
+              onChange={(e) => handleChange('searches', e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6' }}
+            />
+          </label>
+
+          <label>
+            Searches limit
+            <input
+              type="number"
+              value={usage.limitSearches || 0}
+              onChange={(e) => handleChange('limitSearches', e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6' }}
+            />
+          </label>
+
+          <label>
+            Reveals used
+            <input
+              type="number"
+              value={usage.reveals || 0}
+              onChange={(e) => handleChange('reveals', e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6' }}
+            />
+          </label>
+
+          <label>
+            Reveals limit
+            <input
+              type="number"
+              value={usage.limitReveals || 0}
+              onChange={(e) => handleChange('limitReveals', e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6' }}
+            />
+          </label>
         </div>
 
-        { account ? (
-          <div style={{ marginBottom:16 }}>
-            <div style={{ fontWeight:700 }}>{account.email}</div>
-            <div style={{ color:'#6b7280' }}>Plan: {account.plan} — Searches: {account.searches || 0} — Reveals: {account.reveals || 0}</div>
-          </div>
-        ) : null }
+        <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+          <button
+            onClick={save}
+            disabled={saving}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              background: '#0b74ff',
+              color: '#fff',
+              border: 'none',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
 
-        { saved && saved.length > 0 ? (
-          <>
-            <p style={{ color:'#374151' }}>Saved contacts (local demo):</p>
-            <div style={{ display:'grid', gap:10 }}>
-              {saved.map((c, i) => (
-                <div key={i} style={{ background:'#fff', border:'1px solid #e6edf3', padding:12, borderRadius:8 }}>
-                  <div style={{ fontWeight:700 }}>{c.first_name} {c.last_name}</div>
-                  <div style={{ color:'#6b7280' }}>{c.email}</div>
-                  <div style={{ color:'#6b7280', fontSize:13 }}>{c.position}</div>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div style={{ background:'#fff', border:'1px solid #e6edf3', padding:18, borderRadius:8 }}>
-            <div style={{ fontWeight:700, marginBottom:8 }}>No account data found.</div>
-            <div style={{ color:'#374151', marginBottom:12 }}>It looks like you don't have saved contacts yet or your account data wasn't created. For this demo we persist saved contacts locally.</div>
-            <div style={{ display:'flex', gap:8 }}>
-              <Link href="/plans"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Choose a plan</a></Link>
-              <Link href="/signup"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Create an account</a></Link>
-            </div>
-          </div>
-        )}
+          <button
+            onClick={() => { localStorage.removeItem('nh_user_email'); localStorage.removeItem('nh_usage'); window.location.href = '/signin'; }}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              border: '1px solid #e6e6e6',
+              background: '#fff',
+              cursor: 'pointer'
+            }}
+          >
+            Sign out
+          </button>
 
-        <div style={{ marginTop:18 }}>
-          <button onClick={unsubscribe} style={{ background:'#ef4444', color:'#fff', border:'none', padding:'8px 12px', borderRadius:6, cursor:'pointer' }}>Unsubscribe</button>
-          <button onClick={signOut} style={{ marginLeft:12, background:'#111827', color:'#fff', border:'none', padding:'8px 12px', borderRadius:6, cursor:'pointer' }}>Sign out</button>
+          <div style={{ alignSelf: 'center', color: '#333', fontWeight: 600 }}>{message}</div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
