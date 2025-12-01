@@ -1,20 +1,33 @@
 import React from 'react';
 
 /*
-Footer component — copy this file to components/Footer.jsx
-To render site-wide, import and include <Footer /> in pages/_app.js or your site layout (bottom).
+Footer
+- Centers COPYRIGHT and Contact next to each other.
+- Contact uses the same color, size, and weight as the copyright (not bold, not blue).
+- No Privacy link.
 */
 export default function Footer() {
   return (
-    <footer style={{ borderTop: '1px solid #eee', padding: '20px 0', marginTop: 32, background: 'transparent' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ color: '#666', fontSize: 13 }}>
-          © 2026 NovaHunt.ai
+    <footer style={{ borderTop: '1px solid #eee', padding: '20px 0', marginTop: 32 }}>
+      <div
+        style={{
+          maxWidth: 1100,
+          margin: '0 auto',
+          padding: '0 18px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 16,
+        }}
+      >
+        <div style={{ color: '#666', fontSize: 13, fontWeight: 400 }}>
+          © {new Date().getFullYear()} NovaHunt.ai
         </div>
 
-        <div>
-          <a href="/contact" style={{ color: '#0b74ff', fontWeight: 700, marginRight: 12 }}>Contact</a>
-          <a href="/privacy" style={{ color: '#666' }}>Privacy</a>
+        <div style={{ color: '#666', fontSize: 13, fontWeight: 400 }}>
+          <a href="/contact" style={{ color: '#666', textDecoration: 'none', fontWeight: 400 }}>
+            Contact
+          </a>
         </div>
       </div>
     </footer>
