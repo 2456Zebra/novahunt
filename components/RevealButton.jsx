@@ -10,20 +10,10 @@ import {
 /**
  * RevealButton
  *
- * Usage:
- * <RevealButton target="monsterenergy.com" />
- *
- * Or with a custom revealHandler:
- * <RevealButton target={id} revealHandler={async (target) => { ...returns data... }} onSuccess={(data)=>{...}} />
- *
- * Behavior:
- * - If the user is not signed in -> redirect to /signin
- * - If the user is signed in but has exhausted reveals -> redirect to /plans
- * - Otherwise attempts to perform the reveal:
- *    - If a revealHandler prop is supplied it will call that and expect a successful result.
- *    - Otherwise it will POST to /api/reveal (default server endpoint) with { target }.
- * - On success it records the reveal in localStorage (nh_reveals) and increments local nh_usage.reveals.
- * - Prevents accidental redirects to Plans for signed-in users who are within limits.
+ * - If NOT signed in -> redirect to /plans (per product requirement)
+ * - If signed in but out of reveals -> redirect to /plans
+ * - Otherwise attempts the reveal (via revealHandler or POST /api/reveal)
+ * - On success updates client-side reveal history and usage and dispatches events
  */
 
 export default function RevealButton({
@@ -39,9 +29,10 @@ export default function RevealButton({
   async function handleClick(e) {
     e && e.preventDefault();
     const email = getClientEmail();
+
+    // NOTE: change requested — unauthenticated visitors should be directed to Plans
     if (!email) {
-      // Not signed in -> go to Signin (so they can sign up / sign in)
-      Router.push('/signin');
+      Router.push('/plans');
       return;
     }
 
@@ -58,7 +49,6 @@ export default function RevealButton({
       if (typeof revealHandler === 'function') {
         result = await revealHandler(target);
       } else {
-        // Default server call — adapt path to your API
         const res = await fetch('/api/reveal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -66,7 +56,7 @@ export default function RevealButton({
           credentials: 'include',
         });
         if (res.status === 402) {
-          // Server demands payment / upgrade
+          // Server demands upgrade/payment
           Router.push('/plans');
           return;
         }
@@ -87,9 +77,6 @@ export default function RevealButton({
 
       if (typeof onSuccess === 'function') onSuccess(result && result.data);
     } catch (err) {
-      // Graceful fallback: if server returns a payment-needed status or similar, redirect to plans
-      // Otherwise show an alert for now (replaceable with nicer UI)
-      // eslint-disable-next-line no-console
       console.error('Reveal failed', err);
       alert(err.message || 'Reveal failed. Try again.');
     } finally {
