@@ -3,17 +3,46 @@ import SignInModal from "./SignInModal";
 import Link from "next/link";
 
 /*
-HeaderButtons.jsx
-- Reads nh_user_email, nh_usage from localStorage.
-- Shows an authenticated dropdown with email, searches/reveals, Account and Logout.
-- Listens to storage events so signup/signin in another tab (or redirect) updates the header.
-- Fallback UI keeps the existing Import Records + Sign In button and SignInModal.
+HeaderButtons.jsx (replacement)
+- Reads the same localStorage markers your signup flow sets: nh_user_email, nh_usage, nh_usage_last_update
+- Accepts two common usage shapes:
+  1) { searches, reveals, limitSearches, limitReveals }
+  2) { searchesUsed, searchesTotal, revealsUsed, revealsTotal }
+- Listens for storage events so signup/signin in another tab or a redirect will update the header live.
+- Provides a Logout action that clears the client markers and reloads the page.
+- Keeps existing unauthenticated UI (Import Records + Sign In) when not signed in.
+- Replace the existing HeaderButtons.jsx with this file and redeploy.
 */
 
-function parseUsage(raw) {
+function normalizeUsage(raw) {
+  if (!raw) return null;
   try {
-    if (!raw) return null;
-    return JSON.parse(raw);
+    const u = typeof raw === "string" ? JSON.parse(raw) : raw;
+    // If new shape
+    if (typeof u.searches === "number" || typeof u.reveals === "number") {
+      return {
+        searches: Number(u.searches || 0),
+        reveals: Number(u.reveals || 0),
+        limitSearches: Number(u.limitSearches || u.searches ?? 0),
+        limitReveals: Number(u.limitReveals || u.reveals ?? 0),
+      };
+    }
+    // If old shape: searchesUsed/searchesTotal
+    if (typeof u.searchesUsed === "number" || typeof u.searchesTotal === "number") {
+      return {
+        searches: Number(u.searchesUsed || 0),
+        reveals: Number(u.revealsUsed || 0),
+        limitSearches: Number(u.searchesTotal || 0),
+        limitReveals: Number(u.revealsTotal || 0),
+      };
+    }
+    // Fallback: try reasonable fields
+    return {
+      searches: Number(u.searches || u.searchesUsed || 0),
+      reveals: Number(u.reveals || u.revealsUsed || 0),
+      limitSearches: Number(u.limitSearches || u.searchesTotal || 0),
+      limitReveals: Number(u.limitReveals || u.revealsTotal || 0),
+    };
   } catch (e) {
     return null;
   }
@@ -25,22 +54,23 @@ export default function HeaderButtons() {
   const [usage, setUsage] = useState(null);
   const [openDropdown, setOpenDropdown] = useState(false);
 
-  // Read initial state from localStorage
+  // Read initial state from localStorage on client
   useEffect(() => {
-    const email = typeof window !== "undefined" ? localStorage.getItem("nh_user_email") : null;
-    const rawUsage = typeof window !== "undefined" ? localStorage.getItem("nh_usage") : null;
+    if (typeof window === "undefined") return;
+    const email = localStorage.getItem("nh_user_email");
+    const raw = localStorage.getItem("nh_usage");
     setUserEmail(email || null);
-    setUsage(parseUsage(rawUsage));
+    setUsage(normalizeUsage(raw));
   }, []);
 
-  // Listen for storage events (other tabs / pages updating localStorage)
+  // Listen for changes to localStorage from other tabs / redirects
   useEffect(() => {
     function onStorage(e) {
       if (!e) return;
       if (e.key === "nh_user_email") {
         setUserEmail(e.newValue || null);
       } else if (e.key === "nh_usage" || e.key === "nh_usage_last_update") {
-        setUsage(parseUsage(localStorage.getItem("nh_usage")));
+        setUsage(normalizeUsage(localStorage.getItem("nh_usage")));
       }
     }
     if (typeof window !== "undefined") {
@@ -53,7 +83,6 @@ export default function HeaderButtons() {
     };
   }, []);
 
-  // Helper: sign out locally (clears the same keys created at signup/signin)
   const handleLogout = () => {
     try {
       localStorage.removeItem("nh_user_email");
@@ -62,21 +91,16 @@ export default function HeaderButtons() {
     } catch (e) {
       // ignore
     }
-    // force header refresh
-    setUserEmail(null);
-    setUsage(null);
-    // optional: if you also have server-side session, call logout endpoint here
-    // fetch('/api/logout', { method: 'POST' }).finally(() => window.location.reload());
+    // Refresh to ensure server-side state (if any) and re-render header
     window.location.reload();
   };
 
-  // Small presentational helper
   const usageDisplay = () => {
     if (!usage) return null;
     return (
       <div style={{ display: "flex", gap: 12, alignItems: "center", color: "#444", fontSize: 13 }}>
-        <div>Searches: <strong style={{ color: "#111" }}>{usage.searches ?? 0}</strong></div>
-        <div>Reveals: <strong style={{ color: "#111" }}>{usage.reveals ?? 0}</strong></div>
+        <div>Searches: <strong style={{ color: "#111" }}>{usage.searches ?? 0}</strong> / {usage.limitSearches ?? 0}</div>
+        <div>Reveals: <strong style={{ color: "#111" }}>{usage.reveals ?? 0}</strong> / {usage.limitReveals ?? 0}</div>
       </div>
     );
   };
@@ -117,7 +141,7 @@ export default function HeaderButtons() {
                 border: "1px solid #eee",
                 borderRadius: 8,
                 padding: 12,
-                minWidth: 200,
+                minWidth: 220,
                 boxShadow: "0 6px 18px rgba(20,20,20,0.08)",
                 zIndex: 60,
               }}
