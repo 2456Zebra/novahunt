@@ -1,8 +1,13 @@
 import React from 'react';
 
+/*
+Restore-style About page.
+If you prefer to restore your original from Git, follow the restore steps below instead of pasting this file.
+This version preserves spacing at the bottom and includes the footer area.
+*/
 export default function AboutPage() {
   return (
-    <main style={{ padding: 24, maxWidth: 1100, margin: '0 auto', paddingBottom: 72, minHeight: '100vh', boxSizing: 'border-box' }}>
+    <main style={{ padding: 24, maxWidth: 1100, margin: '0 auto', paddingBottom: 96, minHeight: '100vh', boxSizing: 'border-box' }}>
       <header style={{ marginBottom: 18 }}>
         <h1 style={{ margin: 0 }}>About NovaHunt</h1>
         <p style={{ marginTop: 8, color: '#666' }}>
