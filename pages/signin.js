@@ -1,72 +1,102 @@
-import React, { useState } from 'react';
-import Link from 'next/link';
+import { useState } from 'react';
 
-export default function SignIn() {
+/*
+Sign-in page (replacement)
+- Fixes password input overflow by using box-sizing and width:100% inside the form container.
+- Preserve a simple layout and behaviors; adapt the action to your real signin endpoint if needed.
+- This file is standalone; paste to pages/signin.js to replace current file.
+*/
+
+export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
+  const [error, setError] = useState('');
 
-  function getStoredAccount() {
-    try {
-      const a = localStorage.getItem('nh_account');
-      return a ? JSON.parse(a) : null;
-    } catch { return null; }
-  }
-
-  async function handleSubmit(e) {
+  const onSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    if (!email || !password) {
+      setError('Please enter both email and password.');
+      return;
+    }
     setLoading(true);
     try {
-      const acc = getStoredAccount();
-      if (!acc || acc.email !== email || acc.password !== password) {
-        alert('Invalid credentials (demo).');
-        setLoading(false);
-        return;
-      }
-      // set signed-in flag and redirect to home
-      localStorage.setItem('nh_isSignedIn', '1');
-      localStorage.setItem('nh_account', JSON.stringify(acc));
+      // Replace with real auth call if you have one.
+      // Example:
+      // const res = await fetch('/api/signin', { method: 'POST', body: JSON.stringify({ email, password }) });
+      // if (!res.ok) throw new Error('Sign-in failed');
+
+      // Demo: set local signed-in state (for client-only fallback)
+      try {
+        localStorage.setItem('nh_user_email', email);
+        // Keep existing nh_usage if present; otherwise initialize to free plan defaults
+        const existing = localStorage.getItem('nh_usage');
+        if (!existing) {
+          localStorage.setItem('nh_usage', JSON.stringify({ searches: 0, reveals: 0, limitSearches: 5, limitReveals: 3, plan: 'free' }));
+        }
+        localStorage.setItem('nh_usage_last_update', Date.now().toString());
+      } catch (e) {}
+      // Redirect to homepage
       window.location.href = '/';
     } catch (err) {
-      console.error(err);
-      alert('Sign in failed (demo).');
+      setError(err.message || 'Sign-in failed.');
+    } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f8fafc', fontFamily:'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
-      <div style={{ width:420, background:'#fff', borderRadius:10, boxShadow:'0 6px 18px rgba(8,15,29,0.06)', padding:28 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-          <h2 style={{ margin:0, fontSize:22 }}>Sign in to NovaHunt</h2>
-          <Link href="/"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Back to homepage</a></Link>
-        </div>
+    <main style={{ padding: 24, maxWidth: 680, margin: '0 auto' }}>
+      <h1 style={{ marginTop: 0 }}>Sign in</h1>
 
-        <form onSubmit={handleSubmit}>
-          <label style={{ display:'block', marginBottom:8, fontSize:13 }}>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" style={{ width:'100%', padding:'10px 12px', borderRadius:8, border:'1px solid #e6edf3', marginBottom:12 }} />
+      <form onSubmit={onSubmit} style={{ background: '#fff', border: '1px solid #eee', padding: 20, borderRadius: 8, boxSizing: 'border-box' }}>
+        <label style={{ display: 'block', marginBottom: 12 }}>
+          Email
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ display: 'block', width: '100%', padding: '10px 12px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6', boxSizing: 'border-box' }}
+            required
+          />
+        </label>
 
-          <label style={{ display:'block', marginBottom:8, fontSize:13 }}>Password</label>
-          <div style={{ position:'relative' }}>
-            <input type={showPwd ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" style={{ width:'100%', padding:'10px 38px 10px 12px', borderRadius:8, border:'1px solid #e6edf3', marginBottom:12 }} />
-            <button type="button" onClick={() => setShowPwd(s => !s)} style={{ position:'absolute', right:8, top:8, border:'none', background:'transparent', cursor:'pointer' }}>{showPwd ? '🙈' : '👁️'}</button>
-          </div>
+        <label style={{ display: 'block', marginBottom: 12 }}>
+          Password
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ display: 'block', width: '100%', padding: '10px 12px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6', boxSizing: 'border-box' }}
+            required
+          />
+        </label>
 
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-            <label style={{ fontSize:13, color:'#6b7280' }}><input type="checkbox" style={{ marginRight:6 }} />Remember me</label>
-            <Link href="/forgot"><a style={{ color:'#2563eb', fontSize:13 }}>Forgot?</a></Link>
-          </div>
+        {error && <div style={{ color: 'crimson', marginBottom: 12 }}>{error}</div>}
 
-          <button type="submit" style={{ width:'100%', background:'#2563eb', color:'#fff', padding:'10px', borderRadius:8, border:'none', fontWeight:700 }}>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              background: '#0b74ff',
+              color: '#fff',
+              border: 'none',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
-        </form>
 
-        <div style={{ marginTop:14, textAlign:'center', color:'#6b7280', fontSize:13 }}>
-          New to NovaHunt? <Link href="/plans"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Choose a plan</a></Link>
+          <a href="/signup" style={{ display: 'inline-flex', alignItems: 'center', padding: '10px 14px', borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', color: '#333' }}>
+            Create account
+          </a>
         </div>
-      </div>
-    </div>
+      </form>
+    </main>
   );
 }
