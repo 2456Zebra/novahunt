@@ -5,10 +5,10 @@ import { getClientEmail, getClientUsage, clearClientSignedIn } from "./lib/auth-
 
 /*
 HeaderButtons.jsx
-- Small fixes:
-  - Hide SignIn/SignUp when a user is signed in.
-  - Logout now redirects to '/' (homepage) after clearing client storage.
-  - Uses getClientEmail/getClientUsage so the displayed counts match normalized usage shapes.
+- Dropdown layout: two equal buttons (Account / Logout) in the dropdown when signed in.
+- Listens for both storage events and custom in-tab events (nh_usage_updated / nh_auth_changed)
+  so header updates immediately after sign-in, reveal, or search without needing a page reload.
+- Logout redirects to home ('/') and clears client markers.
 */
 
 export default function HeaderButtons() {
@@ -24,28 +24,36 @@ export default function HeaderButtons() {
   }, []);
 
   useEffect(() => {
-    function onStorage(e) {
-      if (!e) return;
-      if (e.key === "nh_user_email") {
+    function onUpdate(e) {
+      // handle storage events and our custom events
+      try {
         setUserEmail(getClientEmail() || null);
-      } else if (e.key === "nh_usage" || e.key === "nh_usage_last_update") {
         setUsage(getClientUsage());
+      } catch (err) {
+        // ignore
       }
     }
+
     if (typeof window !== "undefined") {
-      window.addEventListener("storage", onStorage);
+      window.addEventListener("storage", onUpdate);
+      window.addEventListener("nh_usage_updated", onUpdate);
+      window.addEventListener("nh_auth_changed", onUpdate);
+      window.addEventListener("nh_reveals_updated", onUpdate);
     }
     return () => {
       if (typeof window !== "undefined") {
-        window.removeEventListener("storage", onStorage);
+        window.removeEventListener("storage", onUpdate);
+        window.removeEventListener("nh_usage_updated", onUpdate);
+        window.removeEventListener("nh_auth_changed", onUpdate);
+        window.removeEventListener("nh_reveals_updated", onUpdate);
       }
     };
   }, []);
 
   const handleLogout = () => {
     clearClientSignedIn();
-    // send the user to the homepage signed-out
-    window.location.href = '/';
+    // send user to homepage signed-out
+    window.location.href = "/";
   };
 
   const usageDisplay = () => {
@@ -93,7 +101,7 @@ export default function HeaderButtons() {
                 border: "1px solid #eee",
                 borderRadius: 8,
                 padding: 12,
-                minWidth: 220,
+                minWidth: 240,
                 boxShadow: "0 6px 18px rgba(20,20,20,0.08)",
                 zIndex: 60,
               }}
@@ -101,9 +109,13 @@ export default function HeaderButtons() {
               <div style={{ marginBottom: 8, color: "#666", fontSize: 13 }}>{userEmail}</div>
               <div style={{ marginBottom: 8 }}>{usageDisplay()}</div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Link href="/account"><a style={{ color: "#0b74ff", fontWeight: 600 }}>Account</a></Link>
-                <button onClick={handleLogout} style={{ background: "none", border: "none", color: "#111", textAlign: "left", padding: 0, cursor: "pointer" }}>
+              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                <Link href="/account">
+                  <button style={{ flex: 1, padding: '8px 10px', borderRadius: 8, background: '#f3f4f6', border: '1px solid #e6e6e6', cursor: 'pointer' }}>
+                    Account
+                  </button>
+                </Link>
+                <button onClick={handleLogout} style={{ flex: 1, padding: '8px 10px', borderRadius: 8, background: '#fff', border: '1px solid #e6e6e6', cursor: 'pointer' }}>
                   Logout
                 </button>
               </div>
