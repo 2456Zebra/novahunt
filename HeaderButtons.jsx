@@ -1,19 +1,15 @@
 import React, { useEffect, useState } from "react";
-import SignInModal from "./SignInModal";
+// IMPORTANT: import the modal from the components/ folder so it respects the `open` prop
+import SignInModal from "./components/SignInModal";
 import Link from "next/link";
 
 /*
-HeaderButtons.jsx
-- Robust header that reads client-side markers:
-  - nh_user_email
-  - nh_usage
-  - nh_usage_last_update
-- Accepts both usage shapes:
-  - { searches, reveals, limitSearches, limitReveals }
-  - { searchesUsed, searchesTotal, revealsUsed, revealsTotal }
-- Listens for storage events so signup/signin from another page/tab updates header.
-- Logout clears the client markers and reloads.
-- Keep a backup of your existing HeaderButtons.jsx before replacing.
+HeaderButtons.jsx (fix)
+- Uses components/SignInModal (which only renders when `open` is true) instead of the root SignInModal.jsx
+  that always renders. This prevents the modal from covering the homepage by default.
+- Reads the same localStorage markers your signup flow sets: nh_user_email, nh_usage.
+- Listens for storage events so signup/signin in another tab or a redirect will update the header live.
+- Logout clears the client markers and reloads the page.
 */
 
 function normalizeUsage(raw) {
@@ -158,6 +154,7 @@ export default function HeaderButtons() {
     );
   }
 
+  // Unauthenticated / existing UI
   return (
     <>
       <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
@@ -187,6 +184,7 @@ export default function HeaderButtons() {
           Sign In
         </button>
       </div>
+      {/* SignInModal from components/ will only render when open=true */}
       <SignInModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   );
