@@ -1,50 +1,15 @@
 import React, { useEffect, useState } from "react";
-// IMPORTANT: import the modal from the components/ folder so it respects the `open` prop
 import SignInModal from "./components/SignInModal";
 import Link from "next/link";
+import { getClientEmail, getClientUsage, clearClientSignedIn } from "./lib/auth-client";
 
 /*
-HeaderButtons.jsx (fix)
-- Uses components/SignInModal (which only renders when `open` is true) instead of the root SignInModal.jsx
-  that always renders. This prevents the modal from covering the homepage by default.
-- Reads the same localStorage markers your signup flow sets: nh_user_email, nh_usage.
-- Listens for storage events so signup/signin in another tab or a redirect will update the header live.
-- Logout clears the client markers and reloads the page.
+HeaderButtons.jsx
+- Small fixes:
+  - Hide SignIn/SignUp when a user is signed in.
+  - Logout now redirects to '/' (homepage) after clearing client storage.
+  - Uses getClientEmail/getClientUsage so the displayed counts match normalized usage shapes.
 */
-
-function normalizeUsage(raw) {
-  if (!raw) return null;
-  try {
-    const u = typeof raw === "string" ? JSON.parse(raw) : raw;
-    // New shape
-    if (typeof u.searches === "number" || typeof u.reveals === "number") {
-      return {
-        searches: Number(u.searches || 0),
-        reveals: Number(u.reveals || 0),
-        limitSearches: Number(u.limitSearches ?? u.searches ?? 0),
-        limitReveals: Number(u.limitReveals ?? u.reveals ?? 0),
-      };
-    }
-    // Old shape
-    if (typeof u.searchesUsed === "number" || typeof u.searchesTotal === "number") {
-      return {
-        searches: Number(u.searchesUsed || 0),
-        reveals: Number(u.revealsUsed || 0),
-        limitSearches: Number(u.searchesTotal || 0),
-        limitReveals: Number(u.revealsTotal || 0),
-      };
-    }
-    // Fallback
-    return {
-      searches: Number(u.searches || u.searchesUsed || 0),
-      reveals: Number(u.reveals || u.revealsUsed || 0),
-      limitSearches: Number(u.limitSearches || u.searchesTotal || 0),
-      limitReveals: Number(u.limitReveals || u.revealsTotal || 0),
-    };
-  } catch (e) {
-    return null;
-  }
-}
 
 export default function HeaderButtons() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -54,19 +19,17 @@ export default function HeaderButtons() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const email = localStorage.getItem("nh_user_email");
-    const raw = localStorage.getItem("nh_usage");
-    setUserEmail(email || null);
-    setUsage(normalizeUsage(raw));
+    setUserEmail(getClientEmail() || null);
+    setUsage(getClientUsage());
   }, []);
 
   useEffect(() => {
     function onStorage(e) {
       if (!e) return;
       if (e.key === "nh_user_email") {
-        setUserEmail(e.newValue || null);
+        setUserEmail(getClientEmail() || null);
       } else if (e.key === "nh_usage" || e.key === "nh_usage_last_update") {
-        setUsage(normalizeUsage(localStorage.getItem("nh_usage")));
+        setUsage(getClientUsage());
       }
     }
     if (typeof window !== "undefined") {
@@ -80,12 +43,9 @@ export default function HeaderButtons() {
   }, []);
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem("nh_user_email");
-      localStorage.removeItem("nh_usage");
-      localStorage.removeItem("nh_usage_last_update");
-    } catch (e) {}
-    window.location.reload();
+    clearClientSignedIn();
+    // send the user to the homepage signed-out
+    window.location.href = '/';
   };
 
   const usageDisplay = () => {
@@ -154,7 +114,7 @@ export default function HeaderButtons() {
     );
   }
 
-  // Unauthenticated / existing UI
+  // Unauthenticated UI
   return (
     <>
       <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
@@ -184,7 +144,6 @@ export default function HeaderButtons() {
           Sign In
         </button>
       </div>
-      {/* SignInModal from components/ will only render when open=true */}
       <SignInModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   );
