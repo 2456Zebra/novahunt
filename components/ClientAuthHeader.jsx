@@ -1,8 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 
 /*
-ClientAuthHeader
-- Detects signed-in user via localStorage (nh_user_email, nh_usage) OR server cookie nh_session
+ClientAuthHeader (updated)
+- Detects signed-in user via:
+  1) localStorage keys (nh_user_email, nh_usage)
+  2) client-visible cookie nh_session_public (set by success page)
 - Hides legacy Sign in / Sign up links automatically (covers common hrefs)
 - Renders email + usage button with dropdown (Account / Logout)
 - Render this in your header where Sign in / Sign up currently live (or only on the homepage)
@@ -12,6 +14,32 @@ export default function ClientAuthHeader() {
   const [usage, setUsage] = useState({ searches: 0, reveals: 0, limitSearches: 0, limitReveals: 0, plan: null });
   const [open, setOpen] = useState(false);
   const mounted = useRef(false);
+
+  function tryReadFromCookie() {
+    if (typeof document === 'undefined') return null;
+    const cookies = document.cookie.split(';').map((c) => c.trim());
+    // Prefer public cookie that is readable by JS
+    const publicCookie = cookies.find((c) => c.startsWith('nh_session_public='));
+    if (publicCookie) {
+      try {
+        const payload = JSON.parse(decodeURIComponent(publicCookie.split('=')[1]));
+        return payload;
+      } catch (e) {
+        return null;
+      }
+    }
+    // Fallback: try non-HttpOnly nh_session (rarely available to JS; HttpOnly will not be visible)
+    const nh = cookies.find((c) => c.startsWith('nh_session='));
+    if (nh) {
+      try {
+        const payload = JSON.parse(decodeURIComponent(nh.split('=')[1]));
+        return payload;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
 
   function readFromLocal() {
     try {
@@ -30,29 +58,23 @@ export default function ClientAuthHeader() {
         });
       }
 
-      // If no localStorage email, attempt to read server-set nh_session cookie (URL-encoded JSON)
-      if (!lsEmail && typeof document !== 'undefined') {
-        const cookies = document.cookie.split(';').map((c) => c.trim());
-        const nh = cookies.find((c) => c.startsWith('nh_session='));
-        if (nh) {
-          try {
-            const payload = JSON.parse(decodeURIComponent(nh.split('=')[1]));
-            if (payload && payload.email) setEmail(payload.email);
-            if (payload && (payload.limitSearches || payload.limitReveals)) {
-              setUsage((u) => ({
-                ...u,
-                limitSearches: payload.limitSearches || u.limitSearches,
-                limitReveals: payload.limitReveals || u.limitReveals,
-                plan: payload.plan || u.plan,
-              }));
-            }
-          } catch (e) {
-            // ignore cookie parse errors
+      // If no localStorage email, attempt to read client-visible cookie payload
+      if (!lsEmail) {
+        const payload = tryReadFromCookie();
+        if (payload) {
+          if (payload.email) setEmail(payload.email);
+          if (payload.limitSearches || payload.limitReveals) {
+            setUsage((u) => ({
+              ...u,
+              limitSearches: payload.limitSearches || u.limitSearches,
+              limitReveals: payload.limitReveals || u.limitReveals,
+              plan: payload.plan || u.plan,
+            }));
           }
         }
       }
     } catch (err) {
-      // ignore localStorage parse errors
+      // ignore localStorage/cookie parse errors
     }
   }
 
@@ -67,9 +89,15 @@ export default function ClientAuthHeader() {
     }
     window.addEventListener('storage', onStorage);
 
+    // Also poll cookie once on mount in case server-set cookie arrived
+    const cookiePoll = setTimeout(() => {
+      readFromLocal();
+    }, 50);
+
     return () => {
       mounted.current = false;
       window.removeEventListener('storage', onStorage);
+      clearTimeout(cookiePoll);
     };
   }, []);
 
@@ -103,7 +131,9 @@ export default function ClientAuthHeader() {
       localStorage.removeItem('nh_user_email');
       localStorage.removeItem('nh_usage');
       localStorage.removeItem('nh_usage_last_update');
-      // Try to clear server cookie (best-effort)
+      // Try to clear public cookie (best-effort)
+      document.cookie = 'nh_session_public=; Path=/; Max-Age=0; SameSite=Lax';
+      // Also try to clear server cookie (best-effort)
       document.cookie = 'nh_session=; Path=/; Max-Age=0; SameSite=Lax';
     } catch (e) {}
     window.location.href = '/signin';
