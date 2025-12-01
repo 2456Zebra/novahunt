@@ -3,31 +3,33 @@ import SignInModal from "./SignInModal";
 import Link from "next/link";
 
 /*
-HeaderButtons.jsx (replacement)
-- Reads the same localStorage markers your signup flow sets: nh_user_email, nh_usage, nh_usage_last_update
-- Accepts two common usage shapes:
-  1) { searches, reveals, limitSearches, limitReveals }
-  2) { searchesUsed, searchesTotal, revealsUsed, revealsTotal }
-- Listens for storage events so signup/signin in another tab or a redirect will update the header live.
-- Provides a Logout action that clears the client markers and reloads the page.
-- Keeps existing unauthenticated UI (Import Records + Sign In) when not signed in.
-- Replace the existing HeaderButtons.jsx with this file and redeploy.
+HeaderButtons.jsx
+- Robust header that reads client-side markers:
+  - nh_user_email
+  - nh_usage
+  - nh_usage_last_update
+- Accepts both usage shapes:
+  - { searches, reveals, limitSearches, limitReveals }
+  - { searchesUsed, searchesTotal, revealsUsed, revealsTotal }
+- Listens for storage events so signup/signin from another page/tab updates header.
+- Logout clears the client markers and reloads.
+- Keep a backup of your existing HeaderButtons.jsx before replacing.
 */
 
 function normalizeUsage(raw) {
   if (!raw) return null;
   try {
     const u = typeof raw === "string" ? JSON.parse(raw) : raw;
-    // If new shape
+    // New shape
     if (typeof u.searches === "number" || typeof u.reveals === "number") {
       return {
         searches: Number(u.searches || 0),
         reveals: Number(u.reveals || 0),
-        limitSearches: Number(u.limitSearches || u.searches ?? 0),
-        limitReveals: Number(u.limitReveals || u.reveals ?? 0),
+        limitSearches: Number(u.limitSearches ?? u.searches ?? 0),
+        limitReveals: Number(u.limitReveals ?? u.reveals ?? 0),
       };
     }
-    // If old shape: searchesUsed/searchesTotal
+    // Old shape
     if (typeof u.searchesUsed === "number" || typeof u.searchesTotal === "number") {
       return {
         searches: Number(u.searchesUsed || 0),
@@ -36,7 +38,7 @@ function normalizeUsage(raw) {
         limitReveals: Number(u.revealsTotal || 0),
       };
     }
-    // Fallback: try reasonable fields
+    // Fallback
     return {
       searches: Number(u.searches || u.searchesUsed || 0),
       reveals: Number(u.reveals || u.revealsUsed || 0),
@@ -54,7 +56,6 @@ export default function HeaderButtons() {
   const [usage, setUsage] = useState(null);
   const [openDropdown, setOpenDropdown] = useState(false);
 
-  // Read initial state from localStorage on client
   useEffect(() => {
     if (typeof window === "undefined") return;
     const email = localStorage.getItem("nh_user_email");
@@ -63,7 +64,6 @@ export default function HeaderButtons() {
     setUsage(normalizeUsage(raw));
   }, []);
 
-  // Listen for changes to localStorage from other tabs / redirects
   useEffect(() => {
     function onStorage(e) {
       if (!e) return;
@@ -88,10 +88,7 @@ export default function HeaderButtons() {
       localStorage.removeItem("nh_user_email");
       localStorage.removeItem("nh_usage");
       localStorage.removeItem("nh_usage_last_update");
-    } catch (e) {
-      // ignore
-    }
-    // Refresh to ensure server-side state (if any) and re-render header
+    } catch (e) {}
     window.location.reload();
   };
 
@@ -105,7 +102,6 @@ export default function HeaderButtons() {
     );
   };
 
-  // Authenticated view
   if (userEmail) {
     return (
       <div style={{ position: "relative", display: "flex", gap: "1rem", alignItems: "center" }}>
@@ -162,7 +158,6 @@ export default function HeaderButtons() {
     );
   }
 
-  // Unauthenticated / existing UI
   return (
     <>
       <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
