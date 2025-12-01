@@ -1,52 +1,110 @@
 import { useEffect, useState, useRef } from 'react';
 
+/*
+ClientAuthHeader
+- Detects signed-in user via localStorage (nh_user_email, nh_usage) OR server cookie nh_session
+- Hides legacy Sign in / Sign up links automatically (covers common hrefs)
+- Renders email + usage button with dropdown (Account / Logout)
+- Render this in your header where Sign in / Sign up currently live (or only on the homepage)
+*/
 export default function ClientAuthHeader() {
   const [email, setEmail] = useState('');
   const [usage, setUsage] = useState({ searches: 0, reveals: 0, limitSearches: 0, limitReveals: 0, plan: null });
   const [open, setOpen] = useState(false);
   const mounted = useRef(false);
 
-  useEffect(() => {
-    function readFromLocalStorage() {
-      try {
-        const e = localStorage.getItem('nh_user_email') || '';
-        const uRaw = localStorage.getItem('nh_usage');
-        const u = uRaw ? JSON.parse(uRaw) : null;
-        setEmail(e);
-        if (u && typeof u === 'object') {
-          setUsage({
-            searches: u.searches || 0,
-            reveals: u.reveals || 0,
-            limitSearches: u.limitSearches || 0,
-            limitReveals: u.limitReveals || 0,
-            plan: u.plan || null,
-          });
-        }
-      } catch (err) {
-        // ignore parsing/localStorage errors
-      }
-    }
+  function readFromLocal() {
+    try {
+      const lsEmail = localStorage.getItem('nh_user_email') || '';
+      const lsUsageRaw = localStorage.getItem('nh_usage');
+      const lsUsage = lsUsageRaw ? JSON.parse(lsUsageRaw) : null;
 
-    readFromLocalStorage();
+      if (lsEmail) setEmail(lsEmail);
+      if (lsUsage && typeof lsUsage === 'object') {
+        setUsage({
+          searches: lsUsage.searches || 0,
+          reveals: lsUsage.reveals || 0,
+          limitSearches: lsUsage.limitSearches || 0,
+          limitReveals: lsUsage.limitReveals || 0,
+          plan: lsUsage.plan || null,
+        });
+      }
+
+      // If no localStorage email, attempt to read server-set nh_session cookie (URL-encoded JSON)
+      if (!lsEmail && typeof document !== 'undefined') {
+        const cookies = document.cookie.split(';').map((c) => c.trim());
+        const nh = cookies.find((c) => c.startsWith('nh_session='));
+        if (nh) {
+          try {
+            const payload = JSON.parse(decodeURIComponent(nh.split('=')[1]));
+            if (payload && payload.email) setEmail(payload.email);
+            if (payload && (payload.limitSearches || payload.limitReveals)) {
+              setUsage((u) => ({
+                ...u,
+                limitSearches: payload.limitSearches || u.limitSearches,
+                limitReveals: payload.limitReveals || u.limitReveals,
+                plan: payload.plan || u.plan,
+              }));
+            }
+          } catch (e) {
+            // ignore cookie parse errors
+          }
+        }
+      }
+    } catch (err) {
+      // ignore localStorage parse errors
+    }
+  }
+
+  useEffect(() => {
     mounted.current = true;
+    readFromLocal();
 
     function onStorage(e) {
-      if (e.key === 'nh_user_email' || e.key === 'nh_usage') {
-        readFromLocalStorage();
+      if (e.key === 'nh_user_email' || e.key === 'nh_usage' || e.key === 'nh_usage_last_update') {
+        readFromLocal();
       }
     }
     window.addEventListener('storage', onStorage);
 
     return () => {
-      window.removeEventListener('storage', onStorage);
       mounted.current = false;
+      window.removeEventListener('storage', onStorage);
     };
   }, []);
+
+  // Hide legacy Sign in / Sign up links and optional logo when signed in.
+  useEffect(() => {
+    if (!email) return;
+    try {
+      const selectors = [
+        'a[href="/signin"]',
+        'a[href="/signup"]',
+        'a[href="/login"]',
+        'a[href="/register"]',
+        'a[data-role="signin"]',
+        'a[data-role="signup"]'
+      ];
+      selectors.forEach((sel) => {
+        const el = document.querySelector(sel);
+        if (el) el.style.display = 'none';
+      });
+
+      // Optional: hide site logo if it has id="site-logo" (add id to your logo if desired)
+      const logo = document.querySelector('#site-logo');
+      if (logo) logo.style.display = 'none';
+    } catch (e) {
+      // ignore DOM manipulation errors
+    }
+  }, [email]);
 
   const handleLogout = () => {
     try {
       localStorage.removeItem('nh_user_email');
       localStorage.removeItem('nh_usage');
+      localStorage.removeItem('nh_usage_last_update');
+      // Try to clear server cookie (best-effort)
+      document.cookie = 'nh_session=; Path=/; Max-Age=0; SameSite=Lax';
     } catch (e) {}
     window.location.href = '/signin';
   };
@@ -55,37 +113,31 @@ export default function ClientAuthHeader() {
     window.location.href = '/account';
   };
 
-  const usageLine = `${usage.searches || 0}/${usage.limitSearches || 0} searches • ${usage.reveals || 0}/${usage.limitReveals || 0} reveals`;
+  if (!email) return null; // render nothing so your original links remain
 
-  if (!email) {
-    return (
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-        <a href="/signin" style={{ color: '#0b74ff', textDecoration: 'none', fontWeight: 700 }}>Sign in</a>
-        <a href="/signup" style={{ background: '#0b74ff', color: '#fff', padding: '8px 12px', borderRadius: 8, textDecoration: 'none', fontWeight: 700 }}>Get started</a>
-      </div>
-    );
-  }
+  const usageLine = `${usage.searches || 0}/${usage.limitSearches || 0} searches • ${usage.reveals || 0}/${usage.limitReveals || 0} reveals`;
 
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(v => !v)}
         aria-expanded={open}
         style={{
           display: 'flex',
           gap: 10,
           alignItems: 'center',
-          padding: '8px 12px',
+          padding: '6px 10px',
           borderRadius: 999,
           border: '1px solid #e6e6e6',
           background: '#fff',
           cursor: 'pointer',
           fontWeight: 600,
+          fontSize: 13
         }}
       >
         <div style={{ textAlign: 'right', lineHeight: 1 }}>
-          <div style={{ fontSize: 13, color: '#111' }}>{email}</div>
-          <div style={{ fontSize: 12, color: '#666' }}>{usageLine}</div>
+          <div style={{ color: '#111' }}>{email}</div>
+          <div style={{ color: '#666', fontSize: 12 }}>{usageLine}</div>
         </div>
       </button>
 
