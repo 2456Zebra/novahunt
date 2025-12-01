@@ -1,11 +1,9 @@
 import React from 'react';
 
 /*
-Footer component
-- Minimal site footer with copyright 2026 and contact link.
-- Drop into your layout (for example at the bottom of pages/_app.js or inside your global footer area).
+Footer component — copy this file to components/Footer.jsx
+To render site-wide, import and include <Footer /> in pages/_app.js or your site layout (bottom).
 */
-
 export default function Footer() {
   return (
     <footer style={{ borderTop: '1px solid #eee', padding: '20px 0', marginTop: 32, background: 'transparent' }}>
