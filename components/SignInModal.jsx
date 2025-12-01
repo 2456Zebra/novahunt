@@ -4,13 +4,12 @@ import Router from 'next/router';
 import { setClientSignedIn } from '../lib/auth-client';
 
 /**
- * SignInModal — renders only when `open` is true. Accepts:
- *  - open (boolean)
- *  - onClose (function)
- *  - prefillEmail (string)
+ * SignInModal — renders only when `open` is true.
  *
- * Updated to persist client-side signed-in markers after successful signup/signin
- * so the header and account UI update immediately.
+ * Updated behavior:
+ * - "Create account" takes users to /plans (so they can select a plan) per product request.
+ * - After successful signup/signin we persist usage (using server-provided usage when available),
+ *   and we ensure plan defaults are applied client-side (lib/auth-client does that).
  */
 export default function SignInModal({ open = false, onClose = () => {}, prefillEmail = '' }) {
   const [email, setEmail] = useState(prefillEmail || '');
@@ -46,12 +45,11 @@ export default function SignInModal({ open = false, onClose = () => {}, prefillE
           setProcessing(false);
           return;
         }
-        // Use server-provided usage if available, otherwise set Free defaults.
+        // server may return usage shape; lib/auth-client will normalize + apply plan defaults
         const usage = body?.usage || { plan: 'free', searches: 0, reveals: 0, limitSearches: 5, limitReveals: 3 };
         setClientSignedIn(email, usage);
         setJustSignedIn(true);
         setProcessing(false);
-        // Redirect to dashboard/home so routing & header show signed-in UI
         Router.push('/');
         return;
       }
@@ -68,7 +66,6 @@ export default function SignInModal({ open = false, onClose = () => {}, prefillE
           setProcessing(false);
           return;
         }
-        // server may return usage; use it if present
         const usage = body?.usage || { plan: 'free', searches: 0, reveals: 0, limitSearches: 5, limitReveals: 3 };
         setClientSignedIn(email, usage);
         setJustSignedIn(true);
@@ -198,7 +195,9 @@ export default function SignInModal({ open = false, onClose = () => {}, prefillE
               {mode === 'signin' && (
                 <>
                   Forgot password? <a href="#" onClick={() => setMode('forgot')} style={{ color: '#007bff' }}>Reset</a> •{' '}
-                  <a href="#" onClick={() => setMode('signup')} style={{ color: '#007bff' }}>Create account</a>
+                  <a href="#" onClick={() => { /* product requirement: take users to Plans to choose plan and create account */ Router.push('/plans'); }} style={{ color: '#007bff' }}>
+                    Create account
+                  </a>
                 </>
               )}
               {mode === 'signup' && <a href="#" onClick={() => setMode('signin')} style={{ color: '#007bff' }}>Have an account? Sign in</a>}
