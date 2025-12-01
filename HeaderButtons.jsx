@@ -5,10 +5,10 @@ import { getClientEmail, getClientUsage, clearClientSignedIn } from "./lib/auth-
 
 /*
 HeaderButtons.jsx
-- Dropdown layout: two equal buttons (Account / Logout) in the dropdown when signed in.
-- Listens for both storage events and custom in-tab events (nh_usage_updated / nh_auth_changed)
-  so header updates immediately after sign-in, reveal, or search without needing a page reload.
-- Logout redirects to home ('/') and clears client markers.
+- Adjusted dropdown button layout and colors per request:
+  - Two equal-width buttons inside the dropdown (Account, Logout)
+  - Light peach background for the buttons
+- Keeps listening for nh_usage_updated / nh_auth_changed events so counts update immediately.
 */
 
 export default function HeaderButtons() {
@@ -24,14 +24,11 @@ export default function HeaderButtons() {
   }, []);
 
   useEffect(() => {
-    function onUpdate(e) {
-      // handle storage events and our custom events
+    function onUpdate() {
       try {
         setUserEmail(getClientEmail() || null);
         setUsage(getClientUsage());
-      } catch (err) {
-        // ignore
-      }
+      } catch (err) {}
     }
 
     if (typeof window !== "undefined") {
@@ -52,7 +49,6 @@ export default function HeaderButtons() {
 
   const handleLogout = () => {
     clearClientSignedIn();
-    // send user to homepage signed-out
     window.location.href = "/";
   };
 
@@ -111,11 +107,11 @@ export default function HeaderButtons() {
 
               <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                 <Link href="/account">
-                  <button style={{ flex: 1, padding: '8px 10px', borderRadius: 8, background: '#f3f4f6', border: '1px solid #e6e6e6', cursor: 'pointer' }}>
+                  <button style={{ flex: 1, padding: '8px 10px', borderRadius: 8, background: '#fff4ed', border: '1px solid #e6e6e6', cursor: 'pointer' }}>
                     Account
                   </button>
                 </Link>
-                <button onClick={handleLogout} style={{ flex: 1, padding: '8px 10px', borderRadius: 8, background: '#fff', border: '1px solid #e6e6e6', cursor: 'pointer' }}>
+                <button onClick={handleLogout} style={{ flex: 1, padding: '8px 10px', borderRadius: 8, background: '#fff4ed', border: '1px solid #e6e6e6', cursor: 'pointer' }}>
                   Logout
                 </button>
               </div>
