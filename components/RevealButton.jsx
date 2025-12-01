@@ -5,20 +5,24 @@ import {
   canReveal,
   recordReveal,
   incrementReveal,
+  setClientSignedIn,
 } from '../lib/auth-client';
 
 /**
  * RevealButton
  *
- * - If NOT signed in -> redirect to /plans (per product requirement)
+ * - If NOT signed in -> redirect to /plans
  * - If signed in but out of reveals -> redirect to /plans
  * - Otherwise attempts the reveal (via revealHandler or POST /api/reveal)
- * - On success updates client-side reveal history and usage and dispatches events
+ * - On success:
+ *    - If server returns updated usage, replace local nh_usage with server usage (preferred)
+ *    - Otherwise increment local reveal count
+ *    - Record reveal history and dispatch events so header/account update immediately
  */
 
 export default function RevealButton({
   target,
-  revealHandler, // optional async (target) => ({ success: true, data })
+  revealHandler, // optional async (target) => ({ success: true, data, usage })
   onSuccess, // optional callback after success
   className,
   style,
@@ -30,15 +34,12 @@ export default function RevealButton({
     e && e.preventDefault();
     const email = getClientEmail();
 
-    // NOTE: change requested — unauthenticated visitors should be directed to Plans
     if (!email) {
       Router.push('/plans');
       return;
     }
 
-    // Signed in but check client-side quota first
     if (!canReveal()) {
-      // User out of reveals -> go to Plans
       Router.push('/plans');
       return;
     }
@@ -55,25 +56,37 @@ export default function RevealButton({
           body: JSON.stringify({ target }),
           credentials: 'include',
         });
+
+        // server says upgrade/payment needed
         if (res.status === 402) {
-          // Server demands upgrade/payment
           Router.push('/plans');
           return;
         }
+
         result = await res.json();
         if (!res.ok) {
           throw new Error(result?.error || 'Reveal failed');
         }
       }
 
-      // record and increment client state
+      // If server provided an authoritative updated usage object, persist it
+      const serverUsage = result?.usage || (result && result.data && result.data.usage);
+      if (serverUsage) {
+        // ensure client state reflects server
+        setClientSignedIn(email, serverUsage);
+      } else {
+        // fallback: increment local reveals
+        try { incrementReveal(); } catch (e) {}
+      }
+
+      // Save reveal record (non-authoritative local history)
       const record = {
         target,
         date: new Date().toISOString(),
         note: (result && result.data && result.data.note) || '',
+        // include any returned fields you want to display
       };
       try { recordReveal(record); } catch (e) {}
-      try { incrementReveal(); } catch (e) {}
 
       if (typeof onSuccess === 'function') onSuccess(result && result.data);
     } catch (err) {
