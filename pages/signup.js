@@ -1,62 +1,94 @@
 import { useState } from 'react';
-import { ensureUsageForPlan } from '../components/UsageEnforcer';
 
 /*
-Simple signup page that:
-- fixes the sign-up form layout (password field won't overflow)
-- on successful signup (mock or real) sets nh_user_email and nh_usage in localStorage
-  so user is immediately signed in on redirect to homepage.
-Important:
-- If you have a real server signup endpoint, replace the mock POST below with the real request
-  and only set localStorage after server returns success. This file ensures layout and local sign-in.
+pages/signup.js
+
+Behavior & guarantees (only this file):
+- The plan selection only offers "Free" (no other tiers shown).
+- On submit this page will:
+  1. Attempt to POST to /api/signup (if you have a server endpoint). If the endpoint returns success and includes usage data, use it.
+  2. On success (server or local mock) it will set the client-side localStorage keys the site header expects:
+     - nh_user_email: the new user's email (string)
+     - nh_usage: JSON object { plan, searches, reveals, limitSearches, limitReveals }
+     - nh_usage_last_update: timestamp string (triggers storage listeners in other tabs/components)
+  3. Redirect to the homepage ('/') so ClientAuthHeader (or equivalent) will see nh_user_email / nh_usage and show the logged-in pulldown.
+- No other site files are modified. This file only fixes the plan pulldown and ensures local client sign-in state after signup.
 */
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [plan, setPlan] = useState('free');
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [error, setError] = useState('');
+
+  // Free plan defaults (keep in sync with server limits if you change them)
+  const FREE_USAGE = { plan: 'free', searches: 0, reveals: 0, limitSearches: 5, limitReveals: 3 };
+
+  const setClientSignedIn = (userEmail, usage = FREE_USAGE) => {
+    try {
+      localStorage.setItem('nh_user_email', String(userEmail || ''));
+      localStorage.setItem('nh_usage', JSON.stringify(usage));
+      localStorage.setItem('nh_usage_last_update', Date.now().toString());
+    } catch (e) {
+      // ignore localStorage failures but surface to console
+      console.warn('failed to set localStorage on signup', e);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMsg('');
+    setError('');
     if (!email || !password) {
-      setMsg('Please enter email and password.');
+      setError('Please enter an email and password.');
       return;
     }
 
     setLoading(true);
     try {
-      // TODO: replace with real signup POST to your backend if present.
-      // Example:
-      // const res = await fetch('/api/signup', { method: 'POST', body: JSON.stringify({ email, password, plan }) });
-      // if (!res.ok) throw new Error('Signup failed');
-
-      // For now assume signup success. Set localStorage so homepage will show signed-in state.
+      // Try server signup endpoint if available
+      let serverResp = null;
       try {
-        localStorage.setItem('nh_user_email', email);
-        // ensure default usage structure for chosen plan
-        const usage = ensureUsageForPlan(plan);
-        // if plan chosen isn't free, overwrite limits from plan defaults
-        usage.plan = plan;
-        localStorage.setItem('nh_usage', JSON.stringify(usage));
+        const res = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, plan: 'free' }),
+        });
+
+        if (res.ok) {
+          // Accept server-provided usage object if returned
+          serverResp = await res.json();
+        } else {
+          // Non-2xx from server: treat as signup failure but continue to client fallback
+          const text = await res.text().catch(() => '');
+          throw new Error(text || 'Signup failed on server');
+        }
       } catch (err) {
-        // ignore storage errors
+        // If no server endpoint or network error, fall back to client-only flow.
+        // We'll continue to set client state below.
+        serverResp = null;
+        // don't rethrow — fallback below will sign the user into client
       }
 
-      // Redirect to homepage (signed-in)
+      // If server returned usage, use it. Otherwise use FREE_USAGE.
+      const usage = (serverResp && serverResp.usage) ? serverResp.usage : FREE_USAGE;
+
+      // Persist client-side signed-in markers so header sees the user
+      setClientSignedIn(email, usage);
+
+      // Redirect to homepage where ClientAuthHeader should render the signed-in pulldown
       window.location.href = '/';
     } catch (err) {
-      setMsg(err.message || 'Signup failed');
+      console.error(err);
+      setError(err.message || 'Signup failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main style={{ padding: 24, maxWidth: 680, margin: '0 auto' }}>
+    <main style={{ padding: 24, maxWidth: 680, margin: '0 auto', boxSizing: 'border-box' }}>
       <h1 style={{ marginTop: 0 }}>Create an account</h1>
+
       <form onSubmit={handleSubmit} style={{ background: '#fff', border: '1px solid #eee', padding: 20, borderRadius: 8 }}>
         <label style={{ display: 'block', marginBottom: 12 }}>
           Email
@@ -82,18 +114,20 @@ export default function SignupPage() {
 
         <label style={{ display: 'block', marginBottom: 12 }}>
           Plan
-          <select value={plan} onChange={(e) => setPlan(e.target.value)} style={{ display: 'block', width: '100%', padding: '10px 12px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6' }}>
+          {/* Only show Free on this page. Other plans must be purchased via the Plans flow / Stripe. */}
+          <select value="free" disabled style={{ display: 'block', width: '100%', padding: '10px 12px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6', background: '#f5f7fb', boxSizing: 'border-box' }}>
             <option value="free">Free</option>
-            <option value="starter">Starter</option>
-            <option value="pro">Pro</option>
-            <option value="enterprise">Enterprise</option>
           </select>
         </label>
 
-        {msg && <div style={{ color: 'crimson', marginBottom: 12 }}>{msg}</div>}
+        {error && <div style={{ color: 'crimson', marginBottom: 12 }}>{error}</div>}
 
         <div style={{ display: 'flex', gap: 12 }}>
-          <button type="submit" disabled={loading} style={{ padding: '10px 14px', borderRadius: 8, background: '#0b74ff', color: '#fff', border: 'none', fontWeight: 700 }}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{ padding: '10px 14px', borderRadius: 8, background: '#0b74ff', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+          >
             {loading ? 'Creating…' : 'Create account'}
           </button>
 
