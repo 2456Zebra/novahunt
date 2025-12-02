@@ -40,7 +40,7 @@ export default function ResultItem({ item, onReveal }) {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <RevealButton
-            target={item?.id || item?.email}
+            target={item?.id || item?.email || 'unknown'}
             onSuccess={onReveal}
             style={{
               padding: '6px 10px',
