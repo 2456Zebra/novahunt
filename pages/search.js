@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { performSearch, performReveal, getAccountState } from '../utils/accountActions';
+import { performSearch, getAccountState } from '../utils/accountActions';
+import RevealButton from '../components/RevealButton';
 
 export default function SearchPage({ initialDomain = '' }) {
   const [domain, setDomain] = useState(initialDomain);
@@ -33,14 +34,15 @@ export default function SearchPage({ initialDomain = '' }) {
     setAccount(getAccountState());
   };
 
-  const handleReveal = (categoryIndex, contactIndex) => {
-    if (!performReveal()) {
-      alert('No reveals remaining.');
-      return;
-    }
-
+  const handleReveal = (categoryIndex, contactIndex, revealedData) => {
     const updatedResults = [...results];
-    updatedResults[categoryIndex].contacts[contactIndex].revealed = true;
+    const contact = { ...updatedResults[categoryIndex].contacts[contactIndex], revealed: true };
+    // If server returned revealed email, update the contact
+    const email = revealedData?.email || revealedData?.revealed?.email;
+    if (email) {
+      contact.email = email;
+    }
+    updatedResults[categoryIndex].contacts[contactIndex] = contact;
     setResults(updatedResults);
     setAccount(getAccountState());
   };
@@ -97,12 +99,13 @@ export default function SearchPage({ initialDomain = '' }) {
                       <div style={{ background: '#f3f4f6', color: '#374151', borderRadius: '6px', padding: '2px 8px', fontSize: '12px' }}>{contact.trust} trust</div>
                     </div>
                     <div>
-                      <button
-                        onClick={() => handleReveal(catIndex, contactIndex)}
+                      <RevealButton
+                        target={contact.email}
+                        onSuccess={(revealedData) => handleReveal(catIndex, contactIndex, revealedData)}
                         style={{ display: 'inline-block', padding: '6px 10px', borderRadius: '6px', background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}
                       >
                         Reveal
-                      </button>
+                      </RevealButton>
                     </div>
                   </div>
                   <div style={{ marginTop: '6px', color: '#6b7280', fontSize: '13px' }}>{contact.role}</div>

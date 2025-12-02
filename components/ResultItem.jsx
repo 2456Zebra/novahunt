@@ -1,4 +1,5 @@
 import React from 'react';
+import RevealButton from './RevealButton';
 
 /*
   ResultItem - small presentational component for a contact row.
@@ -11,12 +12,11 @@ import React from 'react';
 
   Behavior:
   - Show maskedEmail (or email as fallback).
-  - If canReveal is true and revealUrl provided, show a Reveal link to revealUrl.
-  - If canReveal is false, Reveal links to /plans?source=search (or revealUrl if provided).
+  - Uses RevealButton for in-place reveal for signed-in users within quota.
   - Hides direct mailto unless the item has an unmasked email and reveal was used (server gating).
 */
 
-export default function ResultItem({ item }) {
+export default function ResultItem({ item, onReveal }) {
   const displayEmail = item?.maskedEmail || item?.email || '';
 
   return (
@@ -39,8 +39,9 @@ export default function ResultItem({ item }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <a
-            href={item?.revealUrl || (item?.canReveal ? '/plans?source=search' : '/plans?source=search')}
+          <RevealButton
+            target={item?.id || item?.email || 'unknown'}
+            onSuccess={onReveal}
             style={{
               padding: '6px 10px',
               borderRadius: 6,
@@ -49,10 +50,11 @@ export default function ResultItem({ item }) {
               color: '#111827',
               textDecoration: 'none',
               fontSize: 13,
+              cursor: 'pointer',
             }}
           >
             Reveal
-          </a>
+          </RevealButton>
 
           <a
             href={item?.source || '#'}
