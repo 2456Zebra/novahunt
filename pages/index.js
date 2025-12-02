@@ -260,7 +260,7 @@ export default function HomePage() {
                       window.open('https://www.google.com/search?q=' + q, '_blank');
                     }} style={{ fontSize:12, color:'#6b7280', textTransform:'lowercase', cursor:'pointer', textDecoration:'none' }}>source</a>
 
-                    <button onClick={() => handleReveal(idx)} style={{ padding:'6px 8px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb' }}>
+                    <button data-nh-reveal={p.email} onClick={() => handleReveal(idx)} style={{ padding:'6px 8px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb' }}>
                       Reveal
                     </button>
 

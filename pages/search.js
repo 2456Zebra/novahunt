@@ -98,6 +98,7 @@ export default function SearchPage({ initialDomain = '' }) {
                     </div>
                     <div>
                       <button
+                        data-nh-reveal={contact.email}
                         onClick={() => handleReveal(catIndex, contactIndex)}
                         style={{ display: 'inline-block', padding: '6px 10px', borderRadius: '6px', background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}
                       >
