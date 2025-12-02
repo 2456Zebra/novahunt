@@ -34,9 +34,15 @@ export default function SearchPage({ initialDomain = '' }) {
     setAccount(getAccountState());
   };
 
-  const handleReveal = (categoryIndex, contactIndex) => {
+  const handleReveal = (categoryIndex, contactIndex, revealedData) => {
     const updatedResults = [...results];
-    updatedResults[categoryIndex].contacts[contactIndex].revealed = true;
+    const contact = { ...updatedResults[categoryIndex].contacts[contactIndex], revealed: true };
+    // If server returned revealed email, update the contact
+    const email = revealedData?.email || revealedData?.revealed?.email;
+    if (email) {
+      contact.email = email;
+    }
+    updatedResults[categoryIndex].contacts[contactIndex] = contact;
     setResults(updatedResults);
     setAccount(getAccountState());
   };
@@ -95,7 +101,7 @@ export default function SearchPage({ initialDomain = '' }) {
                     <div>
                       <RevealButton
                         target={contact.email}
-                        onSuccess={() => handleReveal(catIndex, contactIndex)}
+                        onSuccess={(revealedData) => handleReveal(catIndex, contactIndex, revealedData)}
                         style={{ display: 'inline-block', padding: '6px 10px', borderRadius: '6px', background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}
                       >
                         Reveal

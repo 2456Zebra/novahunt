@@ -144,11 +144,17 @@ export default function HomePage() {
     }
   }
 
-  // Reveal success callback: update UI to show revealed contact
-  function handleReveal(idx) {
+  // Reveal success callback: update UI to show revealed contact with server data
+  function handleReveal(idx, revealedData) {
     setData(prev => {
       const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
-      clone.contacts[idx] = { ...clone.contacts[idx], _revealed: true };
+      const contact = { ...clone.contacts[idx], _revealed: true };
+      // If server returned revealed email (from result.data or result.revealed), update the contact
+      const email = revealedData?.email || revealedData?.revealed?.email;
+      if (email) {
+        contact.email = email;
+      }
+      clone.contacts[idx] = contact;
       return clone;
     });
   }
@@ -212,7 +218,7 @@ export default function HomePage() {
 
                     <RevealButton
                       target={p.email}
-                      onSuccess={() => handleReveal(idx)}
+                      onSuccess={(revealedData) => handleReveal(idx, revealedData)}
                       style={{ padding:'6px 8px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb' }}
                     >
                       Reveal
