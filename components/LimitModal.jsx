@@ -8,6 +8,7 @@ import Router from 'next/router';
  * Example: window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'reveal' } }))
  *
  * Renders a simple modal prompting the user to upgrade, with a button to /plans.
+ * When the View plans button is clicked, the modal closes first and then navigates.
  */
 export default function LimitModal() {
   const [open, setOpen] = useState(false);
@@ -33,6 +34,15 @@ export default function LimitModal() {
       ? 'You have reached your plan\'s search limit. Upgrade to perform more searches.'
       : 'You have reached your plan\'s reveal limit. Upgrade to reveal more emails.');
 
+  function goToPlans() {
+    // Close the modal first then navigate
+    setOpen(false);
+    // Delay navigation a tick to ensure modal unmounts
+    setTimeout(() => {
+      try { Router.push('/plans'); } catch (e) { window.location.href = '/plans'; }
+    }, 50);
+  }
+
   return (
     <div role="dialog" aria-modal="true" style={{
       position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2200
@@ -50,7 +60,7 @@ export default function LimitModal() {
 
         <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button onClick={() => setOpen(false)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer' }}>Cancel</button>
-          <button onClick={() => { Router.push('/plans'); }} style={{ padding: '8px 12px', borderRadius: 8, border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer' }}>
+          <button onClick={goToPlans} style={{ padding: '8px 12px', borderRadius: 8, border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer' }}>
             View plans
           </button>
         </div>
