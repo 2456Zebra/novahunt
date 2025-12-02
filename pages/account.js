@@ -4,7 +4,7 @@ import Router from 'next/router';
 
 /*
 pages/account.js
-- Back to Home button
+- Back to Dashboard button
 - Save button now attempts to persist to /api/account and falls back to localStorage
 - Listens for in-tab usage/reveal updates so UI refreshes immediately
 */
@@ -89,7 +89,7 @@ export default function AccountPage() {
     setTimeout(() => setStatusMessage(''), 2500);
   }
 
-  function handleBackHome() {
+  function handleBackToDashboard() {
     Router.push('/');
   }
 
@@ -98,8 +98,8 @@ export default function AccountPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <h1>Account</h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={handleBackHome} style={{ padding: '8px 12px', borderRadius: 8, background: '#fff', border: '1px solid #e6e6e6' }}>
-            Back to Home
+          <button onClick={handleBackToDashboard} style={{ padding: '8px 12px', borderRadius: 8, background: '#fff', border: '1px solid #e6e6e6' }}>
+            Back to Dashboard
           </button>
         </div>
       </div>
