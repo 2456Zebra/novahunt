@@ -229,7 +229,7 @@ export default function HomePage() {
                     </button>
 
                     { p._revealed ? (
-                      <button onClick={() => saveContact(p, idx)} disabled={p._saved} style={{ padding:'6px 10px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#10b981' }}>
+                      <button onClick={() => saveContact(p, idx)} disabled={p._saved} style={{ padding:'6px 10px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer' }}>
                         {p._saved ? 'Saved' : 'Save'}
                       </button>
                     ) : null }
@@ -266,7 +266,7 @@ export default function HomePage() {
 
               <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:14 }}>
                 <div style={{ flex:1, display:'flex', alignItems:'center', background:'#fff', borderRadius:8, border:'1px solid #e6edf3', padding:6 }}>
-                  <input aria-label="domain" value={domain} onChange={e => setDomain(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') loadDomain(domain); }} placeholder="Enter domain, e.g. coca-cola.com" style={{ border:'none', outline:'none', padding:'8px 10px', width:'100%' }} />
+                  <input aria-label="domain" value={domain} onChange={e => setDomain(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') loadDomain(domain); }} placeholder="Enter domain, e.[...]" />
                 </div>
 
                 <button onClick={() => loadDomain(domain)} style={{ background:'#2563eb', color:'#fff', border:'none', padding:'10px 14px', borderRadius:6, fontWeight:700, cursor:'pointer' }}>Search</button>
