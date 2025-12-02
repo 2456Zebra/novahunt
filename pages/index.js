@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import RightPanel from '../components/RightPanel';
 import ErrorBoundary from '../components/ErrorBoundary';
+import RevealButton from '../components/RevealButton';
 
 const SAMPLE_DOMAINS = ['coca-cola.com','fordmodels.com','unitedtalent.com','wilhelmina.com','nfl.com'];
 
@@ -31,15 +32,6 @@ function safeGetQueryDomain() {
       return null;
     }
   }
-}
-
-function userIsSignedIn() {
-  if (typeof window === 'undefined') return false;
-  try {
-    if (localStorage.getItem('nh_isSignedIn') === '1') return true;
-    if (document.cookie && /\bnh_token=/.test(document.cookie)) return true;
-  } catch {}
-  return false;
 }
 
 function readSavedContactsFromStorage() {
@@ -152,21 +144,6 @@ export default function HomePage() {
     }
   }
 
-  // Reveal behavior: if not signed in -> /plans; if signed in -> reveal permanently
-  function handleReveal(idx) {
-    const signedIn = userIsSignedIn();
-    if (!signedIn) {
-      try { localStorage.setItem('nh_lastDomain', domain); } catch {}
-      window.location.href = '/plans';
-      return;
-    }
-    setData(prev => {
-      const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
-      clone.contacts[idx] = { ...clone.contacts[idx], _revealed: true };
-      return clone;
-    });
-  }
-
   function renderContacts(list) {
     if (!list || list.length === 0) return <div style={{ color:'#6b7280' }}>No contacts found yet.</div>;
 
@@ -224,9 +201,19 @@ export default function HomePage() {
                       window.open('https://www.google.com/search?q=' + q, '_blank');
                     }} style={{ fontSize:12, color:'#6b7280', textTransform:'lowercase', cursor:'pointer', textDecoration:'none' }}>source</a>
 
-                    <button onClick={() => handleReveal(idx)} style={{ padding:'6px 8px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb' }}>
+                    <RevealButton
+                      target={p.email}
+                      onSuccess={() => {
+                        setData(prev => {
+                          const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
+                          clone.contacts[idx] = { ...clone.contacts[idx], _revealed: true };
+                          return clone;
+                        });
+                      }}
+                      style={{ padding:'6px 8px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#2563eb' }}
+                    >
                       Reveal
-                    </button>
+                    </RevealButton>
 
                     { p._revealed ? (
                       <button onClick={() => saveContact(p, idx)} disabled={p._saved} style={{ padding:'6px 10px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#10b981' }}>

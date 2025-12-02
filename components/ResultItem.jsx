@@ -1,4 +1,5 @@
 import React from 'react';
+import RevealButton from './RevealButton';
 
 /*
   ResultItem - small presentational component for a contact row.
@@ -39,8 +40,8 @@ export default function ResultItem({ item }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <a
-            href={item?.revealUrl || (item?.canReveal ? '/plans?source=search' : '/plans?source=search')}
+          <RevealButton
+            target={item?.email || item?.maskedEmail}
             style={{
               padding: '6px 10px',
               borderRadius: 6,
@@ -52,7 +53,7 @@ export default function ResultItem({ item }) {
             }}
           >
             Reveal
-          </a>
+          </RevealButton>
 
           <a
             href={item?.source || '#'}
