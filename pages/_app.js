@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Footer from '../components/Footer';
-import { getClientEmail, canReveal, setClientSignedIn, incrementReveal, recordReveal, getClientUsage } from '../lib/auth-client';
-import Router from 'next/router';
+import SignInModal from '../components/SignInModal';
+import UpgradeModal from '../components/UpgradeModal';
+import RevealResultModal from '../components/RevealResultModal';
+import { getClientEmail, canReveal, setClientSignedIn, incrementReveal, recordReveal } from '../lib/auth-client';
 
 /*
 pages/_app.js
 - No header for anonymous users
 - Delegated reveal click handler (installed in capture phase) so it reliably intercepts clicks on elements
-  with data-nh-reveal and prevents navigation to /plans when the user is signed in and within quota.
+  with data-nh-reveal and shows modals when appropriate.
+- Global listeners to show SignInModal, UpgradeModal, and RevealResultModal
 */
 
 const HeaderButtons = dynamic(() => import('../HeaderButtons'), {
@@ -59,6 +62,14 @@ export default function MyApp({ Component, pageProps }) {
   const [mounted, setMounted] = useState(false);
   const [userEmail, setUserEmail] = useState(null);
 
+  // Modal states
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState(null);
+  const [showRevealResultModal, setShowRevealResultModal] = useState(false);
+  const [revealResultData, setRevealResultData] = useState(null);
+  const [revealResultError, setRevealResultError] = useState(null);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     setMounted(true);
@@ -81,34 +92,77 @@ export default function MyApp({ Component, pageProps }) {
       }
     };
 
+    const onAuthChanged = () => read();
+
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener('nh_auth_changed', onAuthChanged);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('nh_auth_changed', onAuthChanged);
+    };
+  }, []);
+
+  // Global modal event listeners
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    function handleShowSignIn() {
+      setShowSignInModal(true);
+    }
+
+    function handleShowUpgrade(e) {
+      setUpgradeReason(e?.detail?.reason || null);
+      setShowUpgradeModal(true);
+    }
+
+    function handleShowRevealResult(e) {
+      const detail = e?.detail || {};
+      setRevealResultData(detail.data || null);
+      setRevealResultError(detail.error || null);
+      setShowRevealResultModal(true);
+    }
+
+    window.addEventListener('nh_show_signin_modal', handleShowSignIn);
+    window.addEventListener('nh_show_upgrade_modal', handleShowUpgrade);
+    window.addEventListener('nh_show_reveal_result', handleShowRevealResult);
+
+    return () => {
+      window.removeEventListener('nh_show_signin_modal', handleShowSignIn);
+      window.removeEventListener('nh_show_upgrade_modal', handleShowUpgrade);
+      window.removeEventListener('nh_show_reveal_result', handleShowRevealResult);
+    };
   }, []);
 
   // Delegated click handler for legacy/new Reveal controls (capture phase)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    function dispatchShowModal(name, detail = {}) {
+      try {
+        window.dispatchEvent(new CustomEvent(name, { detail }));
+      } catch (e) { /* ignore */ }
+    }
+
     async function delegatedRevealHandler(e) {
       const el = e.target.closest && e.target.closest('[data-nh-reveal]');
       if (!el) return;
       // We are in capture phase: prevent default navigation here
-      try { e.preventDefault(); } catch (err) {}
+      try { e.preventDefault(); } catch (err) { /* ignore */ }
       e.stopPropagation();
 
       const target = el.getAttribute('data-nh-reveal') || el.dataset.target || el.dataset.nhReveal;
       if (!target) return;
 
-      // If not signed in => go to Plans (product requirement)
+      // If not signed in => show SignInModal
       const email = getClientEmail();
       if (!email) {
-        Router.push('/plans');
+        dispatchShowModal('nh_show_signin_modal');
         return;
       }
 
       // Client-side quota check
       if (!canReveal()) {
-        Router.push('/plans');
+        dispatchShowModal('nh_show_upgrade_modal', { reason: 'reveals' });
         return;
       }
 
@@ -123,7 +177,7 @@ export default function MyApp({ Component, pageProps }) {
         });
 
         if (res.status === 402) {
-          Router.push('/plans');
+          dispatchShowModal('nh_show_upgrade_modal', { reason: 'reveals' });
           return;
         }
 
@@ -143,10 +197,14 @@ export default function MyApp({ Component, pageProps }) {
         // record a reveal history entry (local)
         recordReveal({ target, date: new Date().toISOString(), note: (body && body.data && body.data.note) || '' });
 
+        // Show result modal
+        dispatchShowModal('nh_show_reveal_result', { data: body?.data || body });
+
         if (el.hasAttribute('data-nh-reload')) window.location.reload();
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error('Reveal failed', err);
-        alert(err.message || 'Reveal failed. Try again.');
+        dispatchShowModal('nh_show_reveal_result', { error: err.message || 'Reveal failed' });
       } finally {
         el.disabled = false;
       }
@@ -179,6 +237,27 @@ export default function MyApp({ Component, pageProps }) {
       </ErrorBoundary>
 
       <Footer />
+
+      {/* Global modals */}
+      <SignInModal
+        open={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
+      />
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        reason={upgradeReason}
+      />
+      <RevealResultModal
+        open={showRevealResultModal}
+        onClose={() => {
+          setShowRevealResultModal(false);
+          setRevealResultData(null);
+          setRevealResultError(null);
+        }}
+        data={revealResultData}
+        error={revealResultError}
+      />
     </>
   );
 }

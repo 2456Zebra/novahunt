@@ -45,12 +45,11 @@ export default function SignInModal({ open = false, onClose = () => {}, prefillE
           setProcessing(false);
           return;
         }
-        // server may return usage shape; lib/auth-client will normalize + apply plan defaults
         const usage = body?.usage || { plan: 'free', searches: 0, reveals: 0, limitSearches: 5, limitReveals: 3 };
         setClientSignedIn(email, usage);
         setJustSignedIn(true);
         setProcessing(false);
-        Router.push('/');
+        Router.replace('/');
         return;
       }
 
@@ -70,7 +69,7 @@ export default function SignInModal({ open = false, onClose = () => {}, prefillE
         setClientSignedIn(email, usage);
         setJustSignedIn(true);
         setProcessing(false);
-        Router.push('/');
+        Router.replace('/');
         return;
       }
 
