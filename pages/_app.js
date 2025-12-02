@@ -1,17 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Footer from '../components/Footer';
-import { getClientEmail } from '../lib/auth-client';
+import { getClientEmail, canReveal, setClientSignedIn, incrementReveal, recordReveal, getClientUsage } from '../lib/auth-client';
+import Router from 'next/router';
 
 /*
 pages/_app.js
-
-Behavior:
-- No top header is rendered for anonymous visitors.
-- After client-side mount, if nh_user_email is present the header appears.
-- The header is minimal: it only contains the right-aligned HeaderButtons (email + dropdown).
-- HeaderButtons is loaded client-side only (ssr: false) so it won't run during SSR/hydration.
-- ErrorBoundary wraps page content so page errors don't break the header when it is shown.
+- No header for anonymous users
+- Delegated reveal click handler: intercepts clicks on elements with data-nh-reveal and performs reveal logic
+  so existing reveal buttons/links that haven't been migrated will still behave correctly.
 */
 
 const HeaderButtons = dynamic(() => import('../HeaderButtons'), {
@@ -86,6 +83,79 @@ export default function MyApp({ Component, pageProps }) {
 
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // Delegated click handler for legacy/new Reveal controls:
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    async function delegatedRevealHandler(e) {
+      const el = e.target.closest && e.target.closest('[data-nh-reveal]');
+      if (!el) return;
+      e.preventDefault();
+
+      const target = el.getAttribute('data-nh-reveal') || el.dataset.target || el.dataset.nhReveal;
+      if (!target) return;
+
+      // If not signed in => go to Plans (product requirement)
+      const email = getClientEmail();
+      if (!email) {
+        Router.push('/plans');
+        return;
+      }
+
+      // Client-side quota check
+      if (!canReveal()) {
+        Router.push('/plans');
+        return;
+      }
+
+      // Do reveal via server API (matches RevealButton behavior)
+      el.disabled = true;
+      try {
+        const res = await fetch('/api/reveal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target }),
+          credentials: 'include',
+        });
+
+        if (res.status === 402) {
+          Router.push('/plans');
+          return;
+        }
+
+        const body = await res.json();
+        if (!res.ok) {
+          throw new Error(body?.error || 'Reveal failed');
+        }
+
+        // If server returned authoritative usage, persist it; otherwise increment locally
+        const serverUsage = body?.usage || (body && body.data && body.data.usage);
+        if (serverUsage) {
+          setClientSignedIn(email, serverUsage);
+        } else {
+          incrementReveal();
+        }
+
+        // record a reveal history entry (local)
+        recordReveal({ target, date: new Date().toISOString(), note: (body && body.data && body.data.note) || '' });
+
+        // If the reveal response contains reveal data, you can optionally show it here.
+        // For now, trigger a page reload if the element has data-nh-reload attribute
+        if (el.hasAttribute('data-nh-reload')) window.location.reload();
+      } catch (err) {
+        // show an alert for now
+        // eslint-disable-next-line no-console
+        console.error('Reveal failed', err);
+        alert(err.message || 'Reveal failed. Try again.');
+      } finally {
+        el.disabled = false;
+      }
+    }
+
+    document.addEventListener('click', delegatedRevealHandler);
+    return () => document.removeEventListener('click', delegatedRevealHandler);
   }, []);
 
   return (
