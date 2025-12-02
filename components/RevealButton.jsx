@@ -12,14 +12,9 @@ import {
  * RevealButton
  *
  * - If NOT signed in -> redirect to /plans
- * - If signed in but out of reveals -> redirect to /plans
+ * - If signed in but out of reveals -> show LimitModal
  * - Otherwise attempts the reveal (via revealHandler or POST /api/reveal)
- * - On success:
- *    - If server returns updated usage, replace local nh_usage with server usage (preferred)
- *    - Otherwise increment local reveal count
- *    - Record reveal history and dispatch events so header/account update immediately
  */
-
 export default function RevealButton({
   target,
   revealHandler, // optional async (target) => ({ success: true, data, usage })
@@ -40,7 +35,10 @@ export default function RevealButton({
     }
 
     if (!canReveal()) {
-      Router.push('/plans');
+      // show global limit modal
+      try {
+        window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'reveal' } }));
+      } catch (err) {}
       return;
     }
 
@@ -84,7 +82,6 @@ export default function RevealButton({
         target,
         date: new Date().toISOString(),
         note: (result && result.data && result.data.note) || '',
-        // include any returned fields you want to display
       };
       try { recordReveal(record); } catch (e) {}
 
