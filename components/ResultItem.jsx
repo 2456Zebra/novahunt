@@ -40,7 +40,8 @@ export default function ResultItem({ item }) {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <a
-            href={item?.revealUrl || (item?.canReveal ? '/plans?source=search' : '/plans?source=search')}
+            href={item?.revealUrl || '/plans?source=search'}
+            data-nh-reveal={item?.email || item?.domain || ''}
             style={{
               padding: '6px 10px',
               borderRadius: 6,

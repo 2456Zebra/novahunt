@@ -27,7 +27,7 @@ export default function SearchResults({ results }) {
                   <button onClick={() => window.open(`https://www.google.com/search?q=site:linkedin.com+in+${r.first_name}+${r.last_name}`, "_blank")} className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition">
                     Source
                   </button>
-                  <button onClick={() => setRevealed(s => {
+                  <button data-nh-reveal={r.email} onClick={() => setRevealed(s => {
                     const n = new Set(s);
                     n.has(r.email) ? n.delete(r.email) : n.add(r.email);
                     return n;
