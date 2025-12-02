@@ -7,8 +7,8 @@ import Router from 'next/router';
 /*
 pages/_app.js
 - No header for anonymous users
-- Delegated reveal click handler: intercepts clicks on elements with data-nh-reveal and performs reveal logic
-  so existing reveal buttons/links that haven't been migrated will still behave correctly.
+- Delegated reveal click handler (installed in capture phase) so it reliably intercepts clicks on elements
+  with data-nh-reveal and prevents navigation to /plans when the user is signed in and within quota.
 */
 
 const HeaderButtons = dynamic(() => import('../HeaderButtons'), {
@@ -85,14 +85,16 @@ export default function MyApp({ Component, pageProps }) {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Delegated click handler for legacy/new Reveal controls:
+  // Delegated click handler for legacy/new Reveal controls (capture phase)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     async function delegatedRevealHandler(e) {
       const el = e.target.closest && e.target.closest('[data-nh-reveal]');
       if (!el) return;
-      e.preventDefault();
+      // We are in capture phase: prevent default navigation here
+      try { e.preventDefault(); } catch (err) {}
+      e.stopPropagation();
 
       const target = el.getAttribute('data-nh-reveal') || el.dataset.target || el.dataset.nhReveal;
       if (!target) return;
@@ -141,12 +143,8 @@ export default function MyApp({ Component, pageProps }) {
         // record a reveal history entry (local)
         recordReveal({ target, date: new Date().toISOString(), note: (body && body.data && body.data.note) || '' });
 
-        // If the reveal response contains reveal data, you can optionally show it here.
-        // For now, trigger a page reload if the element has data-nh-reload attribute
         if (el.hasAttribute('data-nh-reload')) window.location.reload();
       } catch (err) {
-        // show an alert for now
-        // eslint-disable-next-line no-console
         console.error('Reveal failed', err);
         alert(err.message || 'Reveal failed. Try again.');
       } finally {
@@ -154,8 +152,9 @@ export default function MyApp({ Component, pageProps }) {
       }
     }
 
-    document.addEventListener('click', delegatedRevealHandler);
-    return () => document.removeEventListener('click', delegatedRevealHandler);
+    // NOTE: use capture = true so we run before navigation/other handlers
+    document.addEventListener('click', delegatedRevealHandler, true);
+    return () => document.removeEventListener('click', delegatedRevealHandler, true);
   }, []);
 
   return (
