@@ -11,7 +11,7 @@ import {
 /**
  * RevealButton
  *
- * - If NOT signed in -> redirect to /plans
+ * - If NOT signed in -> redirect to /plans immediately
  * - If signed in but out of reveals -> show LimitModal
  * - Otherwise attempts the reveal (via revealHandler or POST /api/reveal)
  */
@@ -29,8 +29,9 @@ export default function RevealButton({
     e && e.preventDefault();
     const email = getClientEmail();
 
+    // If no client email, treat as anonymous — take them to Plans immediately
     if (!email) {
-      Router.push('/plans');
+      try { Router.push('/plans'); } catch (err) { window.location.href = '/plans'; }
       return;
     }
 
@@ -55,9 +56,9 @@ export default function RevealButton({
           credentials: 'include',
         });
 
-        // server says upgrade/payment needed
+        // server indicates upgrade/payment
         if (res.status === 402) {
-          Router.push('/plans');
+          try { Router.push('/plans'); } catch (e) { window.location.href = '/plans'; }
           return;
         }
 
@@ -67,17 +68,21 @@ export default function RevealButton({
         }
       }
 
-      // If server provided an authoritative updated usage object, persist it
+      // If server provided updated usage, persist it
       const serverUsage = result?.usage || (result && result.data && result.data.usage);
       if (serverUsage) {
-        // ensure client state reflects server
         setClientSignedIn(email, serverUsage);
       } else {
-        // fallback: increment local reveals
-        try { incrementReveal(); } catch (e) {}
+        // fallback: attempt to increment locally — incrementReveal returns null if at limit
+        const updated = incrementReveal();
+        if (!updated) {
+          // If increment failed due to limit, show modal
+          window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'reveal' } }));
+          return;
+        }
       }
 
-      // Save reveal record (non-authoritative local history)
+      // Save reveal record locally
       const record = {
         target,
         date: new Date().toISOString(),
