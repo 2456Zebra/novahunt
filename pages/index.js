@@ -6,7 +6,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import RightPanel from '../components/RightPanel';
 import ErrorBoundary from '../components/ErrorBoundary';
-import { incrementReveal, recordReveal } from '../lib/auth-client';
 
 const SAMPLE_DOMAINS = ['coca-cola.com','fordmodels.com','unitedtalent.com','wilhelmina.com','nfl.com'];
 
@@ -39,8 +38,6 @@ function userIsSignedIn() {
   try {
     if (localStorage.getItem('nh_isSignedIn') === '1') return true;
     if (document.cookie && /\bnh_token=/.test(document.cookie)) return true;
-    // fallback: check canonical email marker too
-    if (localStorage.getItem('nh_user_email')) return true;
   } catch {}
   return false;
 }
@@ -163,36 +160,11 @@ export default function HomePage() {
       window.location.href = '/plans';
       return;
     }
-
-    // Mark revealed in UI
     setData(prev => {
       const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
       clone.contacts[idx] = { ...clone.contacts[idx], _revealed: true };
       return clone;
     });
-
-    // Persist a client-side reveal: increment usage and record history as fallback
-    try {
-      incrementReveal();
-      const target = (data && data.contacts && data.contacts[idx]) ? data.contacts[idx].email || `${idx}` : `${idx}`;
-      recordReveal({ target, date: new Date().toISOString(), note: 'client-side reveal' });
-    } catch (e) {
-      // ignore local increment failures
-    }
-
-    // Optionally call server API to persist reveal (non-blocking)
-    (async function persistReveal() {
-      try {
-        await fetch('/api/reveal', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ target: data?.contacts?.[idx]?.email || `${idx}` }),
-          credentials: 'include',
-        });
-      } catch (e) {
-        // ignore server persist failures — client state is authoritative fallback
-      }
-    })();
   }
 
   function renderContacts(list) {
