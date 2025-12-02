@@ -1,23 +1,9 @@
-// Restored homepage with original nav links and a single Footer (removed duplicate).
-// - Removed HeaderButtons (Import Records / Sign In) from the masthead.
-// - Restored the standard homepage nav links (Home, Plans, About, Sign In, Sign Up).
-// - Removed the Footer component at the bottom of this page to avoid rendering two footers.
-//   (The global Footer is rendered in pages/_app.js — do not add another here.)
-// - Kept the controlled input (no pill), sample blue links, RightPanel integration,
-//   and client-side reveal fallback behavior.
-import React, { useEffect, useState } from 'react';
+// Homepage (updated to enforce reveal/search limits, show upgrade modal, and fix Save button visibility)
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import RightPanel from '../components/RightPanel';
 import ErrorBoundary from '../components/ErrorBoundary';
-import { incrementReveal, recordReveal } from '../lib/auth-client';
-
-/*
-  Notes:
-  - Upload this file to pages/index.js on your active branch (add/stripe-checkout-fix or similar).
-  - This file intentionally does not import Footer to prevent duplicate footers when Footer is
-    already rendered globally in pages/_app.js. If your _app.js does NOT render a Footer, restore
-    an appropriate Footer import here.
-*/
+import { canReveal, incrementReveal, recordReveal, canSearch, incrementSearch } from '../lib/auth-client';
 
 const SAMPLE_DOMAINS = ['coca-cola.com','fordmodels.com','unitedtalent.com','wilhelmina.com','nfl.com'];
 
@@ -45,35 +31,6 @@ function safeGetQueryDomain() {
   }
 }
 
-function userIsSignedIn() {
-  if (typeof window === 'undefined') return false;
-  try {
-    if (localStorage.getItem('nh_isSignedIn') === '1') return true;
-    if (document.cookie && /\bnh_token=/.test(document.cookie)) return true;
-    if (localStorage.getItem('nh_user_email')) return true;
-  } catch {}
-  return false;
-}
-
-function readSavedContactsFromStorage() {
-  try {
-    const raw = localStorage.getItem('novahunt.savedContacts') || '[]';
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-function saveContactToStorage(contact) {
-  try {
-    const arr = readSavedContactsFromStorage();
-    const exists = arr.find(c => c.email === contact.email);
-    if (!exists) {
-      arr.push({ ...contact, savedAt: Date.now() });
-      localStorage.setItem('novahunt.savedContacts', JSON.stringify(arr));
-    }
-  } catch (e) { console.warn(e); }
-}
-
 export default function HomePage() {
   const [domain, setDomain] = useState('');
   const [data, setData] = useState(null);
@@ -91,6 +48,15 @@ export default function HomePage() {
   async function loadDomain(d) {
     if (!d) return;
     const key = (d || '').trim().toLowerCase().replace(/^https?:\/\//,'').split('/')[0];
+
+    // enforce search limit before making network call
+    if (!canSearch()) {
+      try {
+        window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'search' } }));
+      } catch (e) {}
+      return;
+    }
+
     setDomain(key);
     setLoading(true);
     try { localStorage.setItem('nh_lastDomain', key); } catch {}
@@ -117,15 +83,21 @@ export default function HomePage() {
           } catch {}
         }
 
-        const saved = readSavedContactsFromStorage();
+        const savedRaw = localStorage.getItem('novahunt.savedContacts') || '[]';
+        let saved = [];
+        try { saved = JSON.parse(savedRaw); } catch (e) {}
         const savedEmails = new Set(saved.map(s => s.email));
         company.contacts = company.contacts.map(c => ({ ...c, _saved: savedEmails.has(c.email) }));
 
-        // Persist the company so client-side RightPanel picks it up immediately
-        try { localStorage.setItem('nh_company', JSON.stringify(company)); } catch (e) { /* ignore */ }
+        // persist company for RightPanel
+        try { localStorage.setItem('nh_company', JSON.stringify(company)); } catch (e) {}
 
         setData(company);
         setLoading(false);
+
+        // increment search usage (we already checked canSearch earlier)
+        try { incrementSearch(); } catch (e) {}
+
         try {
           const u = new URL(window.location.href);
           u.searchParams.set('domain', key);
@@ -145,7 +117,13 @@ export default function HomePage() {
 
   async function saveContact(contact, idx) {
     try {
-      saveContactToStorage(contact);
+      const raw = localStorage.getItem('novahunt.savedContacts') || '[]';
+      const arr = JSON.parse(raw);
+      const exists = arr.find(c => c.email === contact.email);
+      if (!exists) {
+        arr.push({ ...contact, savedAt: Date.now() });
+        localStorage.setItem('novahunt.savedContacts', JSON.stringify(arr));
+      }
       setData(prev => {
         const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
         clone.contacts[idx] = { ...clone.contacts[idx], _saved: true };
@@ -164,32 +142,38 @@ export default function HomePage() {
     }
   }
 
-  // Reveal behavior: maintain UI, increment client usage, and try to persist to server.
   function handleReveal(idx) {
-    const signedIn = userIsSignedIn();
-    if (!signedIn) {
-      try { localStorage.setItem('nh_lastDomain', domain); } catch {}
-      window.location.href = '/plans';
+    // enforce reveal limit
+    if (!canReveal()) {
+      try {
+        window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'reveal' } }));
+      } catch (e) {}
       return;
     }
-    // update UI
+
+    // Mark revealed in UI
     setData(prev => {
       const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
       clone.contacts[idx] = { ...clone.contacts[idx], _revealed: true };
       return clone;
     });
 
-    // persist client-side usage + history
+    // increment reveal usage and record history
     try {
-      incrementReveal();
-      const target = (data && data.contacts && data.contacts[idx]) ? data.contacts[idx].email || `${idx}` : `${idx}`;
-      recordReveal({ target, date: new Date().toISOString(), note: 'client-side reveal' });
+      const updated = incrementReveal();
+      if (!updated) {
+        // increment failed due to race/limit; show modal
+        window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'reveal' } }));
+      } else {
+        const target = (data && data.contacts && data.contacts[idx]) ? data.contacts[idx].email || `${idx}` : `${idx}`;
+        recordReveal({ target, date: new Date().toISOString(), note: 'client-side reveal' });
+      }
     } catch (e) {
       // ignore
     }
 
-    // best-effort server persist
-    (async function persistReveal(){
+    // best-effort persist to server
+    (async function persistReveal() {
       try {
         await fetch('/api/reveal', {
           method: 'POST',
@@ -197,9 +181,7 @@ export default function HomePage() {
           body: JSON.stringify({ target: data?.contacts?.[idx]?.email || `${idx}` }),
           credentials: 'include',
         });
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     })();
   }
 
@@ -265,7 +247,7 @@ export default function HomePage() {
                     </button>
 
                     { p._revealed ? (
-                      <button onClick={() => saveContact(p, idx)} disabled={p._saved} style={{ padding:'6px 10px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer' }}>
+                      <button onClick={() => saveContact(p, idx)} disabled={p._saved} style={{ padding:'6px 10px', borderRadius:6, border:'none', color:'#fff', fontWeight:700, cursor:'pointer', background: '#059669' }}>
                         {p._saved ? 'Saved' : 'Save'}
                       </button>
                     ) : null }
