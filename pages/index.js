@@ -1,8 +1,3 @@
-// Full homepage — copy/paste this entire file to pages/index.js on your active branch.
-// Visual design preserved — only functional changes: always use /api/find-company for search results,
-// robust Hunter integration handling, prevents double-counting of searches, preserves reveal/save UX,
-// persists nh_company for RightPanel, and avoids counting auto-run searches on page load.
-
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import RightPanel from '../components/RightPanel';
@@ -96,7 +91,11 @@ export default function HomePage() {
 
     try {
       // Always use /api/find-company so Hunter + enrichment are returned by the server
-      const res = await fetch(`/api/find-company?domain=${encodeURIComponent(key)}`, { credentials: 'same-origin' });
+      // Add nocache=1 for first load only when the session hasn't fetched this domain yet
+      const nocacheFlag = sessionStorage.getItem(`nh_no_cache_${key}`) ? '' : '&nocache=1';
+      if (!sessionStorage.getItem(`nh_no_cache_${key}`)) sessionStorage.setItem(`nh_no_cache_${key}`, '1');
+
+      const res = await fetch(`/api/find-company?domain=${encodeURIComponent(key)}${nocacheFlag}`, { credentials: 'same-origin' });
       if (!res.ok) {
         console.warn('find-company fetch failed', res.status);
         const fallback = { name: key, domain: key, contacts: [], total: 0, shown: 0, enrichment: { description: '', image: null } };
@@ -108,9 +107,27 @@ export default function HomePage() {
 
       const payload = await res.json();
 
+      // Defensive client-side fallback:
+      // Use payload.contacts if present; otherwise, if payload.hunter_raw.json.data.emails exists, map those into contacts.
+      let contacts = Array.isArray(payload.contacts) ? payload.contacts : (Array.isArray(payload.company && payload.company.contacts) ? payload.company.contacts : []);
+      const hunterEmails = payload && payload.hunter_raw && payload.hunter_raw.json && payload.hunter_raw.json.data && Array.isArray(payload.hunter_raw.json.data.emails)
+        ? payload.hunter_raw.json.data.emails
+        : null;
+
+      if ((!contacts || contacts.length === 0) && hunterEmails && hunterEmails.length) {
+        contacts = hunterEmails.map(e => ({
+          first_name: e.first_name || '',
+          last_name: e.last_name || '',
+          email: e.value || e.email || '',
+          position: e.position || e.position_raw || '',
+          score: e.confidence || null,
+          department: e.department || '',
+          linkedin: e.linkedin || null,
+        })).filter(c => c.email && c.email.includes('@'));
+      }
+
       // Normalize company shape
       const c = (payload && payload.company) ? { ...payload.company } : { name: key, domain: key };
-      const contacts = Array.isArray(payload.contacts) ? payload.contacts : (Array.isArray(c.contacts) ? c.contacts : []);
       c.contacts = contacts.map(ct => ({ ...ct, _revealed: false, _saved: false }));
       c.total = typeof payload.total === 'number' ? payload.total : (typeof c.total === 'number' ? c.total : (c.contacts && c.contacts.length) || 0);
       c.shown = typeof payload.shown === 'number' ? payload.shown : (c.contacts && c.contacts.length) || 0;
@@ -325,7 +342,9 @@ export default function HomePage() {
           <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20 }}>
             <div style={{ maxWidth: 760 }}>
               <h1 style={{ margin: '0 0 12px', fontSize: 48, fontWeight: 800, lineHeight: 1, color: '#0a1724' }}>NovaHunt</h1>
-              <p style={{ margin: '0 0 18px', color: '#6b7280', fontSize: 17, lineHeight: 1.45 }}>Find business emails instantly. Enter a company domain, and get professional email results.</p>
+              <p style={{ margin: '0 0 18px', color: '#6b7280', fontSize: 18, lineHeight: 1.5 }}>
+                Find business emails instantly. Enter a company domain, and get professional email results.
+              </p>
 
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14 }}>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 8, border: '1px solid #e6edf3', padding: 6 }}>
@@ -344,11 +363,11 @@ export default function HomePage() {
                 </button>
               </div>
 
-              <div style={{ color: '#6b7280', fontSize: 13, marginBottom: 12 }}>
+              <div style={{ color: '#6b7280', fontSize: 15, marginBottom: 12 }}>
                 Want to take us for a test drive? Click any of these to see results live or enter your own search above.
                 <div style={{ marginTop: 8, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   {SAMPLE_DOMAINS.map(d => (
-                    <a key={d} href={`/?domain=${encodeURIComponent(d)}`} onClick={(e) => { e.preventDefault(); loadDomain(d, { count: true }); }} style={{ fontSize: 13, color: '#2563eb', textDecoration: 'underline' }}>
+                    <a key={d} href={`/?domain=${encodeURIComponent(d)}`} onClick={(e) => { e.preventDefault(); loadDomain(d, { count: true }); }} style={{ fontSize: 15, color: '#2563eb', textDecoration: 'underline' }}>
                       {d}
                     </a>
                   ))}
