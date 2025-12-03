@@ -1,12 +1,9 @@
-// Serverless /api/find-company (updated)
-// - Integrates Hunter domain-search when HUNTER_API_KEY is provided.
-// - Requests up to 100 emails from Hunter to surface more rows for testing.
-// - Robustly extracts Hunter's authoritative total from several possible response fields.
-// - Falls back to scraping OpenGraph/meta for description/logo and uses Clearbit logo service.
-// - Uses Wikipedia search+summary as an additional free fallback for company description and image.
-// - Includes a simple in-memory cache (ttl 12h) to avoid hitting Hunter on every request.
-//
-// Note: Add your Hunter API key to environment as HUNTER_API_KEY.
+// Serverless /api/find-company (enhanced description selection + robust Hunter mapping)
+// - Integrates Hunter domain-search when HUNTER_API_KEY is provided (limit=100).
+// - Scrapes OpenGraph/meta from the homepage for description/logo.
+// - Uses Wikipedia summary as a high-quality free fallback and will prefer it when richer.
+// - Uses Clearbit logo as a last-resort free fallback.
+// - Simple in-memory cache (12h). For production use a persistent cache.
 
 const CACHE_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
 const cache = new Map();
@@ -23,17 +20,18 @@ async function fetchJson(url, opts = {}) {
 
 function extractMeta(html) {
   try {
-    const lower = html;
-    const ogDesc = lower.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["'][^>]*>/i);
-    const ogImg = lower.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["'][^>]*>/i);
-    const metaDesc = lower.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i);
-    const ogTitle = lower.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["'][^>]*>/i)
-      || lower.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const text = html || '';
+    const ogDesc = text.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["'][^>]*>/i);
+    const ogImg = text.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["'][^>]*>/i);
+    const metaDesc = text.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i);
+    const ogTitle = text.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["'][^>]*>/i)
+      || text.match(/<title[^>]*>([^<]+)<\/title>/i);
 
-    const description = (ogDesc && ogDesc[1]) || (metaDesc && metaDesc[1]) || '';
-    const image = (ogImg && ogImg[1]) || '';
-    const title = (ogTitle && ogTitle[1]) || '';
-    return { description: description.trim(), image: image.trim(), title: title.trim() };
+    return {
+      description: (ogDesc && ogDesc[1]) || (metaDesc && metaDesc[1]) || '',
+      image: (ogImg && ogImg[1]) || '',
+      title: (ogTitle && ogTitle[1]) || ''
+    };
   } catch (e) {
     return { description: '', image: '', title: '' };
   }
@@ -44,7 +42,6 @@ function clearbitLogo(domain) {
   return `https://logo.clearbit.com/${domain}`;
 }
 
-// Wikipedia fallback: search for company name / domain, then fetch summary
 async function fetchWikipediaHint(query) {
   try {
     const sUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&origin=*&srsearch=${encodeURIComponent(query)}&srlimit=1`;
@@ -65,6 +62,18 @@ async function fetchWikipediaHint(query) {
   }
 }
 
+function looksPromotional(text) {
+  if (!text) return false;
+  const t = String(text).toLowerCase();
+  const promoWords = ['shop', 'buy', 'order', 'subscribe', 'limited time', 'sale', 'store', 'shop all', 'buy now', 'offers', 'special offer'];
+  for (const w of promoWords) {
+    if (t.includes(w)) return true;
+  }
+  // extremely short descriptions are likely promotional meta or insufficient
+  if (t.length < 80) return true;
+  return false;
+}
+
 export default async function handler(req, res) {
   const domainReq = (req.query.domain || '').toString().trim().toLowerCase();
   if (!domainReq) {
@@ -81,12 +90,11 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Base response
   const out = {
     company: { name: domainReq, domain: domainReq, description: null, logo: null, enrichment: null },
     contacts: [],
     total: null,
-    shown: 0,
+    shown: 0
   };
 
   const HUNTER_API_KEY = process.env.HUNTER_API_KEY || null;
@@ -94,60 +102,49 @@ export default async function handler(req, res) {
   // 1) Hunter integration (if key present)
   if (HUNTER_API_KEY) {
     try {
-      // Request up to 100 emails so we surface a larger sample during testing.
       const hunterUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domainReq)}&limit=100&api_key=${encodeURIComponent(HUNTER_API_KEY)}`;
       const hunter = await fetchJson(hunterUrl);
       const data = hunter && hunter.data ? hunter.data : null;
 
       if (data) {
-        // Attempt to extract an authoritative total from various possible fields.
-        // Hunter responses differ by plan/version; check common locations.
+        // Extract authoritative total from multiple possible fields
         let total = null;
-
-        // common: data.total (number)
         if (typeof data.total === 'number') total = data.total;
-
-        // some shapes: data.metrics.emails
         if (total === null && data.metrics && typeof data.metrics.emails === 'number') total = data.metrics.emails;
-
-        // some responses may include meta/total
         if (total === null && hunter && hunter.meta && typeof hunter.meta.total === 'number') total = hunter.meta.total;
-
-        // fallback: if data.emails is an array and Hunter didn't give a total, we can use server-side reported length
         if (total === null && Array.isArray(data.emails) && data.emails.length) total = data.emails.length;
 
         if (total !== null) out.total = total;
 
-        // Map emails to contacts (we limit to what Hunter returned in this request)
-        if (Array.isArray(data.emails)) {
+        // Map Hunter emails defensively
+        if (Array.isArray(data.emails) && data.emails.length > 0) {
           out.contacts = data.emails.map((e) => ({
             first_name: e.first_name || '',
             last_name: e.last_name || '',
             email: e.value || e.email || '',
-            position: e.position || e.position || '',
+            position: e.position || e.title || '',
             score: e.confidence || e.score || null,
             department: e.department || '',
-          }));
+          })).filter(c => c.email && c.email.indexOf('@') > -1);
+
           out.shown = out.contacts.length;
-          // if total not set yet, set to shown (temporary)
           if (out.total === null) out.total = out.shown;
         }
 
-        // Hunter may include organization/name
+        // organization / domain normalization
         if (data.organization) out.company.name = data.organization;
         if (data.domain) out.company.domain = data.domain;
-
-        // record enrichment source
         out.company.enrichment = out.company.enrichment || {};
         out.company.enrichment.source = 'hunter';
+        out.company.enrichment.raw = hunter; // include raw for debugging if needed
       }
     } catch (e) {
       console.warn('Hunter integration failed:', e && e.message);
-      // proceed to OG/Wikipedia fallback
+      // continue to OG/Wikipedia fallback
     }
   }
 
-  // 2) Fetch company homepage for OG/meta tags (description + image)
+  // 2) Fetch company homepage OG/meta
   try {
     const siteUrl = `https://${domainReq}`;
     const r = await fetch(siteUrl, { redirect: 'follow' }).catch(() => null);
@@ -155,8 +152,8 @@ export default async function handler(req, res) {
       const html = await r.text().catch(() => '');
       if (html) {
         const meta = extractMeta(html);
-        if (meta.description) out.company.description = meta.description;
-        if (meta.image) out.company.logo = meta.image;
+        if (meta.description) out.company.description = (out.company.description || '') || meta.description;
+        if (meta.image) out.company.logo = out.company.logo || meta.image;
         out.company.enrichment = out.company.enrichment || {};
         out.company.enrichment.url = siteUrl;
         out.company.enrichment.source = out.company.enrichment.source || 'og';
@@ -166,37 +163,40 @@ export default async function handler(req, res) {
     // ignore
   }
 
-  // 3) Wikipedia fallback for description/logo if none found yet
-  if ((!out.company.description || out.company.description.length < 30) || !out.company.logo) {
-    try {
-      const wikiQuery = out.company.name && out.company.name !== domainReq ? out.company.name : domainReq;
-      const wiki = await fetchWikipediaHint(wikiQuery);
-      if (wiki) {
-        if (!out.company.description || out.company.description.length < 30) {
-          out.company.description = wiki.description || out.company.description;
-        }
-        if (!out.company.logo && wiki.image) {
-          out.company.logo = wiki.image;
-        }
+  // 3) Wikipedia fallback (prefer if richer / less promotional)
+  try {
+    const wikiQuery = out.company.name && out.company.name !== domainReq ? out.company.name : domainReq;
+    const wiki = await fetchWikipediaHint(wikiQuery);
+    if (wiki) {
+      // Prefer Wikipedia description if it's substantially longer or OG looked promotional
+      const ogDesc = out.company.description || '';
+      const wikiDesc = wiki.description || '';
+      if (wikiDesc && (wikiDesc.length > Math.max(ogDesc.length, 120) || looksPromotional(ogDesc))) {
+        out.company.description = wikiDesc;
+        out.company.logo = out.company.logo || wiki.image;
+        out.company.enrichment = out.company.enrichment || {};
+        out.company.enrichment.source = 'wikipedia';
+        out.company.enrichment.url = out.company.enrichment.url || wiki.url;
+      } else {
+        // if OG was okay, keep it; else use wiki if available
+        out.company.description = out.company.description || wiki.description;
+        out.company.logo = out.company.logo || wiki.image;
         out.company.enrichment = out.company.enrichment || {};
         out.company.enrichment.source = out.company.enrichment.source || 'wikipedia';
-        if (wiki.url) out.company.enrichment.url = out.company.enrichment.url || wiki.url;
       }
-    } catch (e) {
-      // ignore
     }
+  } catch (e) {
+    // ignore
   }
 
-  // 4) Clearbit logo fallback if no logo found yet
-  if (!out.company.logo) {
-    out.company.logo = clearbitLogo(domainReq);
-  }
+  // 4) Clearbit logo fallback
+  if (!out.company.logo) out.company.logo = clearbitLogo(domainReq);
 
-  // 5) Ensure shown/total are set
+  // 5) Ensure numeric totals
   out.total = (typeof out.total === 'number') ? out.total : (out.contacts && out.contacts.length) || 0;
   out.shown = (typeof out.shown === 'number') ? out.shown : (out.contacts && out.contacts.length) || 0;
 
-  // 6) Save to cache and respond
+  // Cache and return
   cache.set(key, { ts: now, val: out });
   res.setHeader('x-cache', 'MISS');
   res.status(200).json(out);
