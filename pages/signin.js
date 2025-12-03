@@ -23,7 +23,6 @@ export default function SigninPage() {
       if (error) {
         setErr(error.message || 'Sign-in failed');
       } else {
-        // sign-in successful — Supabase stores session in localStorage automatically
         router.push('/');
       }
     } catch (e) {
@@ -36,6 +35,7 @@ export default function SigninPage() {
   return (
     <div style={{ maxWidth: 680, margin: '40px auto', padding: 20 }}>
       <h1>Sign in</h1>
+
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <label style={{ display: 'flex', flexDirection: 'column' }}>
           Email
@@ -53,6 +53,7 @@ export default function SigninPage() {
           </button>
 
           <Link href="/signup"><a style={{ color: '#2563eb' }}>Sign up</a></Link>
+          <Link href="/"><a style={{ marginLeft: 12, color: '#6b7280' }}>Back to Home</a></Link>
         </div>
 
         {err ? <div style={{ color: 'red' }}>{err}</div> : null}
