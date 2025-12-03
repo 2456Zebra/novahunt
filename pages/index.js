@@ -1,11 +1,12 @@
-// Full homepage implementation — copy/paste this entire file to pages/index.js on your active branch.
-// - Controlled input (no pill)
-// - Blue sample domain links
-// - Enforces search & reveal limits via lib/auth-client helpers
-// - Anonymous users redirected to /plans on Reveal
-// - Persists company in localStorage as nh_company for RightPanel
-// - Save button is visible (green) after reveal
-// - Includes renderContacts and all page markup
+// Full homepage (updated to avoid counting preloaded/auto-run searches, improve logo/RightPanel visuals,
+// and keep reveal/search limit enforcement). Copy / paste this entire file to pages/index.js on your active branch.
+//
+// Key fixes implemented here (so you can re-apply quickly if it breaks again):
+// - Auto-run searches (from ?domain= or lastDomain) do NOT increment the client's search usage.
+//   loadDomain accepts options.count (default true). On mount we call loadDomain(..., { count: false }).
+// - We protect against double-counting the same domain during a session by storing
+//   sessionStorage.nh_last_counted_search and only incrementing when the domain differs.
+// - Inline reveal still enforces anonymous redirect and reveal limits via lib/auth-client functions.
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -18,10 +19,12 @@ import {
   recordReveal,
   canSearch,
   incrementSearch,
+  getClientUsage,
 } from '../lib/auth-client';
 
 const SAMPLE_DOMAINS = ['coca-cola.com', 'fordmodels.com', 'unitedtalent.com', 'wilhelmina.com', 'nfl.com'];
 
+/* ----- helpers ----- */
 function maskEmail(email) {
   if (!email) return '';
   const [local, dom] = String(email).split('@');
@@ -46,26 +49,52 @@ function safeGetQueryDomain() {
   }
 }
 
+// Only increment a search if it's allowed and hasn't been counted already in this session.
+// Returns true if increment happened, false otherwise.
+function incrementSearchOnceForDomain(domain) {
+  try {
+    if (!domain) return false;
+    const last = sessionStorage.getItem('nh_last_counted_search') || '';
+    if (last === domain) return false; // already counted in this session
+    // final guard: ensure canSearch() true before attempting increment
+    if (!canSearch()) {
+      // dispatch modal
+      try { window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'search' } })); } catch (e) {}
+      return false;
+    }
+    const updated = incrementSearch();
+    if (updated) {
+      sessionStorage.setItem('nh_last_counted_search', domain);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
 export default function HomePage() {
   const [domain, setDomain] = useState('');
-  const [company, setCompany] = useState(null); // company payload with contacts
+  const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // On mount, prefer ?domain param. IMPORTANT: do not count auto-run searches.
     const q = safeGetQueryDomain();
     const last = (typeof window !== 'undefined') ? localStorage.getItem('nh_lastDomain') : null;
-    if (q) loadDomain(q);
-    else if (last) loadDomain(last);
-    else loadDomain('coca-cola.com');
+    if (q) loadDomain(q, { count: false });
+    else if (last) loadDomain(last, { count: false });
+    else loadDomain('coca-cola.com', { count: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function loadDomain(d) {
+  // loadDomain(domain, {count:true|false})
+  async function loadDomain(d, { count = true } = {}) {
     if (!d) return;
     const key = (d || '').trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
 
-    // enforce search limit first
-    if (!canSearch()) {
+    // If caller asked to count a search, enforce the search limit first.
+    if (count && !canSearch()) {
       try { window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'search' } })); } catch (e) {}
       return;
     }
@@ -79,11 +108,11 @@ export default function HomePage() {
       if (res.ok) {
         const payload = await res.json();
         const c = payload.company || {};
-        c.contacts = (payload.contacts || c.contacts || []).map(contact => ({ ...contact, _revealed: false, _saved: false }));
+        c.contacts = (payload.contacts || c.contacts || []).map(ct => ({ ...ct, _revealed: false, _saved: false }));
         c.total = payload.total || (c.contacts && c.contacts.length) || 0;
         c.shown = payload.shown || (c.contacts && c.contacts.length) || 0;
 
-        // enrichment fallback
+        // best-effort enrichment (non-blocking)
         if ((!c.description || !c.logo) && key) {
           try {
             const e = await fetch(`/api/enrich-company?domain=${encodeURIComponent(key)}`);
@@ -94,35 +123,36 @@ export default function HomePage() {
               c.enrichment = { description: j.description || '', image: j.image || null, url: j.url || null, source: j.source || null };
             }
           } catch (err) {
-            // ignore
+            // ignore enrichment failures
           }
         }
 
-        // merge saved contacts state from localStorage
+        // merge saved contacts
         try {
           const savedRaw = localStorage.getItem('novahunt.savedContacts') || '[]';
           const saved = JSON.parse(savedRaw);
           const savedEmails = new Set((saved || []).map(s => s.email));
           c.contacts = c.contacts.map(ct => ({ ...ct, _saved: savedEmails.has(ct.email) }));
-        } catch (err) {
-          // ignore
-        }
+        } catch (err) {}
 
-        // persist company for RightPanel/client
+        // persist company for RightPanel
         try { localStorage.setItem('nh_company', JSON.stringify(c)); } catch (err) {}
 
         setCompany(c);
         setLoading(false);
 
-        // increment search usage (we checked canSearch above)
-        try { incrementSearch(); } catch (e) {}
+        // increment search usage ONLY when requested AND ensure not double-counting in this session
+        if (count) {
+          incrementSearchOnceForDomain(key);
+        }
 
-        // update URL query non-destructively
+        // update querystring without reloading
         try {
           const u = new URL(window.location.href);
           u.searchParams.set('domain', key);
           window.history.replaceState({}, '', u.toString());
         } catch (e) {}
+
         return;
       }
     } catch (err) {
@@ -136,7 +166,7 @@ export default function HomePage() {
     setLoading(false);
   }
 
-  // Save contact: persists locally and calls API (best-effort)
+  // Save contact: persists locally and tries to send to server
   async function saveContact(contact, idx) {
     try {
       const raw = localStorage.getItem('novahunt.savedContacts') || '[]';
@@ -157,18 +187,15 @@ export default function HomePage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contact })
         });
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) { /* ignore server error */ }
     } catch (err) {
       console.error('saveContact failed', err);
       alert('Save failed');
     }
   }
 
-  // Handle reveal from inline contacts
+  // Inline reveal that enforces anonymous redirect and reveal limits
   function handleReveal(idx) {
-    // anonymous users must go to Plans immediately
     const email = getClientEmail();
     if (!email) {
       try { localStorage.setItem('nh_lastDomain', domain); } catch (e) {}
@@ -176,7 +203,6 @@ export default function HomePage() {
       return;
     }
 
-    // check canReveal before doing anything
     if (!canReveal()) {
       try { window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'reveal' } })); } catch (e) {}
       return;
@@ -189,11 +215,10 @@ export default function HomePage() {
       return clone;
     });
 
-    // increment reveal and record history; incrementReveal returns null if at limit
+    // attempt to increment reveal locally (will return null if limit)
     try {
       const updated = incrementReveal();
       if (!updated) {
-        // show modal if increment failed due to limit
         try { window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'reveal' } })); } catch (e) {}
       } else {
         const target = (company && company.contacts && company.contacts[idx]) ? company.contacts[idx].email || `${idx}` : `${idx}`;
@@ -203,7 +228,7 @@ export default function HomePage() {
       // ignore local increment errors
     }
 
-    // best-effort persist to server
+    // best-effort server persist
     (async () => {
       try {
         await fetch('/api/reveal', {
@@ -212,16 +237,13 @@ export default function HomePage() {
           body: JSON.stringify({ target: company?.contacts?.[idx]?.email || `${idx}` }),
           credentials: 'include',
         });
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     })();
   }
 
+  /* ---------------- renderContacts ---------------- */
   function renderContacts(list) {
-    if (!list || list.length === 0) {
-      return <div style={{ color: '#6b7280' }}>No contacts found yet.</div>;
-    }
+    if (!list || list.length === 0) return <div style={{ color: '#6b7280' }}>No contacts found yet.</div>;
 
     const groups = {};
     list.forEach((c, i) => {
@@ -298,6 +320,7 @@ export default function HomePage() {
     ));
   }
 
+  /* ---------------- page render ---------------- */
   return (
     <ErrorBoundary>
       <main style={{ padding: '24px 20px', background: '#fbfcfd', minHeight: '100vh', fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto' }}>
@@ -313,13 +336,13 @@ export default function HomePage() {
                     aria-label="domain"
                     value={domain}
                     onChange={e => setDomain(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') loadDomain(domain); }}
+                    onKeyDown={e => { if (e.key === 'Enter') loadDomain(domain, { count: true }); }}
                     placeholder="Enter domain, e.g. coca-cola.com"
                     style={{ width: '100%', border: 'none', outline: 'none', padding: '10px 12px', fontSize: 16 }}
                   />
                 </div>
 
-                <button onClick={() => loadDomain(domain)} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '10px 14px', borderRadius: 6, fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={() => loadDomain(domain, { count: true })} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '10px 14px', borderRadius: 6, fontWeight: 700, cursor: 'pointer' }}>
                   {loading ? 'Searching…' : 'Search'}
                 </button>
               </div>
@@ -328,12 +351,7 @@ export default function HomePage() {
                 Want to take us for a test drive? Click any of these to see results live or enter your own search above.
                 <div style={{ marginTop: 8, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   {SAMPLE_DOMAINS.map(d => (
-                    <a
-                      key={d}
-                      href={`/?domain=${encodeURIComponent(d)}`}
-                      onClick={(e) => { e.preventDefault(); loadDomain(d); }}
-                      style={{ fontSize: 13, color: '#2563eb', textDecoration: 'underline' }}
-                    >
+                    <a key={d} href={`/?domain=${encodeURIComponent(d)}`} onClick={(e) => { e.preventDefault(); loadDomain(d, { count: true }); }} style={{ fontSize: 13, color: '#2563eb', textDecoration: 'underline' }}>
                       {d}
                     </a>
                   ))}
