@@ -36,6 +36,27 @@ export default async function handler(req, res) {
           break;
         }
 
+        // derive plan name if this was a subscription (best-effort)
+        let planName = 'unknown';
+        try {
+          const subscriptionId = session.subscription || session.subscription_id;
+          if (subscriptionId) {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['items.data.price.product'] });
+            const item = subscription.items?.data?.[0];
+            if (item?.price) {
+              planName = item.price.nickname || (item.price.product && item.price.product.name) || item.price.id;
+            }
+          } else if (session.display_items && session.display_items.length) {
+            // fallback: look at display_items if present
+            const di = session.display_items[0];
+            planName = di?.plan?.product?.name || di?.price?.nickname || planName;
+          } else if (session.metadata?.plan) {
+            planName = session.metadata.plan;
+          }
+        } catch (e) {
+          console.warn('Could not determine plan from Stripe session:', e?.message || e);
+        }
+
         const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
         const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -45,7 +66,7 @@ export default async function handler(req, res) {
           break;
         }
 
-        // Create user via Supabase Admin API (idempotent approach: if user exists, we continue)
+        // Create user with plan metadata via Supabase Admin API.
         try {
           const createResp = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
             method: 'POST',
@@ -57,15 +78,22 @@ export default async function handler(req, res) {
             body: JSON.stringify({
               email,
               email_confirm: true,
-              user_metadata: { created_from: 'stripe_checkout' },
+              user_metadata: { created_from: 'stripe_checkout', plan: planName },
             }),
           });
 
           if (createResp.ok) {
-            console.log(`Supabase: created user for ${email}`);
+            console.log(`Supabase: created user for ${email} (plan: ${planName})`);
           } else {
             const text = await createResp.text();
             console.warn(`Supabase create user returned ${createResp.status}: ${text}`);
+            // If user exists, we still want to try updating metadata to reflect plan
+            if (createResp.status === 409) {
+              // Attempt to update user metadata via the Admin "update user" endpoint:
+              // First, list users via admin list (not available on REST in some setups) — skip if not available.
+              // Best-effort: call the "update by email" supabase REST if you have a custom RPC. Otherwise skip.
+              console.warn('User exists; skipping metadata update (manual update may be required).');
+            }
           }
         } catch (e) {
           console.error('Error creating Supabase user:', e);
