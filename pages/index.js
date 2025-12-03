@@ -38,12 +38,11 @@ function safeGetQueryDomain() {
   }
 }
 
-// increment a search only once per domain per session
 function incrementSearchOnceForDomain(domain) {
   try {
     if (!domain) return false;
     const last = sessionStorage.getItem('nh_last_counted_search') || '';
-    if (last === domain) return false; // already counted this session
+    if (last === domain) return false;
     if (!canSearch()) {
       try { window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'search' } })); } catch (e) {}
       return false;
@@ -65,7 +64,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Auto-run on mount from ?domain or lastDomain, but DO NOT count these auto searches
     const q = safeGetQueryDomain();
     const last = (typeof window !== 'undefined') ? localStorage.getItem('nh_lastDomain') : null;
     if (q) loadDomain(q, { count: false, auto: true });
@@ -74,12 +72,10 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // loadDomain(d, {count:true|false, auto:true|false})
   async function loadDomain(d, { count = true, auto = false } = {}) {
     if (!d) return;
     const key = (d || '').trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
 
-    // If caller asked to count a search, enforce the search limit first.
     if (count && !canSearch()) {
       try { window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'search' } })); } catch (e) {}
       return;
@@ -90,8 +86,7 @@ export default function HomePage() {
     try { localStorage.setItem('nh_lastDomain', key); } catch (e) {}
 
     try {
-      // Always use /api/find-company so Hunter + enrichment are returned by the server
-      // Add nocache=1 for first load only when the session hasn't fetched this domain yet
+      // Use nocache=1 on first fetch per session to avoid stale server cache during testing
       const nocacheFlag = sessionStorage.getItem(`nh_no_cache_${key}`) ? '' : '&nocache=1';
       if (!sessionStorage.getItem(`nh_no_cache_${key}`)) sessionStorage.setItem(`nh_no_cache_${key}`, '1');
 
@@ -107,8 +102,7 @@ export default function HomePage() {
 
       const payload = await res.json();
 
-      // Defensive client-side fallback:
-      // Use payload.contacts if present; otherwise, if payload.hunter_raw.json.data.emails exists, map those into contacts.
+      // Defensive fallback: prefer payload.contacts, otherwise map payload.hunter_raw.json.data.emails when present
       let contacts = Array.isArray(payload.contacts) ? payload.contacts : (Array.isArray(payload.company && payload.company.contacts) ? payload.company.contacts : []);
       const hunterEmails = payload && payload.hunter_raw && payload.hunter_raw.json && payload.hunter_raw.json.data && Array.isArray(payload.hunter_raw.json.data.emails)
         ? payload.hunter_raw.json.data.emails
@@ -120,13 +114,12 @@ export default function HomePage() {
           last_name: e.last_name || '',
           email: e.value || e.email || '',
           position: e.position || e.position_raw || '',
-          score: e.confidence || null,
+          score: (e.confidence !== undefined && e.confidence !== null) ? Number(e.confidence) : (e.score !== undefined ? Number(e.score) : null),
           department: e.department || '',
           linkedin: e.linkedin || null,
         })).filter(c => c.email && c.email.includes('@'));
       }
 
-      // Normalize company shape
       const c = (payload && payload.company) ? { ...payload.company } : { name: key, domain: key };
       c.contacts = contacts.map(ct => ({ ...ct, _revealed: false, _saved: false }));
       c.total = typeof payload.total === 'number' ? payload.total : (typeof c.total === 'number' ? c.total : (c.contacts && c.contacts.length) || 0);
@@ -134,7 +127,6 @@ export default function HomePage() {
       c.description = c.description || (c.enrichment && c.enrichment.description) || '';
       c.logo = c.logo || (c.enrichment && c.enrichment.image) || c.logo || null;
 
-      // Merge saved state from localStorage
       try {
         const savedRaw = localStorage.getItem('novahunt.savedContacts') || '[]';
         const saved = JSON.parse(savedRaw);
@@ -144,17 +136,13 @@ export default function HomePage() {
         // ignore
       }
 
-      // Persist company for RightPanel
       try { localStorage.setItem('nh_company', JSON.stringify(c)); } catch (err) {}
 
       setCompany(c);
       setLoading(false);
 
-      // Only increment search count when explicitly requested (count === true),
-      // and guard double counting in same session
       if (count) incrementSearchOnceForDomain(key);
 
-      // Update URL querystring (no reload)
       try {
         const u = new URL(window.location.href);
         u.searchParams.set('domain', key);
@@ -171,7 +159,6 @@ export default function HomePage() {
     }
   }
 
-  // Save contact: persists locally and calls API (best-effort)
   async function saveContact(contact, idx) {
     try {
       const raw = localStorage.getItem('novahunt.savedContacts') || '[]';
@@ -201,9 +188,7 @@ export default function HomePage() {
     }
   }
 
-  // Handle reveal from inline contacts
   function handleReveal(idx) {
-    // anonymous users must go to Plans immediately
     const email = getClientEmail();
     if (!email) {
       try { localStorage.setItem('nh_lastDomain', domain); } catch (e) {}
@@ -211,20 +196,17 @@ export default function HomePage() {
       return;
     }
 
-    // check canReveal before doing anything
     if (!canReveal()) {
       try { window.dispatchEvent(new CustomEvent('nh_limit_reached', { detail: { type: 'reveal' } })); } catch (e) {}
       return;
     }
 
-    // mark revealed in UI
     setCompany(prev => {
       const clone = { ...(prev || {}), contacts: [...(prev?.contacts || [])] };
       clone.contacts[idx] = { ...clone.contacts[idx], _revealed: true };
       return clone;
     });
 
-    // increment reveal and record history; incrementReveal returns null if at limit
     try {
       const updated = incrementReveal();
       if (!updated) {
@@ -234,10 +216,9 @@ export default function HomePage() {
         try { recordReveal({ target, date: new Date().toISOString(), note: 'client-side reveal' }); } catch (e) {}
       }
     } catch (e) {
-      // ignore local increment errors
+      // ignore
     }
 
-    // best-effort persist to server
     (async () => {
       try {
         await fetch('/api/reveal', {
@@ -255,7 +236,7 @@ export default function HomePage() {
   function renderContacts(list) {
     if (!list || list.length === 0) {
       if (company && company.total && company.total > 0) {
-        return <div style={{ color: '#6b7280' }}>Results are available — upgrade to see full contacts. (Server reports {company.total} total.)</div>;
+        return <div style={{ color: '#6b7280' }}>Showing {company.shown || (company.contacts && company.contacts.length) || 0} sample results — upgrade to see all (server reports {company.total}).</div>;
       }
       return <div style={{ color: '#6b7280' }}>No contacts found yet.</div>;
     }
