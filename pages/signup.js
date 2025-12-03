@@ -1,141 +1,90 @@
-import { useState } from 'react';
+// pages/signup.js
+// Full Create Account page (client-side Supabase signUp).
+// Replace the redirect file with this if you want /signup to display the signup form.
 
-/*
-pages/signup.js
-
-Behavior & guarantees (only this file):
-- The plan selection only offers "Free" (no other tiers shown).
-- On submit this page will:
-  1. Attempt to POST to /api/signup (if you have a server endpoint). If the endpoint returns success and includes usage data, use it.
-  2. On success (server or local mock) it will set the client-side localStorage keys the site header expects:
-     - nh_user_email: the new user's email (string)
-     - nh_usage: JSON object { plan, searches, reveals, limitSearches, limitReveals }
-     - nh_usage_last_update: timestamp string (triggers storage listeners in other tabs/components)
-  3. Redirect to the homepage ('/') so ClientAuthHeader (or equivalent) will see nh_user_email / nh_usage and show the logged-in pulldown.
-- No other site files are modified. This file only fixes the plan pulldown and ensures local client sign-in state after signup.
-*/
+import React, { useState } from 'react';
+import { useRouter } from 'next/router';
+import supabase from '../lib/supabaseClient';
+import Link from 'next/link';
 
 export default function SignupPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [msg, setMsg] = useState(null);
+  const [err, setErr] = useState(null);
 
-  // Free plan defaults (keep in sync with server limits if you change them)
-  const FREE_USAGE = { plan: 'free', searches: 0, reveals: 0, limitSearches: 5, limitReveals: 3 };
-
-  const setClientSignedIn = (userEmail, usage = FREE_USAGE) => {
-    try {
-      localStorage.setItem('nh_user_email', String(userEmail || ''));
-      localStorage.setItem('nh_usage', JSON.stringify(usage));
-      localStorage.setItem('nh_usage_last_update', Date.now().toString());
-    } catch (e) {
-      // ignore localStorage failures but surface to console
-      console.warn('failed to set localStorage on signup', e);
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
+    setErr(null);
+    setMsg(null);
+
     if (!email || !password) {
-      setError('Please enter an email and password.');
+      setErr('Email and password are required.');
+      return;
+    }
+    if (password !== confirm) {
+      setErr('Passwords do not match.');
       return;
     }
 
     setLoading(true);
     try {
-      // Try server signup endpoint if available
-      let serverResp = null;
-      try {
-        const res = await fetch('/api/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, plan: 'free' }),
-        });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password
+      });
 
-        if (res.ok) {
-          // Accept server-provided usage object if returned
-          serverResp = await res.json();
-        } else {
-          // Non-2xx from server: treat as signup failure but continue to client fallback
-          const text = await res.text().catch(() => '');
-          throw new Error(text || 'Signup failed on server');
-        }
-      } catch (err) {
-        // If no server endpoint or network error, fall back to client-only flow.
-        // We'll continue to set client state below.
-        serverResp = null;
-        // don't rethrow — fallback below will sign the user into client
+      if (error) {
+        setErr(error.message || 'Signup failed');
+      } else {
+        setMsg('Signup successful. If your project requires email confirmation, check your inbox. You can sign in now.');
+        setTimeout(() => router.push('/plans'), 1200);
       }
-
-      // If server returned usage, use it. Otherwise use FREE_USAGE.
-      const usage = (serverResp && serverResp.usage) ? serverResp.usage : FREE_USAGE;
-
-      // Persist client-side signed-in markers so header sees the user
-      setClientSignedIn(email, usage);
-
-      // Redirect to homepage where ClientAuthHeader should render the signed-in pulldown
-      window.location.href = '/';
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Signup failed');
+    } catch (e) {
+      setErr(e.message || 'Network error');
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <main style={{ padding: 24, maxWidth: 680, margin: '0 auto', boxSizing: 'border-box' }}>
-      <h1 style={{ marginTop: 0 }}>Create an account</h1>
+    <div style={{ maxWidth: 680, margin: '40px auto', padding: 20 }}>
+      <h1>Create account</h1>
+      <p>Create an account to reveal more contacts.</p>
 
-      <form onSubmit={handleSubmit} style={{ background: '#fff', border: '1px solid #eee', padding: 20, borderRadius: 8 }}>
-        <label style={{ display: 'block', marginBottom: 12 }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <label style={{ display: 'flex', flexDirection: 'column' }}>
           Email
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ display: 'block', width: '100%', padding: '10px 12px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6', boxSizing: 'border-box' }}
-            required
-          />
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={{ padding: 8, fontSize: 14 }} />
         </label>
 
-        <label style={{ display: 'block', marginBottom: 12 }}>
+        <label style={{ display: 'flex', flexDirection: 'column' }}>
           Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ display: 'block', width: '100%', padding: '10px 12px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6', boxSizing: 'border-box' }}
-            required
-          />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required style={{ padding: 8, fontSize: 14 }} />
         </label>
 
-        <label style={{ display: 'block', marginBottom: 12 }}>
-          Plan
-          {/* Only show Free on this page. Other plans must be purchased via the Plans flow / Stripe. */}
-          <select value="free" disabled style={{ display: 'block', width: '100%', padding: '10px 12px', marginTop: 6, borderRadius: 6, border: '1px solid #e6e6e6', background: '#f5f7fb', boxSizing: 'border-box' }}>
-            <option value="free">Free</option>
-          </select>
+        <label style={{ display: 'flex', flexDirection: 'column' }}>
+          Confirm password
+          <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required style={{ padding: 8, fontSize: 14 }} />
         </label>
 
-        {error && <div style={{ color: 'crimson', marginBottom: 12 }}>{error}</div>}
-
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ padding: '10px 14px', borderRadius: 8, background: '#0b74ff', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}
-          >
-            {loading ? 'Creating…' : 'Create account'}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button type="submit" disabled={loading} style={{ padding: '8px 12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6 }}>
+            {loading ? 'Signing up…' : 'Sign up'}
           </button>
-
-          <a href="/" style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #e6e6e6', background: '#fff', color: '#333', display: 'inline-flex', alignItems: 'center' }}>
-            Cancel
-          </a>
+          <Link href="/plans"><a style={{ color: '#2563eb' }}>Choose a plan</a></Link>
         </div>
+
+        {msg ? <div style={{ color: 'green' }}>{msg}</div> : null}
+        {err ? <div style={{ color: 'red' }}>{err}</div> : null}
       </form>
-    </main>
+
+      <div style={{ marginTop: 12 }}>
+        Already have an account? <Link href="/signin"><a style={{ color: '#2563eb' }}>Sign in</a></Link>
+      </div>
+    </div>
   );
 }
