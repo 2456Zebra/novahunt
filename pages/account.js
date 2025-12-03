@@ -1,8 +1,7 @@
-// Account page redesign:
-// - Usage + Emails Saved + "Unsubscribe from NovaHunt" (calls /api/unsubscribe best-effort)
-// - Removed right-side quick links cell (per request)
-// - "View saved emails" button opens a modal reading novahunt.savedContacts from localStorage
-// - Unsubscribe button color changed to blue (not red)
+// Account page: Updated per request
+// - Removed the "Unsubscribe from NovaHunt emails." text line (kept only the button label).
+// - Removed right-side quick links cell per your request.
+// - Added "View saved emails" modal to let users see saved addresses.
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -97,10 +96,10 @@ export default function AccountPage() {
 
   async function handleUnsubscribe() {
     try {
-      // best-effort: call server endpoint if present
+      // best-effort server call
       try {
         await fetch('/api/unsubscribe', { method: 'POST', credentials: 'include' });
-      } catch (e) { /* ignore */ }
+      } catch (e) {}
       setUnsubscribed(true);
       alert('You have been unsubscribed from NovaHunt.');
     } catch (e) {
@@ -109,43 +108,45 @@ export default function AccountPage() {
   }
 
   return (
-    <ErrorBoundary>
-      <main style={{ padding: 24, maxWidth: 980, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          <h1 style={{ margin: 0 }}>Account</h1>
-          <div style={{ zIndex: 80 }}>
-            <Link href="/"><a style={{ padding: '8px 10px', background: '#fff', border: '1px solid #e6edf3', borderRadius: 6, textDecoration: 'none', color: '#0b1220' }}>Back to Home</a></Link>
-          </div>
-        </div>
-
-        <section style={{ marginTop: 18 }}>
-          <div style={{ background: '#fff', border: '1px solid #e6edf3', borderRadius: 8, padding: 16 }}>
-            <h2 style={{ marginTop: 0 }}>Usage</h2>
-            <p>Searches: <strong>{usage.searches}/{usage.limitSearches}</strong></p>
-            <p>Reveals: <strong>{usage.reveals}/{usage.limitReveals}</strong></p>
-
-            <div style={{ marginTop: 18 }}>
-              <h3 style={{ margin: 0 }}>Emails Saved</h3>
-              <p style={{ marginTop: 8 }}>You have <strong>{savedCount}</strong> saved email{savedCount !== 1 ? 's' : ''}.</p>
-              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                <button onClick={() => setShowSavedModal(true)} style={{ padding: '8px 12px', borderRadius: 6, background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}>View saved emails</button>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 18 }}>
-              <h3 style={{ margin: 0 }}>Unsubscribe</h3>
-              <p style={{ marginTop: 8 }}>Unsubscribe from NovaHunt emails.</p>
-              <div style={{ marginTop: 8 }}>
-                <button onClick={handleUnsubscribe} style={{ padding: '8px 12px', borderRadius: 6, border: 'none', background: '#0ea5e9', color: '#fff', cursor: 'pointer' }}>
-                  {unsubscribed ? 'Unsubscribed' : 'Unsubscribe from NovaHunt'}
-                </button>
-              </div>
+    <>
+      <ErrorBoundary>
+        <main style={{ padding: 24, maxWidth: 980, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <h1 style={{ margin: 0 }}>Account</h1>
+            <div style={{ zIndex: 80 }}>
+              <Link href="/"><a style={{ padding: '8px 10px', background: '#fff', border: '1px solid #e6edf3', borderRadius: 6, textDecoration: 'none', color: '#0b1220' }}>Back to Home</a></Link>
             </div>
           </div>
-        </section>
 
-        {showSavedModal && <SavedEmailsModal open={showSavedModal} onClose={() => setShowSavedModal(false)} />}
-      </main>
-    </ErrorBoundary>
+          <section style={{ marginTop: 18 }}>
+            <div style={{ background: '#fff', border: '1px solid #e6edf3', borderRadius: 8, padding: 16 }}>
+              <h2 style={{ marginTop: 0 }}>Usage</h2>
+              <p>Searches: <strong>{usage.searches}/{usage.limitSearches}</strong></p>
+              <p>Reveals: <strong>{usage.reveals}/{usage.limitReveals}</strong></p>
+
+              <div style={{ marginTop: 18 }}>
+                <h3 style={{ margin: 0 }}>Emails Saved</h3>
+                <p style={{ marginTop: 8 }}>You have <strong>{savedCount}</strong> saved email{savedCount !== 1 ? 's' : ''}.</p>
+                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                  <button onClick={() => setShowSavedModal(true)} style={{ padding: '8px 12px', borderRadius: 6, background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}>View saved emails</button>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 18 }}>
+                <h3 style={{ margin: 0 }}>Unsubscribe</h3>
+                <p style={{ marginTop: 8 }}>{unsubscribed ? 'You are unsubscribed.' : ''}</p>
+                <div style={{ marginTop: 8 }}>
+                  <button onClick={handleUnsubscribe} style={{ padding: '8px 12px', borderRadius: 6, border: 'none', background: '#0ea5e9', color: '#fff', cursor: 'pointer' }}>
+                    {unsubscribed ? 'Unsubscribed' : 'Unsubscribe from NovaHunt'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </ErrorBoundary>
+
+      {showSavedModal && <SavedEmailsModal open={showSavedModal} onClose={() => setShowSavedModal(false)} />}
+    </>
   );
 }
