@@ -2,29 +2,18 @@
   "name": "novahunt",
   "version": "1.0.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
-  },
-  "dependencies": {
-    "next": "^13.5.11",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "stripe": "^12.10.0",
-    "@stripe/stripe-js": "^2.2.0",
-    "micro": "^9.3.4",
-    "cookie": "^0.5.0",
-    "framer-motion": "^10.12.16",
-    "axios": "^1.6.0",
-    "@upstash/redis": "^1.6.0",
-    "uuid": "^9.0.0"
-  },
   "engines": {
     "node": ">=18.0.0"
   },
-  "devDependencies": {
-    "eslint": "^8.57.1"
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "13.5.11",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "@supabase/supabase-js": "^2.30.1"
   }
 }
