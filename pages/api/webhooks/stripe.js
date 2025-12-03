@@ -3,7 +3,7 @@ import { buffer } from 'micro';
 
 export const config = {
   api: {
-    bodyParser: false, // required for Stripe signature verification
+    bodyParser: false,
   },
 };
 
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
           break;
         }
 
-        // derive plan name if this was a subscription (best-effort)
+        // Best-effort plan detection
         let planName = 'unknown';
         try {
           const subscriptionId = session.subscription || session.subscription_id;
@@ -47,7 +47,6 @@ export default async function handler(req, res) {
               planName = item.price.nickname || (item.price.product && item.price.product.name) || item.price.id;
             }
           } else if (session.display_items && session.display_items.length) {
-            // fallback: look at display_items if present
             const di = session.display_items[0];
             planName = di?.plan?.product?.name || di?.price?.nickname || planName;
           } else if (session.metadata?.plan) {
@@ -59,14 +58,14 @@ export default async function handler(req, res) {
 
         const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
         const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-        if (!supabaseUrl || !serviceRole || !anonKey) {
+        if (!supabaseUrl || !serviceRole) {
           console.error('Missing Supabase env vars for webhook handler');
           break;
         }
 
-        // Create user with plan metadata via Supabase Admin API.
+        // Create user via Supabase Admin API and mark them as password_pending.
+        // IMPORTANT: we do NOT trigger any outgoing email here to avoid bounces.
         try {
           const createResp = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
             method: 'POST',
@@ -78,47 +77,20 @@ export default async function handler(req, res) {
             body: JSON.stringify({
               email,
               email_confirm: true,
-              user_metadata: { created_from: 'stripe_checkout', plan: planName },
+              user_metadata: { created_from: 'stripe_checkout', plan: planName, password_pending: true },
             }),
           });
 
           if (createResp.ok) {
-            console.log(`Supabase: created user for ${email} (plan: ${planName})`);
+            console.log(`Supabase: created user for ${email} (plan: ${planName}) — password_pending=true`);
           } else {
             const text = await createResp.text();
             console.warn(`Supabase create user returned ${createResp.status}: ${text}`);
-            // If user exists, we still want to try updating metadata to reflect plan
-            if (createResp.status === 409) {
-              // Attempt to update user metadata via the Admin "update user" endpoint:
-              // First, list users via admin list (not available on REST in some setups) — skip if not available.
-              // Best-effort: call the "update by email" supabase REST if you have a custom RPC. Otherwise skip.
-              console.warn('User exists; skipping metadata update (manual update may be required).');
-            }
+            // If user already exists, consider updating user_metadata to reflect plan/password_pending
+            // (left as a manual or next-step improvement)
           }
         } catch (e) {
           console.error('Error creating Supabase user:', e);
-        }
-
-        // Trigger Supabase password recovery (set-password email) using anon key
-        try {
-          const recoverResp = await fetch(`${supabaseUrl}/auth/v1/recover`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              apikey: anonKey,
-              Authorization: `Bearer ${anonKey}`,
-            },
-            body: JSON.stringify({ email }),
-          });
-
-          if (recoverResp.ok) {
-            console.log(`Supabase: triggered password recovery email to ${email}`);
-          } else {
-            const body = await recoverResp.text();
-            console.warn(`Supabase recover returned ${recoverResp.status}: ${body}`);
-          }
-        } catch (e) {
-          console.error('Error triggering Supabase recover:', e);
         }
 
         break;
