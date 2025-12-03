@@ -1,8 +1,6 @@
-// Serverless /api/find-company
-// - Calls Hunter domain-search (limit=100 if plan allows) and maps data.emails -> contacts
-// - Scrapes OpenGraph/meta from the company's homepage for description/logo
-// - Falls back to Wikipedia summary when it's richer
-// - Returns: { company, contacts, total, shown, hunter_raw? }
+// pages/api/find-company.js
+// Robust handler: calls Hunter, maps data.emails -> contacts, OG + Wikipedia enrichment,
+// returns hunter_raw for debugging, supports ?nocache=1 to bypass in-memory cache during testing.
 
 const CACHE_TTL_MS = 1000 * 60 * 60 * 6; // 6 hours
 const cache = new Map();
@@ -69,10 +67,13 @@ export default async function handler(req, res) {
     return;
   }
 
+  // allow bypassing cache during debugging
+  const nocache = req.query.nocache === '1';
+
   const key = cacheKey(domainQuery);
   const now = Date.now();
   const cached = cache.get(key);
-  if (cached && (now - cached.ts) < CACHE_TTL_MS) {
+  if (!nocache && cached && (now - cached.ts) < CACHE_TTL_MS) {
     res.setHeader('x-cache', 'HIT');
     res.status(200).json(cached.val);
     return;
@@ -182,8 +183,10 @@ export default async function handler(req, res) {
   out.total = typeof out.total === 'number' ? out.total : (out.contacts && out.contacts.length) || 0;
   out.shown = typeof out.shown === 'number' ? out.shown : (out.contacts && out.contacts.length) || 0;
 
-  cache.set(key, { ts: now, val: out });
+  // cache (unless nocache)
+  if (!nocache) cache.set(key, { ts: now, val: out });
 
-  res.setHeader('x-cache', 'MISS');
+  res.setHeader('x-cache', nocache ? 'BYPASS' : 'MISS');
+  // Default caching for debugging: allow Vercel to cache static assets but API returns a header
   res.status(200).json(out);
 }
