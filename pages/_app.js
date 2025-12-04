@@ -1,9 +1,6 @@
 // pages/_app.js
-// Minimal _app.js that initializes a Supabase client in the browser (no auth-helpers dependency).
-// Also imports global + header + password-success CSS so the styles are available.
-//
-// NOTE: This file exposes window.supabase for debugging. Remove the window.supabase assignment
-// after you confirm the header works in production.
+// Initializes Supabase client in the browser and imports global CSS.
+// NOTE: This file exposes window.supabase for debugging. Remove that line after verification.
 
 import '../styles/globals.css';
 import '../styles/header.css';
@@ -14,7 +11,6 @@ function MyApp({ Component, pageProps }) {
   const [supabase, setSupabase] = useState(null);
 
   useEffect(() => {
-    // Initialize only in the browser
     if (typeof window === 'undefined') return;
     if (supabase) return;
 
@@ -24,11 +20,11 @@ function MyApp({ Component, pageProps }) {
       const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       if (url && anon) {
         const client = createClient(url, anon);
-        // Expose for debugging — remove this line after verification
+        // Expose for debugging — remove in production
         window.supabase = client;
         setSupabase(client);
       } else {
-        console.warn('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is missing');
+        console.warn('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY missing');
       }
     } catch (e) {
       console.warn('Failed to initialize supabase client', e);
