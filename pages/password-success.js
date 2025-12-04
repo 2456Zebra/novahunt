@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Router from 'next/router';
 
-// Note: styles/password-success.css must be imported globally from pages/_app.js per Next.js rules.
+// Note: styles/password-success.css is imported globally from pages/_app.js
 
 export default function PasswordSuccess() {
   const [redirectTo, setRedirectTo] = useState('/');
@@ -34,17 +34,20 @@ export default function PasswordSuccess() {
 
         if (!email || !password) {
           setStatus('nosession');
-          setMessage('No sign-in credentials found. Please sign in manually.');
+          setMessage('Password set. Please sign in to access your dashboard.');
           return;
         }
 
         if (!window.supabase?.auth?.signInWithPassword) {
           setStatus('error');
           setMessage('Supabase client not initialized on this page.');
+          sessionStorage.removeItem('auth_pending_email');
+          sessionStorage.removeItem('auth_pending_password');
           return;
         }
 
         const { data, error } = await window.supabase.auth.signInWithPassword({ email, password });
+
         // Clear pending credentials immediately
         sessionStorage.removeItem('auth_pending_email');
         sessionStorage.removeItem('auth_pending_password');
