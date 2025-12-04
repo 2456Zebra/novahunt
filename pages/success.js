@@ -1,10 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 
 export default function SuccessPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [sessionId, setSessionId] = useState('');
+
+  useEffect(() => {
+    // Grab session_id from the URL query string (Stripe checkout puts it there)
+    if (router && router.isReady) {
+      const sid = router.query.session_id || router.asPath?.split('session_id=')?.[1] || '';
+      if (sid) setSessionId(String(sid));
+    }
+  }, [router]);
 
   async function setPasswordDirect(e) {
     e.preventDefault();
@@ -18,7 +29,7 @@ export default function SuccessPage() {
       const r = await fetch('/api/set-password-by-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, session_id: sessionId || undefined }),
       });
       const json = await r.json();
       if (r.ok) {
@@ -50,6 +61,7 @@ export default function SuccessPage() {
       <form onSubmit={setPasswordDirect} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required style={{ padding: 8 }} />
         <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Choose a password" required style={{ padding: 8 }} />
+        {/* session id is captured from URL and sent server-side; we don't show it to user */}
         <div style={{ display: 'flex', gap: 8 }}>
           <button disabled={loading} style={{ padding: '8px 12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6 }}>
             {loading ? 'Setting…' : 'Submit'}
