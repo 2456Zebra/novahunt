@@ -1,12 +1,13 @@
 // pages/_app.js
 // Minimal _app.js that initializes a Supabase client in the browser (no auth-helpers dependency).
-// Also imports global + header CSS so the header styles are available.
+// Also imports global + header + password-success CSS so the styles are available.
 //
 // NOTE: This file exposes window.supabase for debugging. Remove the window.supabase assignment
 // after you confirm the header works in production.
 
 import '../styles/globals.css';
 import '../styles/header.css';
+import '../styles/password-success.css';
 import { useState, useEffect } from 'react';
 
 function MyApp({ Component, pageProps }) {
