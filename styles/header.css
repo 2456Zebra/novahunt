@@ -1,0 +1,57 @@
+/* styles/header.css
+   Put this file at styles/header.css and ensure pages/_app.js imports it.
+   These styles avoid inline style usage (CSP-friendly) and let the Header component
+   toggle visibility by adding/removing classes.
+*/
+
+.account-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.account-toggle {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 6px 8px;
+  font: inherit;
+  color: inherit;
+}
+
+.account-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 160px;
+  background: #ffffff;
+  border: 1px solid #e6e6e6;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  padding: 8px;
+  border-radius: 6px;
+  z-index: 60;
+  /* default hidden via class */
+}
+
+.account-menu.hidden {
+  display: none;
+}
+
+.account-menu.visible {
+  display: block;
+}
+
+/* Basic header layout */
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+}
+
+.site-nav a {
+  margin-right: 12px;
+  text-decoration: none;
+  color: #333;
+}
