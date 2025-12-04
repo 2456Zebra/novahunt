@@ -1,16 +1,7 @@
 import { useEffect, useState } from 'react';
 import Router from 'next/router';
-import '../styles/password-success.css';
 
-// Password success page that attempts automatic sign-in using credentials stored in sessionStorage.
-// Flow (client-side):
-// 1) The previous "set password" page should set these before redirecting:
-//    sessionStorage.setItem('auth_pending_email', email);
-//    sessionStorage.setItem('auth_pending_password', password);
-//    window.location.href = '/password-success?redirectTo=/dashboard&seconds=5';
-// 2) This page will try supabase.auth.signInWithPassword(...) with those credentials.
-// 3) On success it will redirect to redirectTo after the countdown.
-// 4) All pending credentials are removed from sessionStorage after use.
+// Note: styles/password-success.css must be imported globally from pages/_app.js per Next.js rules.
 
 export default function PasswordSuccess() {
   const [redirectTo, setRedirectTo] = useState('/');
