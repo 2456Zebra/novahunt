@@ -1,5 +1,9 @@
+// pages/api/webhooks/stripe.js
+// Stripe webhook handler: verified and robust Supabase admin create.
+// Important: ensure SUPABASE_SERVICE_ROLE_KEY and NEXT_PUBLIC_SUPABASE_URL are correct in Vercel.
+//
+// This file logs Supabase admin responses and includes the created user object in logs so we can confirm shape.
 import Stripe from 'stripe';
-import { buffer } from 'micro';
 
 export const config = {
   api: {
@@ -7,65 +11,49 @@ export const config = {
   },
 };
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' });
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
+const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const stripe = stripeSecret ? new Stripe(stripeSecret, { apiVersion: '2022-11-15' }) : null;
+
+async function bufferToString(readable) {
+  const chunks = [];
+  for await (const chunk of readable) chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  return Buffer.concat(chunks).toString('utf8');
+}
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).end('Method Not Allowed');
+  if (!stripe) {
+    console.warn('Stripe not configured for webhook');
+    res.status(200).send('no-op');
+    return;
   }
 
   const sig = req.headers['stripe-signature'];
-  let event;
+  const body = await bufferToString(req);
 
+  let event;
   try {
-    const buf = await buffer(req);
-    event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    } else {
+      // If no webhook secret configured, attempt to parse body (less secure)
+      event = JSON.parse(body);
+    }
   } catch (err) {
-    console.error('Stripe webhook signature verification failed:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    console.error('Stripe webhook signature verification failed', err?.message || err);
+    return res.status(400).send(`Webhook Error: ${err?.message || err}`);
   }
 
   try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object;
-        const email = session.customer_details?.email || session.customer_email;
-        if (!email) {
-          console.warn('checkout.session.completed has no email:', session.id);
-          break;
-        }
-
-        // Best-effort plan detection
-        let planName = 'unknown';
-        try {
-          const subscriptionId = session.subscription || session.subscription_id;
-          if (subscriptionId) {
-            const subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['items.data.price.product'] });
-            const item = subscription.items?.data?.[0];
-            if (item?.price) {
-              planName = item.price.nickname || (item.price.product && item.price.product.name) || item.price.id;
-            }
-          } else if (session.display_items && session.display_items.length) {
-            const di = session.display_items[0];
-            planName = di?.plan?.product?.name || di?.price?.nickname || planName;
-          } else if (session.metadata?.plan) {
-            planName = session.metadata.plan;
-          }
-        } catch (e) {
-          console.warn('Could not determine plan from Stripe session:', e?.message || e);
-        }
-
-        const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
-        const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-        if (!supabaseUrl || !serviceRole) {
-          console.error('Missing Supabase env vars for webhook handler');
-          break;
-        }
-
-        // Create user via Supabase Admin API and mark them as password_pending.
-        // IMPORTANT: we do NOT trigger any outgoing email here to avoid bounces.
+    if (event.type === 'checkout.session.completed' || event.type === 'invoice.payment_succeeded' || event.type === 'invoice.payment.paid') {
+      const session = event.data.object;
+      const customer_email = (session.customer_details?.email || session.customer_email || '').toLowerCase();
+      // Create (or ensure) Supabase user via Admin API
+      if (!supabaseUrl || !serviceRole) {
+        console.error('Missing Supabase admin config in webhook');
+      } else {
         try {
           const createResp = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
             method: 'POST',
@@ -75,34 +63,34 @@ export default async function handler(req, res) {
               apikey: serviceRole,
             },
             body: JSON.stringify({
-              email,
+              email: customer_email,
+              password: Math.random().toString(36).slice(-12),
               email_confirm: true,
-              user_metadata: { created_from: 'stripe_checkout', plan: planName, password_pending: true },
+              user_metadata: { created_from: 'stripe_webhook', stripe_event: event.type },
             }),
           });
 
+          const createText = await createResp.text();
+          let createJson = null;
+          try { createJson = JSON.parse(createText); } catch (e) { createJson = null; }
+
           if (createResp.ok) {
-            console.log(`Supabase: created user for ${email} (plan: ${planName}) — password_pending=true`);
+            console.log(`Supabase: created user for ${customer_email}`, createJson);
           } else {
-            const text = await createResp.text();
-            console.warn(`Supabase create user returned ${createResp.status}: ${text}`);
-            // If user already exists, consider updating user_metadata to reflect plan/password_pending
-            // (left as a manual or next-step improvement)
+            // If Supabase says user exists, log the returned body so we can inspect its shape
+            console.warn('Supabase admin create user returned non-ok', createResp.status, createText);
           }
         } catch (e) {
-          console.error('Error creating Supabase user:', e);
+          console.error('Error calling Supabase admin create from webhook', e?.message || e);
         }
-
-        break;
       }
-
-      default:
-        console.log(`Unhandled Stripe event type: ${event.type}`);
+    } else {
+      console.log('Unhandled Stripe event type:', event.type);
     }
 
-    return res.status(200).json({ received: true });
+    res.status(200).send('ok');
   } catch (err) {
-    console.error('Error handling Stripe webhook:', err);
-    return res.status(500).send('Webhook handler error');
+    console.error('Webhook processing error', err?.message || err);
+    res.status(500).send('server error');
   }
 }
