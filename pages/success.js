@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Link from 'next/link';
 
 export default function SuccessPage() {
   const [email, setEmail] = useState('');
@@ -25,7 +24,8 @@ export default function SuccessPage() {
       if (r.ok) {
         setStatus({ ok: true, message: json.message || 'Password set. You can now sign in.' });
       } else {
-        setStatus({ ok: false, message: json.error || 'Failed to set password' });
+        const msg = json.error || json.detail || JSON.stringify(json) || 'Failed to set password';
+        setStatus({ ok: false, message: msg });
       }
     } catch (err) {
       setStatus({ ok: false, message: err.message || 'Network error' });
@@ -42,10 +42,6 @@ export default function SuccessPage() {
         Thanks — your payment was successful. You need to set a password to sign in and access your account.
       </p>
 
-      <div style={{ marginTop: 16 }}>
-        <Link href="/signin"><a style={{ color: '#2563eb' }}>Sign in</a></Link>
-      </div>
-
       <hr style={{ margin: '20px 0' }} />
 
       <h3>Set your password</h3>
@@ -58,7 +54,6 @@ export default function SuccessPage() {
           <button disabled={loading} style={{ padding: '8px 12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6 }}>
             {loading ? 'Setting…' : 'Submit'}
           </button>
-          <Link href="/"><a style={{ marginLeft: 12, color: '#6b7280' }}>Back to Home</a></Link>
         </div>
       </form>
 
@@ -67,12 +62,6 @@ export default function SuccessPage() {
           {status.message}
         </div>
       ) : null}
-
-      <hr style={{ margin: '20px 0' }} />
-
-      <p style={{ fontSize: 13, color: '#666' }}>
-        Note: if you used a fake email in checkout you must enter the actual email that appears on the Stripe receipt (or contact support to correct your email).
-      </p>
     </div>
   );
 }
