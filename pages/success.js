@@ -1,79 +1,106 @@
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+// Minimal Next.js success page that sets password then shows a Sign in button.
+// Replace or merge into your existing success page. Adjust route '/signin' if your login route differs.
+
+import { useState } from 'react';
+import Router from 'next/router';
 
 export default function SuccessPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [status, setStatus] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [sessionId, setSessionId] = useState('');
+  const [status, setStatus] = useState(null); // null | 'loading' | 'ok' | 'error'
+  const [message, setMessage] = useState('');
+  const [autoRedirectSeconds, setAutoRedirectSeconds] = useState(5);
 
-  useEffect(() => {
-    // Grab session_id from the URL query string (Stripe checkout puts it there)
-    if (router && router.isReady) {
-      const sid = router.query.session_id || router.asPath?.split('session_id=')?.[1] || '';
-      if (sid) setSessionId(String(sid));
-    }
-  }, [router]);
-
-  async function setPasswordDirect(e) {
-    e.preventDefault();
-    setStatus(null);
-    if (!email || !password) {
-      setStatus({ ok: false, message: 'Enter your email and a password.' });
-      return;
-    }
-    setLoading(true);
+  async function handleSubmit(e) {
+    e && e.preventDefault();
+    setStatus('loading');
+    setMessage('');
     try {
-      const r = await fetch('/api/set-password-by-email', {
+      const res = await fetch('/api/set-password-by-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, session_id: sessionId || undefined }),
+        body: JSON.stringify({ email, password }),
       });
-      const json = await r.json();
-      if (r.ok) {
-        setStatus({ ok: true, message: json.message || 'Password set. You can now sign in.' });
+      const data = await res.json().catch(() => ({ ok: false, message: 'Invalid response' }));
+
+      if (res.ok && data.ok !== false) {
+        setStatus('ok');
+        setMessage(data.message || 'Password set successfully.');
+
+        // Optional: auto-redirect after a short delay
+        let sec = autoRedirectSeconds;
+        const timer = setInterval(() => {
+          sec -= 1;
+          setAutoRedirectSeconds(sec);
+          if (sec <= 0) {
+            clearInterval(timer);
+            Router.push('/signin'); // change to '/login' if needed
+          }
+        }, 1000);
+
       } else {
-        const msg = json.error || json.detail || JSON.stringify(json) || 'Failed to set password';
-        setStatus({ ok: false, message: msg });
+        setStatus('error');
+        setMessage(data.error || data.message || JSON.stringify(data));
       }
     } catch (err) {
-      setStatus({ ok: false, message: err.message || 'Network error' });
-    } finally {
-      setLoading(false);
+      setStatus('error');
+      setMessage(String(err.message || err));
     }
   }
 
   return (
-    <div style={{ maxWidth: 680, margin: '40px auto', padding: 20 }}>
+    <div style={{ maxWidth: 680, margin: '48px auto', padding: 24, fontFamily: 'system-ui, Arial' }}>
       <h1>Payment successful</h1>
+      <p>Thanks — your payment was successful. Set a password to sign in and access your account.</p>
 
-      <p>
-        Thanks — your payment was successful. You need to set a password to sign in and access your account.
-      </p>
+      {status !== 'ok' && (
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12, marginTop: 18 }}>
+          <label>
+            Email
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              style={{ display: 'block', width: '100%', padding: '8px 10px', marginTop: 6 }}
+            />
+          </label>
 
-      <hr style={{ margin: '20px 0' }} />
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Choose a password"
+              required
+              style={{ display: 'block', width: '100%', padding: '8px 10px', marginTop: 6 }}
+            />
+          </label>
 
-      <h3>Set your password</h3>
-      <p>Enter the email you used during checkout and choose a password. We will verify the payment with Stripe and create your account.</p>
-
-      <form onSubmit={setPasswordDirect} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required style={{ padding: 8 }} />
-        <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Choose a password" required style={{ padding: 8 }} />
-        {/* session id is captured from URL and sent server-side; we don't show it to user */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button disabled={loading} style={{ padding: '8px 12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6 }}>
-            {loading ? 'Setting…' : 'Submit'}
+          <button type="submit" style={{ padding: '10px 14px', background: '#0b5fff', color: 'white', border: 'none', borderRadius: 6 }}>
+            Submit
           </button>
-        </div>
-      </form>
 
-      {status ? (
-        <div style={{ marginTop: 12, color: status.ok ? 'green' : 'red' }}>
-          {status.message}
+          {status === 'loading' && <div>Working…</div>}
+          {status === 'error' && <div style={{ color: 'crimson' }}>Error: {message}</div>}
+        </form>
+      )}
+
+      {status === 'ok' && (
+        <div style={{ marginTop: 20 }}>
+          <div style={{ padding: 12, background: '#e6ffed', borderRadius: 6, border: '1px solid #b9f2c9' }}>
+            <strong>{message}</strong>
+            <div style={{ marginTop: 8 }}>
+              <a href="/signin" style={{ display: 'inline-block', padding: '8px 12px', background: '#0b5fff', color: '#fff', borderRadius: 6, textDecoration: 'none' }}>
+                Sign in
+              </a>
+              <span style={{ marginLeft: 12, color: '#666' }}>Or we will redirect you automatically in {autoRedirectSeconds}s</span>
+            </div>
+          </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
