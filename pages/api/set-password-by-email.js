@@ -1,23 +1,33 @@
 // pages/api/set-password-by-email.js
-// Robust set-password endpoint with extra fallback:
-// - Looks up Supabase admin users by email
-// - Tries to extract id from many possible fields
-// - If id not found, attempts a fallback PUT using the email as path (some installs accept this)
-// - Logs and returns the raw sample user when it can't find an id so we can inspect and patch
+// Robust set-password endpoint with UUID-validated id extraction + email-path fallback.
+// Replace the existing file with this, redeploy, and run the test command shown below.
 import Stripe from 'stripe';
+
+function isUUID(v) {
+  if (!v || typeof v !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
 
 function pickUserId(user) {
   if (!user || typeof user !== 'object') return null;
+  // prefer canonical fields but only return if they are valid UUIDs
   const candidates = ['id', 'user_id', 'userId', 'uid', 'aud', 'sub'];
-  for (const k of candidates) if (user[k]) return user[k];
-  for (const key of Object.keys(user)) {
-    if (/id$/i.test(key) && user[key]) return user[key];
-    if (/id/i.test(key) && user[key] && String(user[key]).length >= 6) return user[key];
+  for (const k of candidates) {
+    const v = user[k];
+    if (isUUID(v)) return v;
   }
+  // fallback: any property with 'id' in the name that is a UUID
+  for (const key of Object.keys(user)) {
+    const v = user[key];
+    if (isUUID(v)) return v;
+  }
+  // nested shapes (e.g., { user: { id: '...' } })
   for (const key of Object.keys(user)) {
     const v = user[key];
     if (v && typeof v === 'object') {
-      for (const k2 of ['id', 'user_id', 'uid', 'aud', 'sub']) if (v[k2]) return v[k2];
+      for (const k2 of ['id', 'user_id', 'uid', 'aud', 'sub']) {
+        if (isUUID(v[k2])) return v[k2];
+      }
     }
   }
   return null;
@@ -65,7 +75,7 @@ export default async function handler(req, res) {
       if (first) {
         const userId = pickUserId(first);
         if (userId) {
-          // Update by discovered id
+          // Update by discovered id (guaranteed UUID)
           const updateResp = await supabaseAdminFetch(`${supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceRole}`, apikey: serviceRole },
@@ -80,8 +90,8 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: 'Failed to update existing user password', detail: updateText });
           }
         } else {
-          // ID not discovered: try email-path fallback (some installs accept PUT /admin/users/<email>)
-          console.warn('User found but id not discovered; sampleUser will be returned for diagnostics', { sampleUser: first });
+          // ID not discovered OR not a UUID -> try email-path fallback (some installs accept PUT /admin/users/<email>)
+          console.warn('User found but no UUID id discovered; returning sampleUser for diagnostics and attempting email-path fallback', { sampleUser: first });
           const fallbackUrl = `${supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(emailLower)}`;
           try {
             const fallbackResp = await supabaseAdminFetch(fallbackUrl, {
@@ -94,7 +104,6 @@ export default async function handler(req, res) {
               console.log(`Fallback updated Supabase user via email path for ${emailLower}`);
               return res.status(200).json({ ok: true, message: 'Password updated (fallback) for existing account. Sign in now.' });
             } else {
-              // Return sample user so we can see the exact shape
               console.error('Fallback update failed; returning sampleUser for diagnostics', { fallbackStatus: fallbackResp.status, fallbackText, sampleUser: first });
               return res.status(500).json({ error: 'Existing user found but id not found', detail: { sampleUser: first, fallbackStatus: fallbackResp.status, fallbackText } });
             }
