@@ -1,29 +1,32 @@
+// Minimal _app.js that initializes a Supabase client in the browser (no auth-helpers dependency).
 import '../styles/globals.css';
-import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs'; // or from '@supabase/supabase-js' depending on your setup
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 function MyApp({ Component, pageProps }) {
-  // initialize client once per session in the browser
-  const [supabase] = useState(() => {
-    // adapt to the way you create your client. Example for supabase-js v2:
-    // import { createClient } from '@supabase/supabase-js'
-    // return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  const [supabase, setSupabase] = useState(null);
+
+  useEffect(() => {
+    // Initialize only in the browser
+    if (typeof window === 'undefined') return;
+    if (supabase) return;
+
     try {
-      /* eslint-disable no-undef */
+      const { createClient } = require('@supabase/supabase-js');
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      if (typeof window !== 'undefined' && url && anon) {
-        const { createClient } = require('@supabase/supabase-js');
+      if (url && anon) {
         const client = createClient(url, anon);
-        // expose for debugging (remove in production)
+        // Expose for debugging — remove in production
+        // window.supabase is used by the troubleshooting snippets we ran earlier
         window.supabase = client;
-        return client;
+        setSupabase(client);
+      } else {
+        console.warn('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is missing');
       }
     } catch (e) {
-      console.warn('supabase init failed', e);
+      console.warn('Failed to initialize supabase client', e);
     }
-    return null;
-  });
+  }, [supabase]);
 
   return <Component {...pageProps} supabase={supabase} />;
 }
