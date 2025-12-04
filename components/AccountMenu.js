@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import Router from 'next/router';
 
-// Simple Account pulldown (no inline styles, toggles CSS classes)
 export default function AccountMenu({ user }) {
   const [open, setOpen] = useState(false);
 
