@@ -5,7 +5,7 @@
 import '../styles/globals.css';
 import '../styles/header.css';
 import '../styles/password-success.css';
-import '../styles/set-password.css';
+import '../styles/set-password.css'; // moved global import here (Next.js requires global CSS in _app)
 import { useState, useEffect } from 'react';
 
 function MyApp({ Component, pageProps }) {
