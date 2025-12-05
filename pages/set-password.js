@@ -1,5 +1,6 @@
 // pages/set-password.js
-// NOTE: do NOT import global CSS here. styles/set-password.css must be imported from pages/_app.js.
+// Sets both auth_pending_* and auth_prefill_* before redirecting to password-success.
+// This ensures the credentials survive the flow even if password-success clears pending.
 
 import { useEffect, useState } from 'react';
 
@@ -12,7 +13,6 @@ export default function SetPasswordPage() {
 
   useEffect(() => {
     try {
-      // Priority: URL param 'email' -> sessionStorage.stripe_email -> auth_pending_email
       const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
       const eParam = params?.get('email') || params?.get('customer_email') || params?.get('checkout_email');
       if (eParam) {
@@ -43,23 +43,29 @@ export default function SetPasswordPage() {
     e.preventDefault();
     setStatus('loading');
     setMessage('');
+
     try {
       const res = await fetch('/api/set-password-by-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
+
       const data = await res.json().catch(() => ({ ok: false, message: 'Invalid response' }));
 
       if (res.ok && data.ok !== false) {
         try {
+          // Persist both "pending" (for immediate auto sign-in) and "prefill" (for fallback Sign In page).
           sessionStorage.setItem('auth_pending_email', email);
           sessionStorage.setItem('auth_pending_password', password);
+          sessionStorage.setItem('auth_prefill_email', email);
+          sessionStorage.setItem('auth_prefill_password', password);
         } catch (err) {
           console.warn('sessionStorage write failed', err);
         }
 
-        window.location.href = '/password-success?redirectTo=/dashboard&seconds=5';
+        // Use replace so navigation is clean and avoids extra history entries.
+        window.location.replace('/password-success?redirectTo=/dashboard&seconds=5');
         setStatus('ok');
         setMessage(data.message || 'Password set. Redirecting…');
       } else {
