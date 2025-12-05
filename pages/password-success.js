@@ -1,7 +1,12 @@
+// pages/password-success.js
+// Attempts an automatic sign-in using credentials saved in sessionStorage by the Set Password page.
+// Shows a "Success — you'll be redirected to your Dashboard" message and a countdown only when auto sign-in succeeds.
+// If credentials were not present or sign-in fails, the page stays visible and offers a "Sign in" button (it will NOT auto-redirect to /signin).
+
 import { useEffect, useState } from 'react';
 import Router from 'next/router';
 
-// Note: styles/password-success.css is imported globally from pages/_app.js
+// styles/password-success.css is imported globally from pages/_app.js per Next.js rules.
 
 export default function PasswordSuccess() {
   const [redirectTo, setRedirectTo] = useState('/');
@@ -33,6 +38,7 @@ export default function PasswordSuccess() {
         const password = sessionStorage.getItem('auth_pending_password');
 
         if (!email || !password) {
+          // Don't auto-redirect to SignIn — instead show the success page and let user sign in manually
           setStatus('nosession');
           setMessage('Password set. Please sign in to access your dashboard.');
           return;
@@ -41,6 +47,7 @@ export default function PasswordSuccess() {
         if (!window.supabase?.auth?.signInWithPassword) {
           setStatus('error');
           setMessage('Supabase client not initialized on this page.');
+          // Clear pending credentials for safety
           sessionStorage.removeItem('auth_pending_email');
           sessionStorage.removeItem('auth_pending_password');
           return;
@@ -73,6 +80,7 @@ export default function PasswordSuccess() {
     })();
   }, []);
 
+  // countdown + redirect only when status === 'ok'
   useEffect(() => {
     if (status !== 'ok') return;
     if (seconds <= 0) {
@@ -102,7 +110,7 @@ export default function PasswordSuccess() {
 
         <p className="psuccess-message">
           {status === 'working' && 'Signing you in and preparing your dashboard…'}
-          {status === 'ok' && 'Your account is ready.'}
+          {status === 'ok' && 'Your account is ready — you will be redirected to your Dashboard.'}
           {status === 'nosession' && 'Password set. Please sign in to access your dashboard.'}
           {status === 'error' && `There was a problem: ${message}`}
         </p>
