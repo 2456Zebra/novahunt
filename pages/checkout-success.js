@@ -1,159 +1,149 @@
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+// pages/checkout-success.js
+// Landing page for Stripe Checkout success redirects.
+// Replaces older "Payment successful" copy. No countdown / auto-redirect.
+// Primary Sign In button will attempt to sign in using stored prefill credentials
+// and navigate to /dashboard on success.
 
-/*
-  Tolerant checkout landing page for Stripe:
-  - Reads session_id from query string (preferred)
-  - Falls back to localStorage 'stripe_session_id' if present
-  - Allows manual paste of session_id for debugging / force-complete
-  - Calls /api/complete-checkout to validate and obtain account details
-  - Persists demo account to localStorage and marks user signed in
-*/
+import { useEffect, useState } from 'react';
+import Router from 'next/router';
 
-export default function CheckoutSuccessPage() {
-  const router = useRouter();
-  const qsSession = (router && router.query && router.query.session_id) ? router.query.session_id : null;
-  const [status, setStatus] = useState('loading'); // loading | success | missing | error | idle
-  const [message, setMessage] = useState('');
-  const [account, setAccount] = useState(null);
-  const [manual, setManual] = useState('');
-  const [working, setWorking] = useState(false);
+export default function CheckoutSuccess() {
+  const [status, setStatus] = useState('working'); // working | ok | error | nosession
+  const [message, setMessage] = useState('Processing your account…');
+  const [manualLoading, setManualLoading] = useState(false);
 
   useEffect(() => {
-    // try to finish using session id from query or localStorage automatically
-    async function attemptAuto() {
-      const clientStored = (typeof window !== 'undefined') ? localStorage.getItem('stripe_session_id') : null;
-      const sid = qsSession || clientStored || null;
+    (async function init() {
+      try {
+        // If already signed in, show success copy
+        if (window.supabase?.auth?.getSession) {
+          const { data } = await window.supabase.auth.getSession();
+          if (data?.session?.user) {
+            setStatus('ok');
+            setMessage('Thanks — your password has been registered.');
+            return;
+          }
+        }
 
-      if (!sid) {
-        setStatus('missing');
-        setMessage('No session_id found in the URL or in localStorage.');
-        return;
-      }
-      await finishFlow(sid);
-    }
-
-    // If router query hasn't hydrated yet, also check location.search directly
-    if (!qsSession && typeof window !== 'undefined' && window.location.search) {
-      const params = new URLSearchParams(window.location.search);
-      const s = params.get('session_id');
-      if (s) {
-        finishFlow(s);
-        return;
-      }
-    }
-
-    attemptAuto();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qsSession]);
-
-  async function finishFlow(sessionId) {
-    setWorking(true);
-    setStatus('loading');
-    setMessage('');
-    try {
-      const res = await fetch(`/api/complete-checkout?session_id=${encodeURIComponent(sessionId)}`, { method: 'GET' });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => res.statusText);
-        setStatus('error');
-        setMessage(`Failed to complete checkout: ${txt || res.statusText}`);
-        setWorking(false);
-        return;
-      }
-      const json = await res.json();
-      if (json.warning) setMessage(json.warning || '');
-      if (json.account) {
+        // Graceful behavior: if Stripe passed an email in query param, stash it
         try {
-          localStorage.setItem('nh_account', JSON.stringify(json.account));
-          localStorage.setItem('nh_isSignedIn', '1');
-          // store session id so retries can use it if redirect loses it
-          try { localStorage.setItem('stripe_session_id', sessionId); } catch(e){}
-          setAccount(json.account);
-          setStatus('success');
-          setWorking(false);
-          // short redirect so user sees confirmation
-          setTimeout(() => window.location.href = '/', 800);
-          return;
-        } catch (e) {
-          setStatus('error');
-          setMessage('Could not persist account locally. Please sign in manually.');
-          setWorking(false);
+          const params = new URLSearchParams(window.location.search);
+          const eParam = params.get('email') || params.get('customer_email');
+          if (eParam) {
+            sessionStorage.setItem('stripe_email', eParam);
+          }
+        } catch (e) {}
+
+        // If there are prefill credentials, keep the page in "ready" state
+        const prefEmail = sessionStorage.getItem('auth_prefill_email') || sessionStorage.getItem('auth_pending_email');
+        const prefPass = sessionStorage.getItem('auth_prefill_password') || sessionStorage.getItem('auth_pending_password');
+        if (prefEmail && prefPass) {
+          setStatus('nosession');
+          setMessage('Thanks — your password has been registered.');
           return;
         }
-      } else {
+
+        // No credentials available: still show confirmation copy and prompt user to set password/sign in
+        setStatus('nosession');
+        setMessage('Thanks — your password has been registered.');
+      } catch (err) {
         setStatus('error');
-        setMessage('Server did not return account details.');
-        setWorking(false);
+        setMessage(String(err?.message || err));
+      }
+    })();
+  }, []);
+
+  async function handleSignIn() {
+    setManualLoading(true);
+    setMessage('');
+    try {
+      const email = sessionStorage.getItem('auth_prefill_email') || sessionStorage.getItem('auth_pending_email') || sessionStorage.getItem('stripe_email');
+      const password = sessionStorage.getItem('auth_prefill_password') || sessionStorage.getItem('auth_pending_password');
+
+      if (!email || !password) {
+        // No credentials: take them to set-password (if stripe_email present) or to signin
+        setManualLoading(false);
+        if (sessionStorage.getItem('stripe_email')) {
+          Router.push('/set-password');
+        } else {
+          Router.push('/signin');
+        }
         return;
       }
+
+      if (!window.supabase?.auth?.signInWithPassword) {
+        setManualLoading(false);
+        setMessage('Auth client not ready.');
+        return;
+      }
+
+      const { error } = await window.supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setManualLoading(false);
+        setMessage(error.message || 'Sign in failed. You can use the Sign In page instead.');
+        return;
+      }
+
+      // Poll for session persistence
+      let attempts = 0;
+      const maxAttempts = 20;
+      let sessionFound = false;
+      while (attempts < maxAttempts) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 200));
+        // eslint-disable-next-line no-await-in-loop
+        const s = await window.supabase.auth.getSession();
+        if (s?.data?.session?.user) {
+          sessionFound = true;
+          break;
+        }
+        attempts += 1;
+      }
+
+      if (sessionFound) {
+        // clear sensitive prefill after success
+        try {
+          sessionStorage.removeItem('auth_prefill_email');
+          sessionStorage.removeItem('auth_prefill_password');
+          sessionStorage.removeItem('auth_pending_email');
+          sessionStorage.removeItem('auth_pending_password');
+        } catch (e) {}
+        Router.push('/dashboard');
+        return;
+      }
+
+      // fallback
+      setManualLoading(false);
+      setMessage('Could not establish session immediately — opening Sign In page for you.');
+      Router.push('/signin');
     } catch (err) {
-      setStatus('error');
-      setMessage(err.message || 'Unexpected error');
-      setWorking(false);
+      setManualLoading(false);
+      setMessage(String(err?.message || err));
     }
   }
 
   return (
-    <div style={{ minHeight: '60vh', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Inter, system-ui, -apple-system, \"Segoe UI\", Roboto' }}>
-      <div style={{ maxWidth:760, width:'100%', padding:24, background:'#fff', borderRadius:8, border:'1px solid #e6edf3' }}>
-        {status === 'loading' && (
-          <>
-            <h2 style={{ marginTop:0 }}>Finishing checkout…</h2>
-            <p style={{ color:'#6b7280' }}>We are verifying your payment. This usually takes a few seconds.</p>
-            <div style={{ color:'#6b7280', marginTop:8 }}>{message}</div>
-          </>
-        )}
+    <main style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ width: '100%', maxWidth: 720, background: '#fff', borderRadius: 10, padding: 28, boxShadow: '0 10px 30px rgba(12,25,40,0.06)', border: '1px solid #eef2f6', textAlign: 'center' }}>
+        <h1 style={{ margin: 0, fontSize: 22 }}>Success</h1>
+        <p style={{ marginTop: 10, color: '#374151' }}>
+          {status === 'working' && 'Processing your account…'}
+          {(status === 'ok' || status === 'nosession') && 'Thanks — your password has been registered.'}
+          {status === 'error' && `There was an issue: ${message}`}
+        </p>
 
-        {status === 'success' && account && (
-          <>
-            <h2 style={{ marginTop:0 }}>Payment complete</h2>
-            <p style={{ color:'#374151' }}>Thanks — we've activated your plan for <strong>{account.email}</strong>. Redirecting you back to the site…</p>
-            <p style={{ color:'#6b7280', marginTop:12 }}>If you are not redirected automatically, <Link href="/"><a style={{ color:'#2563eb' }}>return to the homepage</a></Link>.</p>
-          </>
-        )}
+        <div style={{ marginTop: 18, display: 'flex', gap: 12, justifyContent: 'center' }}>
+          <button onClick={handleSignIn} disabled={manualLoading} style={{ padding: '10px 14px', background: '#0b5fff', color: '#fff', border: 0, borderRadius: 8 }}>
+            {manualLoading ? 'Signing in…' : 'Sign In'}
+          </button>
 
-        {(status === 'missing' || status === 'error' || status === 'idle') && (
-          <>
-            <h2 style={{ marginTop:0 }}>{status === 'missing' ? 'Could not complete sign-in after checkout' : 'Checkout completion'}</h2>
-            <p style={{ color:'#374151' }}>{message || 'If you recently paid and were not signed in, you can paste your Stripe Checkout Session id below to finish the flow.'}</p>
+          <button onClick={() => Router.push('/signin')} style={{ padding: '10px 12px', background: 'transparent', color: '#0b5fff', border: '1px solid transparent', borderRadius: 8 }}>
+            Sign in manually
+          </button>
+        </div>
 
-            <div style={{ marginTop:12 }}>
-              <label style={{ display:'block', marginBottom:6, fontSize:13 }}>Checkout session id (from Stripe)</label>
-              <input value={manual} onChange={e => setManual(e.target.value)} placeholder="cs_XXXXXXXXXXXX" style={{ width:'100%', padding:'10px 12px', borderRadius:6, border:'1px solid #e6edf3', marginBottom:8 }} />
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => finishFlow(manual)} disabled={!manual || working} style={{ background:'#2563eb', color:'#fff', border:'none', padding:'10px 12px', borderRadius:6, cursor:'pointer' }}>
-                  {working ? 'Working…' : 'Complete now'}
-                </button>
-                <button onClick={() => { localStorage.removeItem('stripe_session_id'); setManual(''); setMessage('Cleared stored session id'); setStatus('missing'); }} style={{ background:'#f3f4f6', border:'1px solid #e6edf3', padding:'10px 12px', borderRadius:6, cursor:'pointer' }}>Clear stored session</button>
-              </div>
-
-              <div style={{ marginTop:12, color:'#6b7280' }}>
-                Other quick checks:
-                <ul>
-                  <li>Ensure SUCCESS_URL env var contains <code>{'{CHECKOUT_SESSION_ID}'}</code> (example below).</li>
-                  <li>If your server created the session in live mode, STRIPE_SECRET_KEY must be the live secret key.</li>
-                </ul>
-                <div style={{ marginTop:8, background:'#f8fafc', padding:8, borderRadius:6 }}>
-                  Recommended SUCCESS_URL (Vercel env): <code>https://www.novahunt.ai/checkout-success?session_id={'{CHECKOUT_SESSION_ID}'}</code>
-                </div>
-              </div>
-
-              <div style={{ marginTop:14, display:'flex', gap:12 }}>
-                <Link href="/signin"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Sign In</a></Link>
-                <Link href="/forgot"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Forgot password</a></Link>
-                <Link href="/plans"><a style={{ color:'#2563eb', textDecoration:'underline' }}>Plans</a></Link>
-              </div>
-            </div>
-          </>
-        )}
-
-        {status === 'error' && message && (
-          <div style={{ marginTop:16, color:'#ef4444' }}>
-            <strong>Error:</strong> {message}
-          </div>
-        )}
+        {message && <div style={{ marginTop: 12, color: '#374151' }}>{message}</div>}
       </div>
-    </div>
+    </main>
   );
 }
