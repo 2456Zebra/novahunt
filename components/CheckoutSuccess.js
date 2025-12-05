@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import PropTypes from 'prop-types';
 
 /**
  * Generic checkout / password-success display component.
@@ -43,7 +42,3 @@ export default function CheckoutSuccess({ message }) {
     </main>
   );
 }
-
-CheckoutSuccess.propTypes = {
-  message: PropTypes.string,
-};
