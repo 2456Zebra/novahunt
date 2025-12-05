@@ -1,11 +1,9 @@
 // pages/_app.js
-// Initializes Supabase client in the browser and imports global CSS.
-// NOTE: This file exposes window.supabase for debugging. Remove that line after verification.
-
+// Global CSS must be imported here (Next.js rule). This file also initializes the Supabase client.
 import '../styles/globals.css';
 import '../styles/header.css';
 import '../styles/password-success.css';
-import '../styles/set-password.css'; // moved global import here (Next.js requires global CSS in _app)
+import '../styles/set-password.css'; // keep the global import here
 import { useState, useEffect } from 'react';
 
 function MyApp({ Component, pageProps }) {
