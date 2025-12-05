@@ -1,38 +1,54 @@
 import { NextResponse } from 'next/server';
 
-/*
-  Canonical host middleware with preview guard.
-
-  - Skips redirect when host is a Vercel preview (host endsWith '.vercel.app' or contains 'githubpreview.dev')
-    or when VERCEL_ENV === 'preview' (set by Vercel on preview deployments).
-  - Otherwise enforces the canonical hostname (www.novahunt.ai).
-
-  Place at the repository root on branch restore-good-design-f5d87fc, commit, and push.
-*/
+/**
+ * Temporary defensive middleware to prevent server-side redirects away from
+ * the set-password / password-success flow while we debug persistence.
+ *
+ * IMPORTANT: This is a small, temporary safety net. It intentionally allows
+ * requests for set-password and password-success to continue without redirect.
+ * After you've validated the flow, replace with your normal auth middleware
+ * that enforces server-side auth (or implement server-side session persistence).
+ */
 
 export function middleware(req) {
-  const host = req.headers.get('host') || '';
   const url = req.nextUrl.clone();
+  const pathname = url.pathname || '';
 
-  // Allow preview and local development hosts to proceed without redirect
-  const isPreviewHost =
-    host.endsWith('.vercel.app') ||
-    host.includes('.vercel-preview.') || // some preview formats
-    host.includes('githubpreview.dev') ||
-    process.env.VERCEL_ENV === 'preview' ||
-    host.startsWith('localhost');
-
-  if (isPreviewHost) {
+  // Allow static files, _next, api routes, and public assets through
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/static') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/robots.txt' ||
+    pathname.match(/\.(svg|png|jpg|jpeg|css|js|map|ico)$/)
+  ) {
     return NextResponse.next();
   }
 
-  // Enforce canonical host for all other requests
-  const canonicalHost = 'www.novahunt.ai';
-  if (host === canonicalHost) {
-    return NextResponse.next();
+  // Paths we definitely must NOT redirect away from while debugging
+  const safePaths = [
+    '/set-password',
+    '/password-success',
+    '/signin',
+    '/sign-in',
+    '/dashboard', // allow dashboard client-side (we make it client-only elsewhere)
+  ];
+
+  for (const p of safePaths) {
+    if (pathname === p || pathname.startsWith(p + '/') ) {
+      return NextResponse.next();
+    }
   }
 
-  url.hostname = canonicalHost;
-  // preserve protocol + pathname + search
-  return NextResponse.redirect(url);
+  // If you previously had middleware that redirected unauthenticated users
+  // to /signin, do NOT perform that redirect here. Just continue the request.
+  // This ensures the browser stays on the password-success page and the client
+  // can finish persisting the Supabase session.
+  return NextResponse.next();
 }
+
+// Apply middleware to all routes (adjust matcher as needed)
+export const config = {
+  matcher: '/:path*'
+};
