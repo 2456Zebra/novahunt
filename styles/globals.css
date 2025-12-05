@@ -1,15 +1,19 @@
-/* Add to the end of styles/globals.css as a temporary stopgap:
-   hide duplicated header/footer/company blocks so the page looks correct while we fix the root cause.
-   This assumes the "first" header/footer are correct. Remove this when duplicates are removed in code.
-*/
+/* styles/globals.css - minimal reset + fonts */
+:root {
+  --bg: #ffffff;
+  --text: #0b1220;
+  --muted: #6b7280;
+}
 
-/* hide any second header/footer if they appear repeated */
-header + header { display: none !important; }       /* if a second header is immediately after the first */
-footer + footer { display: none !important; }       /* hide second footer if duplicated */
+html, body, #__next {
+  height: 100%;
+}
 
-/* if the company block repeats, hide the second copy based on repeated text */
-.right-panel-wrapper + .right-panel-wrapper,
-.right-panel + .right-panel { display: none !important; }
-
-/* generic last-resort: hide any immediate duplicate nav lists following each other */
-nav + nav { display: none !important; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
