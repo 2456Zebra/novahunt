@@ -1,9 +1,13 @@
-// pages/password-success.js
-// Passive success page for flows that route here. Uses the same copy as checkout-success.
-// Sign In will attempt to sign-in using stored prefill credentials and then go to /dashboard.
-
 import { useEffect, useState } from 'react';
 import Router from 'next/router';
+
+/**
+ * pages/password-success.js
+ * - Passive success page after set-password
+ * - No countdown or auto-redirect
+ * - Sign In button will attempt to sign in using stored prefill credentials and navigate to /dashboard
+ * - Keeps auth_prefill_* until session is confirmed
+ */
 
 export default function PasswordSuccess() {
   const [status, setStatus] = useState('working'); // working | ok | error | nosession
@@ -13,7 +17,7 @@ export default function PasswordSuccess() {
   useEffect(() => {
     (async function trySignIn() {
       try {
-        // If already signed in
+        // If already signed in, show success message
         if (window.supabase?.auth?.getSession) {
           const { data } = await window.supabase.auth.getSession();
           if (data?.session?.user) {
@@ -23,7 +27,7 @@ export default function PasswordSuccess() {
           }
         }
 
-        // Look for pending credentials (written by set-password)
+        // Try auto sign-in using pending credentials (set by set-password page)
         const email = sessionStorage.getItem('auth_pending_email');
         const password = sessionStorage.getItem('auth_pending_password');
 
@@ -41,7 +45,7 @@ export default function PasswordSuccess() {
 
         const { error } = await window.supabase.auth.signInWithPassword({ email, password });
 
-        // keep auth_prefill_* for fallback, but remove pending
+        // Remove only pending values; keep auth_prefill_* as fallback
         try {
           sessionStorage.removeItem('auth_pending_email');
           sessionStorage.removeItem('auth_pending_password');
@@ -76,7 +80,7 @@ export default function PasswordSuccess() {
         }
 
         setStatus('error');
-        setMessage('Signed in but session did not persist. Click Sign In below.');
+        setMessage('Signed in but session did not persist. Click "Sign In" below.');
       } catch (err) {
         setStatus('error');
         setMessage(String(err?.message || err));
@@ -93,7 +97,6 @@ export default function PasswordSuccess() {
 
       if (!email || !password) {
         setManualLoading(false);
-        // fallback to set-password if stripe_email present, else signin page
         if (sessionStorage.getItem('stripe_email')) {
           Router.push('/set-password');
         } else {
