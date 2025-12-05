@@ -1,11 +1,15 @@
-// pages/checkout-success.js
-// Landing page for Stripe Checkout success redirects.
-// Replaces older "Payment successful" copy. No countdown / auto-redirect.
-// Primary Sign In button will attempt to sign in using stored prefill credentials
-// and navigate to /dashboard on success.
-
 import { useEffect, useState } from 'react';
 import Router from 'next/router';
+
+/**
+ * pages/checkout-success.js
+ * - Replaces older "Payment successful" flow UI
+ * - No countdown or automatic redirect
+ * - Sign In button will attempt to sign in using stored prefill credentials and go to /dashboard
+ * - Falls back to /set-password (if stripe_email exists) or /signin if no credentials
+ *
+ * NOTE: Ensure styles imported globally from pages/_app.js
+ */
 
 export default function CheckoutSuccess() {
   const [status, setStatus] = useState('working'); // working | ok | error | nosession
@@ -25,7 +29,7 @@ export default function CheckoutSuccess() {
           }
         }
 
-        // Graceful behavior: if Stripe passed an email in query param, stash it
+        // If Stripe passed email in query param, store it for set-password prefill
         try {
           const params = new URLSearchParams(window.location.search);
           const eParam = params.get('email') || params.get('customer_email');
@@ -34,7 +38,7 @@ export default function CheckoutSuccess() {
           }
         } catch (e) {}
 
-        // If there are prefill credentials, keep the page in "ready" state
+        // If prefill credentials exist, indicate ready
         const prefEmail = sessionStorage.getItem('auth_prefill_email') || sessionStorage.getItem('auth_pending_email');
         const prefPass = sessionStorage.getItem('auth_prefill_password') || sessionStorage.getItem('auth_pending_password');
         if (prefEmail && prefPass) {
@@ -43,7 +47,7 @@ export default function CheckoutSuccess() {
           return;
         }
 
-        // No credentials available: still show confirmation copy and prompt user to set password/sign in
+        // Default: show success copy (user can click Sign In)
         setStatus('nosession');
         setMessage('Thanks — your password has been registered.');
       } catch (err) {
@@ -61,7 +65,6 @@ export default function CheckoutSuccess() {
       const password = sessionStorage.getItem('auth_prefill_password') || sessionStorage.getItem('auth_pending_password');
 
       if (!email || !password) {
-        // No credentials: take them to set-password (if stripe_email present) or to signin
         setManualLoading(false);
         if (sessionStorage.getItem('stripe_email')) {
           Router.push('/set-password');
@@ -80,7 +83,7 @@ export default function CheckoutSuccess() {
       const { error } = await window.supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setManualLoading(false);
-        setMessage(error.message || 'Sign in failed. You can use the Sign In page instead.');
+        setMessage(error.message || 'Sign in failed. Use the Sign In page.');
         return;
       }
 
@@ -101,18 +104,18 @@ export default function CheckoutSuccess() {
       }
 
       if (sessionFound) {
-        // clear sensitive prefill after success
+        // Clear sensitive prefill after success
         try {
           sessionStorage.removeItem('auth_prefill_email');
           sessionStorage.removeItem('auth_prefill_password');
           sessionStorage.removeItem('auth_pending_email');
           sessionStorage.removeItem('auth_pending_password');
+          sessionStorage.removeItem('stripe_email');
         } catch (e) {}
         Router.push('/dashboard');
         return;
       }
 
-      // fallback
       setManualLoading(false);
       setMessage('Could not establish session immediately — opening Sign In page for you.');
       Router.push('/signin');
@@ -127,7 +130,7 @@ export default function CheckoutSuccess() {
       <div style={{ width: '100%', maxWidth: 720, background: '#fff', borderRadius: 10, padding: 28, boxShadow: '0 10px 30px rgba(12,25,40,0.06)', border: '1px solid #eef2f6', textAlign: 'center' }}>
         <h1 style={{ margin: 0, fontSize: 22 }}>Success</h1>
         <p style={{ marginTop: 10, color: '#374151' }}>
-          {status === 'working' && 'Processing your account…'}
+          {(status === 'working') && 'Processing your account…'}
           {(status === 'ok' || status === 'nosession') && 'Thanks — your password has been registered.'}
           {status === 'error' && `There was an issue: ${message}`}
         </p>
