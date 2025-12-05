@@ -1,8 +1,13 @@
-// pages/set-password.js
-// Sets both auth_pending_* and auth_prefill_* before redirecting to password-success.
-// This ensures the credentials survive the flow even if password-success clears pending.
-
 import { useEffect, useState } from 'react';
+
+/**
+ * pages/set-password.js
+ * - Prefills email from ?email= or sessionStorage.stripe_email
+ * - Writes auth_pending_* and auth_prefill_* before redirecting to password-success
+ * - Password input is visually highlighted until filled
+ *
+ * NOTE: Do NOT import global CSS here (it must be imported from pages/_app.js).
+ */
 
 export default function SetPasswordPage() {
   const [email, setEmail] = useState('');
@@ -50,12 +55,11 @@ export default function SetPasswordPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-
       const data = await res.json().catch(() => ({ ok: false, message: 'Invalid response' }));
 
       if (res.ok && data.ok !== false) {
         try {
-          // Persist both "pending" (for immediate auto sign-in) and "prefill" (for fallback Sign In page).
+          // Ensure both pending (for immediate auto sign-in) and prefill (for fallback) are saved
           sessionStorage.setItem('auth_pending_email', email);
           sessionStorage.setItem('auth_pending_password', password);
           sessionStorage.setItem('auth_prefill_email', email);
@@ -64,8 +68,8 @@ export default function SetPasswordPage() {
           console.warn('sessionStorage write failed', err);
         }
 
-        // Use replace so navigation is clean and avoids extra history entries.
-        window.location.replace('/password-success?redirectTo=/dashboard&seconds=5');
+        // Use replace so history is clean
+        window.location.replace('/password-success?redirectTo=/dashboard');
         setStatus('ok');
         setMessage(data.message || 'Password set. Redirecting…');
       } else {
