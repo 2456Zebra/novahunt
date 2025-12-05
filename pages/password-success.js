@@ -1,106 +1,53 @@
+// pages/password-success.js
+// Updated: removed automatic countdown redirect and removed "set your password" copy.
+// This page will:
+// - attempt automatic sign-in using credentials saved in sessionStorage by Set Password page.
+// - if sign-in + session persistence succeeds, show a confirmation and let the user click "Go to Dashboard".
+// - if sign-in fails or session persistence doesn't appear, keep the page visible and store prefill values
+//   for the Sign In page so the user can click "Go to Sign In" and only press the Sign In button there.
+//
+// NOTE: styles/password-success.css must be imported globally from pages/_app.js per Next.js rules.
+
 import { useEffect, useState } from 'react';
 import Router from 'next/router';
 
-// Defensive password-success page that attempts auto sign-in and prevents
-// client-side redirects to the plain Sign In page while it is active.
-// Note: server-side (HTTP) redirects cannot be blocked by client JS.
-
 export default function PasswordSuccess() {
-  const [redirectTo, setRedirectTo] = useState('/');
-  const [seconds, setSeconds] = useState(5);
+  const [redirectTo, setRedirectTo] = useState('/dashboard');
   const [status, setStatus] = useState('working'); // working | ok | error | nosession
   const [message, setMessage] = useState('Signing you in…');
 
   useEffect(() => {
-    // Defensive interceptors to block client-side redirects to "/signin" while this page is mounted.
-    const origRouterPush = Router.push.bind(Router);
-    const origRouterReplace = Router.replace.bind(Router);
-    const safeMatch = (u) => {
-      try {
-        const s = typeof u === 'string' ? u : (u?.pathname || '');
-        return typeof s === 'string' && s.includes('/signin');
-      } catch {
-        return false;
-      }
-    };
-
-    Router.push = (...args) => {
-      if (safeMatch(args[0])) {
-        console.log('[password-success] blocked Router.push to', args[0]);
-        // return a resolved promise to mimic Router.push behaviour but do nothing
-        return Promise.resolve(false);
-      }
-      return origRouterPush(...args);
-    };
-
-    Router.replace = (...args) => {
-      if (safeMatch(args[0])) {
-        console.log('[password-success] blocked Router.replace to', args[0]);
-        return Promise.resolve(false);
-      }
-      return origRouterReplace(...args);
-    };
-
-    // Patch location.assign/replace
-    const origAssign = window.location.assign.bind(window.location);
-    const origReplaceLoc = window.location.replace.bind(window.location);
-
-    window.location.assign = (url) => {
-      if (typeof url === 'string' && url.includes('/signin')) {
-        console.log('[password-success] blocked location.assign to', url);
-        return;
-      }
-      return origAssign(url);
-    };
-    window.location.replace = (url) => {
-      if (typeof url === 'string' && url.includes('/signin')) {
-        console.log('[password-success] blocked location.replace to', url);
-        return;
-      }
-      return origReplaceLoc(url);
-    };
-
-    // Cleanup on unmount: restore originals.
-    return () => {
-      Router.push = origRouterPush;
-      Router.replace = origRouterReplace;
-      window.location.assign = origAssign;
-      window.location.replace = origReplaceLoc;
-    };
-  }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const r = params.get('redirectTo') || params.get('redirect') || '/';
-    const s = parseInt(params.get('seconds') || params.get('sec') || '', 10);
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    const r = params.get('redirectTo') || params.get('redirect') || '/dashboard';
     setRedirectTo(r);
-    if (!Number.isNaN(s) && s > 0) setSeconds(s);
 
     (async function trySignIn() {
       try {
-        // If session already present, go ok
+        // If a session already exists, go ok
         if (window.supabase?.auth?.getSession) {
           const { data } = await window.supabase.auth.getSession();
           if (data?.session?.user) {
             setStatus('ok');
-            setMessage('Already signed in — redirecting…');
+            setMessage('You are signed in.');
             return;
           }
         }
 
-        // Read pending credentials from sessionStorage
+        // Read pending credentials from sessionStorage (set by set-password page)
         const email = sessionStorage.getItem('auth_pending_email');
         const password = sessionStorage.getItem('auth_pending_password');
 
         if (!email || !password) {
+          // Nothing to auto sign-in with; remain on page and allow manual sign-in
           setStatus('nosession');
-          setMessage('Your password is set. Click "Go to Sign In" to sign in.');
+          setMessage('Your password was set. Click "Go to Sign In" to sign in.');
           return;
         }
 
         if (!window.supabase?.auth?.signInWithPassword) {
           setStatus('error');
           setMessage('Supabase client not initialized on this page.');
+          // Clear sensitive pending values
           sessionStorage.removeItem('auth_pending_email');
           sessionStorage.removeItem('auth_pending_password');
           return;
@@ -138,17 +85,19 @@ export default function PasswordSuccess() {
 
         if (sessionFound) {
           setStatus('ok');
-          setMessage('Signed in — redirecting to your dashboard…');
+          setMessage('Signed in successfully. Click "Go to Dashboard" when you are ready.');
           return;
         }
 
-        // signIn succeeded but session didn't persist in time. Provide prefill for manual Sign In.
+        // signIn succeeded but session didn't persist in time. Provide prefill and stay here.
         setStatus('error');
-        setMessage('Signed in but session did not persist in time. Click "Go to Sign In" and press Sign In.');
+        setMessage('Signed in but session did not persist. Click "Go to Sign In" and press Sign In.');
         try {
           sessionStorage.setItem('auth_prefill_email', email);
           sessionStorage.setItem('auth_prefill_password', password);
-        } catch (err) { /* ignore */ }
+        } catch (err) {
+          // ignore sessionStorage failures
+        }
       } catch (err) {
         setStatus('error');
         setMessage(String(err?.message || err));
@@ -156,32 +105,11 @@ export default function PasswordSuccess() {
     })();
   }, []);
 
-  // countdown + redirect only when status === 'ok'
-  useEffect(() => {
-    if (status !== 'ok') return;
-    if (seconds <= 0) {
-      // use Router.push to navigate to dashboard — this will work because we're allowing non-signin routes
-      Router.push(redirectTo);
-      return;
-    }
-    const t = setInterval(() => {
-      setSeconds((s) => {
-        if (s <= 1) {
-          clearInterval(t);
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, [status, seconds, redirectTo]);
+  function goToDashboard() {
+    Router.push(redirectTo);
+  }
 
-  function goNow() {
-    if (status === 'ok') {
-      Router.push(redirectTo);
-      return;
-    }
-    // If not signed in or session not persisted, go to Sign In page where fields will be prefilled.
+  function goToSignIn() {
     Router.push('/signin');
   }
 
@@ -191,41 +119,25 @@ export default function PasswordSuccess() {
         <h1 className="psuccess-title">Success</h1>
 
         <p className="psuccess-message">
+          {/* Removed any "set your password" copy — user already did that on the previous page. */}
           {status === 'working' && 'Signing you in and preparing your dashboard…'}
-          {status === 'ok' && 'Your account is ready — you will be redirected to your Dashboard.'}
-          {status === 'nosession' && 'Your password is set. Click "Go to Sign In" to sign in.'}
-          {status === 'error' && `There was a problem: ${message}`}
+          {status === 'ok' && 'You are signed in. When ready, go to your Dashboard.'}
+          {status === 'nosession' && 'Your password has been set. Click "Go to Sign In" to sign in.'}
+          {status === 'error' && `There was an issue: ${message}`}
         </p>
 
-        {status === 'ok' && (
-          <>
-            <div className="psuccess-countdown">
-              Redirecting in <strong>{seconds}</strong> second{seconds === 1 ? '' : 's'}…
-            </div>
+        <div className="psuccess-actions" style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 16 }}>
+          <button className="btn btn-primary" onClick={goToDashboard} aria-disabled={status !== 'ok'}>
+            Go to Dashboard
+          </button>
 
-            <div className="psuccess-actions">
-              <button className="btn btn-primary" onClick={goNow}>Go to Dashboard now</button>
-              <a className="btn btn-link" href="/signin">Sign in instead</a>
-            </div>
-          </>
-        )}
+          <button className="btn btn-link" onClick={goToSignIn}>
+            Go to Sign In
+          </button>
+        </div>
 
-        {status === 'working' && (
-          <div className="psuccess-loading">
-            <div className="spinner" aria-hidden="true"></div>
-            <div className="psuccess-note">If this takes more than a few seconds, click "Sign in instead".</div>
-          </div>
-        )}
-
-        {(status === 'nosession' || status === 'error') && (
-          <div className="psuccess-actions">
-            <button className="btn btn-primary" onClick={goNow}>Go to Sign In</button>
-            <a className="btn btn-link" href="/">Return home</a>
-          </div>
-        )}
-
-        <div className="psuccess-note">
-          If you are not redirected automatically, click "Go to Dashboard now" or "Go to Sign In".
+        <div className="psuccess-note" style={{ marginTop: 12 }}>
+          If you prefer, click "Go to Sign In" — the sign-in form will be prefilled so you only need to click Sign in.
         </div>
       </div>
     </main>
