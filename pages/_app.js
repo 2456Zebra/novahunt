@@ -5,6 +5,7 @@
 import '../styles/globals.css';
 import '../styles/header.css';
 import '../styles/password-success.css';
+import '../styles/set-password.css';
 import { useState, useEffect } from 'react';
 
 function MyApp({ Component, pageProps }) {
