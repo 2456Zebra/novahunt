@@ -1,12 +1,11 @@
-// pages/password-success.js
-// Attempts an automatic sign-in using credentials saved in sessionStorage by the Set Password page.
-// Shows a "Success — you'll be redirected to your Dashboard" message and a countdown only when auto sign-in succeeds.
-// If credentials were not present or sign-in fails, the page stays visible and offers a "Sign in" button (it will NOT auto-redirect to /signin).
-
 import { useEffect, useState } from 'react';
 import Router from 'next/router';
 
-// styles/password-success.css is imported globally from pages/_app.js per Next.js rules.
+// pages/password-success.js
+// Tries to sign the user in using credentials saved in sessionStorage by the Set Password page.
+// If sign-in returns successfully, waits for Supabase session persistence before redirecting.
+// If session fails to appear, stays on the page and offers a "Go to Sign In" button that will
+// prefill the Sign In page (via sessionStorage) so the user only needs to click Sign In.
 
 export default function PasswordSuccess() {
   const [redirectTo, setRedirectTo] = useState('/');
@@ -38,7 +37,7 @@ export default function PasswordSuccess() {
         const password = sessionStorage.getItem('auth_pending_password');
 
         if (!email || !password) {
-          // Don't auto-redirect to SignIn — instead show the success page and let user sign in manually
+          // No credentials: remain on success page and let user sign in manually
           setStatus('nosession');
           setMessage('Password set. Please sign in to access your dashboard.');
           return;
@@ -53,26 +52,50 @@ export default function PasswordSuccess() {
           return;
         }
 
-        const { data, error } = await window.supabase.auth.signInWithPassword({ email, password });
+        // Attempt sign in
+        const { data: signData, error: signError } = await window.supabase.auth.signInWithPassword({ email, password });
 
-        // Clear pending credentials immediately
+        // Clear pending credentials immediately after the attempt
         sessionStorage.removeItem('auth_pending_email');
         sessionStorage.removeItem('auth_pending_password');
 
-        if (error) {
+        if (signError) {
           setStatus('error');
-          setMessage(error.message || 'Sign-in failed.');
+          setMessage(signError.message || 'Sign-in failed.');
           return;
         }
 
-        if (data?.user || data?.session) {
+        // If signIn returned no error, wait for the session to be available (some envs persist asynchronously)
+        // Poll for session presence for up to ~5 seconds.
+        const maxAttempts = 20;
+        let attempts = 0;
+        let sessionFound = false;
+        while (attempts < maxAttempts) {
+          // eslint-disable-next-line no-await-in-loop
+          const s = await window.supabase.auth.getSession();
+          if (s?.data?.session?.user) {
+            sessionFound = true;
+            break;
+          }
+          // wait 250ms
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((res) => setTimeout(res, 250));
+          attempts += 1;
+        }
+
+        if (sessionFound) {
           setStatus('ok');
           setMessage('Signed in — redirecting to your dashboard…');
           return;
         }
 
+        // Sign-in call succeeded but session didn't persist in time. Don't auto-redirect to /signin.
+        // Offer the user to go to Sign In page with credentials prefilled so they can click Sign In.
         setStatus('error');
-        setMessage('Sign-in returned no session. Please sign in manually.');
+        setMessage('Signed in but session did not persist. Click "Go to Sign In" and press Sign In.');
+        // store prefill values for the Sign In page (tab-scoped). Use only for immediate next navigation.
+        sessionStorage.setItem('auth_prefill_email', email);
+        sessionStorage.setItem('auth_prefill_password', password);
       } catch (err) {
         setStatus('error');
         setMessage(String(err?.message || err));
@@ -100,7 +123,12 @@ export default function PasswordSuccess() {
   }, [status, seconds, redirectTo]);
 
   function goNow() {
-    Router.push(redirectTo);
+    if (status === 'ok') {
+      Router.push(redirectTo);
+      return;
+    }
+    // If not signed in, go to Sign In and let the Sign In page pick up prefill values.
+    Router.push('/signin');
   }
 
   return (
@@ -137,13 +165,13 @@ export default function PasswordSuccess() {
 
         {(status === 'nosession' || status === 'error') && (
           <div className="psuccess-actions">
-            <a className="btn btn-primary" href="/signin">Sign in</a>
+            <button className="btn btn-primary" onClick={goNow}>Go to Sign In</button>
             <a className="btn btn-link" href="/">Return home</a>
           </div>
         )}
 
         <div className="psuccess-note">
-          If you are not redirected automatically, click "Go to Dashboard now".
+          If you are not redirected automatically, click "Go to Dashboard now" or "Go to Sign In".
         </div>
       </div>
     </main>
