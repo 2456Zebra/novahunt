@@ -1,10 +1,9 @@
+// pages/signin.js
+// Prefills email/password from sessionStorage keys 'auth_prefill_email' and 'auth_prefill_password' (set by password-success).
+// The user must click "Sign in" — no automatic redirect from this page.
+
 import { useEffect, useState } from 'react';
 import Router from 'next/router';
-
-// pages/signin.js
-// Reads sessionStorage keys auth_prefill_email and auth_prefill_password (set by password-success)
-// and pre-fills the signin form. The password is kept in sessionStorage only until the user submits,
-// then both prefill keys are removed for safety.
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -14,19 +13,21 @@ export default function SignInPage() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    // If the password-success placed prefill values, read them and prefill the form.
-    const prefEmail = sessionStorage.getItem('auth_prefill_email');
-    const prefPassword = sessionStorage.getItem('auth_prefill_password');
-    if (prefEmail) {
-      setEmail(prefEmail);
-      setPrefilled(true);
+    try {
+      const prefEmail = sessionStorage.getItem('auth_prefill_email') || sessionStorage.getItem('auth_pending_email');
+      const prefPassword = sessionStorage.getItem('auth_prefill_password') || sessionStorage.getItem('auth_pending_password');
+      if (prefEmail) {
+        setEmail(prefEmail);
+        setPrefilled(true);
+      }
+      if (prefPassword) {
+        setPassword(prefPassword);
+        setPrefilled(true);
+      }
+      // Keep the prefill in sessionStorage until the user clicks Sign in — we will clear on success.
+    } catch (err) {
+      console.warn('sessionStorage read failed', err);
     }
-    if (prefPassword) {
-      setPassword(prefPassword);
-      setPrefilled(true);
-    }
-    // Do NOT remove them here — keep them until user submits (or until they navigate away).
-    // We'll clear them on successful sign-in or after form submit attempt.
   }, []);
 
   async function handleSubmit(e) {
@@ -47,11 +48,15 @@ export default function SignInPage() {
         return;
       }
 
-      // Clear the prefill values (security)
-      sessionStorage.removeItem('auth_prefill_email');
-      sessionStorage.removeItem('auth_prefill_password');
+      // Clear sensitive prefill values after sign-in attempt
+      try {
+        sessionStorage.removeItem('auth_prefill_email');
+        sessionStorage.removeItem('auth_prefill_password');
+        sessionStorage.removeItem('auth_pending_email');
+        sessionStorage.removeItem('auth_pending_password');
+      } catch (err) {}
 
-      // Wait briefly for session persistence before navigating
+      // Poll for session persistence briefly
       let attempts = 0;
       const maxAttempts = 20;
       let sessionFound = false;
@@ -70,7 +75,6 @@ export default function SignInPage() {
       if (sessionFound) {
         Router.push('/dashboard');
       } else {
-        // fallback navigation
         Router.push('/');
       }
     } catch (err) {
