@@ -1,11 +1,11 @@
+// pages/password-success.js
+// Attempts automatic sign-in using credentials stored in sessionStorage by the Set Password page.
+// If session persistence succeeds, shows the "redirecting to Dashboard" countdown and navigates to redirectTo.
+// IMPORTANT: This page will NOT automatically redirect users to /signin. If auto-sign-in fails or session doesn't persist,
+// it stays visible and offers a "Go to Sign In" button that opens /signin with the credentials prefilled.
+
 import { useEffect, useState } from 'react';
 import Router from 'next/router';
-
-// pages/password-success.js
-// Tries to sign the user in using credentials saved in sessionStorage by the Set Password page.
-// If sign-in returns successfully, waits for Supabase session persistence before redirecting.
-// If session fails to appear, stays on the page and offers a "Go to Sign In" button that will
-// prefill the Sign In page (via sessionStorage) so the user only needs to click Sign In.
 
 export default function PasswordSuccess() {
   const [redirectTo, setRedirectTo] = useState('/');
@@ -22,7 +22,7 @@ export default function PasswordSuccess() {
 
     (async function trySignIn() {
       try {
-        // If a session already exists, skip sign-in
+        // If there is already a session, go to ok state
         if (window.supabase?.auth?.getSession) {
           const { data } = await window.supabase.auth.getSession();
           if (data?.session?.user) {
@@ -32,30 +32,30 @@ export default function PasswordSuccess() {
           }
         }
 
-        // Read pending credentials from sessionStorage (set by set-password page)
+        // Get pending credentials
         const email = sessionStorage.getItem('auth_pending_email');
         const password = sessionStorage.getItem('auth_pending_password');
 
         if (!email || !password) {
-          // No credentials: remain on success page and let user sign in manually
+          // No credentials to auto-sign-in with. Stay on page and show Sign In button.
           setStatus('nosession');
-          setMessage('Password set. Please sign in to access your dashboard.');
+          setMessage('Your password was set. Click "Go to Sign In" to sign in (we will prefill your email).');
           return;
         }
 
         if (!window.supabase?.auth?.signInWithPassword) {
           setStatus('error');
           setMessage('Supabase client not initialized on this page.');
-          // Clear pending credentials for safety
+          // Clear sensitive pending values
           sessionStorage.removeItem('auth_pending_email');
           sessionStorage.removeItem('auth_pending_password');
           return;
         }
 
-        // Attempt sign in
+        // Attempt sign-in
         const { data: signData, error: signError } = await window.supabase.auth.signInWithPassword({ email, password });
 
-        // Clear pending credentials immediately after the attempt
+        // Remove the pending plaintext credentials (we'll store prefill values if needed)
         sessionStorage.removeItem('auth_pending_email');
         sessionStorage.removeItem('auth_pending_password');
 
@@ -65,21 +65,20 @@ export default function PasswordSuccess() {
           return;
         }
 
-        // If signIn returned no error, wait for the session to be available (some envs persist asynchronously)
-        // Poll for session presence for up to ~5 seconds.
+        // Poll for session persistence (some environments persist asynchronously)
         const maxAttempts = 20;
         let attempts = 0;
         let sessionFound = false;
         while (attempts < maxAttempts) {
+          // small delay
           // eslint-disable-next-line no-await-in-loop
-          const s = await window.supabase.auth.getSession();
-          if (s?.data?.session?.user) {
+          await new Promise((res) => setTimeout(res, 250));
+          // eslint-disable-next-line no-await-in-loop
+          const sObj = await window.supabase.auth.getSession();
+          if (sObj?.data?.session?.user) {
             sessionFound = true;
             break;
           }
-          // wait 250ms
-          // eslint-disable-next-line no-await-in-loop
-          await new Promise((res) => setTimeout(res, 250));
           attempts += 1;
         }
 
@@ -89,13 +88,16 @@ export default function PasswordSuccess() {
           return;
         }
 
-        // Sign-in call succeeded but session didn't persist in time. Don't auto-redirect to /signin.
-        // Offer the user to go to Sign In page with credentials prefilled so they can click Sign In.
+        // signIn succeeded but session didn't persist within timeout. Provide prefill and let user go to Sign In.
         setStatus('error');
-        setMessage('Signed in but session did not persist. Click "Go to Sign In" and press Sign In.');
-        // store prefill values for the Sign In page (tab-scoped). Use only for immediate next navigation.
-        sessionStorage.setItem('auth_prefill_email', email);
-        sessionStorage.setItem('auth_prefill_password', password);
+        setMessage('Signed in but session did not persist in time. Click "Go to Sign In" and press Sign In.');
+        // store prefill values for the Sign In page (short-lived, tab-scoped)
+        try {
+          sessionStorage.setItem('auth_prefill_email', email);
+          sessionStorage.setItem('auth_prefill_password', password);
+        } catch (err) {
+          // ignore sessionStorage write failures
+        }
       } catch (err) {
         setStatus('error');
         setMessage(String(err?.message || err));
@@ -103,7 +105,7 @@ export default function PasswordSuccess() {
     })();
   }, []);
 
-  // countdown + redirect only when status === 'ok'
+  // Start countdown only when status === 'ok'
   useEffect(() => {
     if (status !== 'ok') return;
     if (seconds <= 0) {
@@ -127,7 +129,7 @@ export default function PasswordSuccess() {
       Router.push(redirectTo);
       return;
     }
-    // If not signed in, go to Sign In and let the Sign In page pick up prefill values.
+    // user intentionally chooses to go to Sign In; the Sign In page will pick up prefill values (if any)
     Router.push('/signin');
   }
 
@@ -139,7 +141,7 @@ export default function PasswordSuccess() {
         <p className="psuccess-message">
           {status === 'working' && 'Signing you in and preparing your dashboard…'}
           {status === 'ok' && 'Your account is ready — you will be redirected to your Dashboard.'}
-          {status === 'nosession' && 'Password set. Please sign in to access your dashboard.'}
+          {status === 'nosession' && 'Your password is set. Click "Go to Sign In" to sign in.'}
           {status === 'error' && `There was a problem: ${message}`}
         </p>
 
