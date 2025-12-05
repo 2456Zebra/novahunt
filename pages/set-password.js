@@ -1,131 +1,73 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import CheckoutSuccess from '../components/CheckoutSuccess';
 
 /**
- * pages/set-password.js
- * - Prefills email from ?email= or sessionStorage.stripe_email
- * - Writes auth_pending_* and auth_prefill_* before redirecting to password-success
- * - Password input is visually highlighted until filled
+ * Minimal set-password page:
+ * - When password is submitted, show the new registered message.
+ * - Does NOT automatically navigate away; user can click Sign in when ready.
  *
- * NOTE: Do NOT import global CSS here (it must be imported from pages/_app.js).
+ * Note: adapt the API call below to match your actual endpoint.
  */
-
 export default function SetPasswordPage() {
-  const [email, setEmail] = useState('');
-  const [emailReadonly, setEmailReadonly] = useState(false);
   const [password, setPassword] = useState('');
-  const [status, setStatus] = useState(null); // null | 'loading' | 'ok' | 'error'
-  const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    try {
-      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const eParam = params?.get('email') || params?.get('customer_email') || params?.get('checkout_email');
-      if (eParam) {
-        setEmail(eParam);
-        setEmailReadonly(true);
-        try { sessionStorage.setItem('stripe_email', eParam); } catch (e) {}
-        return;
-      }
-
-      const fromSession = typeof window !== 'undefined' ? sessionStorage.getItem('stripe_email') : null;
-      if (fromSession) {
-        setEmail(fromSession);
-        setEmailReadonly(true);
-        return;
-      }
-
-      const pending = typeof window !== 'undefined' ? sessionStorage.getItem('auth_pending_email') : null;
-      if (pending) {
-        setEmail(pending);
-        setEmailReadonly(true);
-      }
-    } catch (err) {
-      console.warn('prefill email error', err);
-    }
-  }, []);
+  const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
 
   async function handleSubmit(e) {
     e.preventDefault();
     setStatus('loading');
-    setMessage('');
 
     try {
-      const res = await fetch('/api/set-password-by-email', {
+      // Example API call — please adapt to your real API route.
+      const res = await fetch('/api/set-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ password }),
       });
-      const data = await res.json().catch(() => ({ ok: false, message: 'Invalid response' }));
 
-      if (res.ok && data.ok !== false) {
-        try {
-          // Ensure both pending (for immediate auto sign-in) and prefill (for fallback) are saved
-          sessionStorage.setItem('auth_pending_email', email);
-          sessionStorage.setItem('auth_pending_password', password);
-          sessionStorage.setItem('auth_prefill_email', email);
-          sessionStorage.setItem('auth_prefill_password', password);
-        } catch (err) {
-          console.warn('sessionStorage write failed', err);
-        }
+      if (!res.ok) throw new Error('Failed');
 
-        // Use replace so history is clean
-        window.location.replace('/password-success?redirectTo=/dashboard');
-        setStatus('ok');
-        setMessage(data.message || 'Password set. Redirecting…');
-      } else {
-        setStatus('error');
-        setMessage(data.error || data.message || JSON.stringify(data));
-      }
+      setStatus('success');
     } catch (err) {
+      console.error(err);
       setStatus('error');
-      setMessage(String(err.message || err));
     }
   }
 
+  if (status === 'success') {
+    // Show the updated registered message. No automatic redirect.
+    return <CheckoutSuccess message="Thanks — your password has been registered." />;
+  }
+
   return (
-    <div className="setpw-root">
-      <div className="setpw-card">
-        <h1>Set a password</h1>
+    <main style={{ maxWidth: 640, margin: '48px auto', padding: '0 16px' }}>
+      <h1>Set a password</h1>
 
-        <p className="setpw-sub">
-          {email ? `We found your email: ${email}. Only choose a password.` : 'Enter your email and choose a password.'}
-        </p>
+      <form onSubmit={handleSubmit}>
+        <label htmlFor="password">Password</label>
+        <div>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            style={{ width: '100%', padding: '8px', marginTop: 8 }}
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} className="setpw-form">
-          <label className="setpw-label">
-            Email
-            <input
-              className="setpw-input"
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              readOnly={emailReadonly}
-              placeholder="you@example.com"
-            />
-          </label>
+        <div style={{ marginTop: 16 }}>
+          <button type="submit" disabled={status === 'loading'}>
+            {status === 'loading' ? 'Saving…' : 'Set password'}
+          </button>
+        </div>
 
-          <label className="setpw-label">
-            Password
-            <input
-              className={`setpw-input ${password ? '' : 'setpw-required'}`}
-              type="password"
-              required
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Choose a password"
-              autoFocus
-            />
-          </label>
-
-          <div className="setpw-actions">
-            <button type="submit" className="setpw-btn">Set password</button>
-          </div>
-
-          {status === 'loading' && <div className="setpw-note">Working…</div>}
-          {status === 'error' && <div className="setpw-error">Error: {message}</div>}
-        </form>
-      </div>
-    </div>
+        {status === 'error' && (
+          <p role="alert" style={{ color: 'red', marginTop: 12 }}>
+            There was an error saving your password. Please try again.
+          </p>
+        )}
+      </form>
+    </main>
   );
 }
