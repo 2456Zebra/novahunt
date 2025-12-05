@@ -1,63 +1,113 @@
-import React, { useState } from 'react';
-import { useRouter } from 'next/router';
-import supabase from '../lib/supabaseClient';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import Router from 'next/router';
 
-export default function SigninPage() {
-  const router = useRouter();
+// pages/signin.js
+// Reads sessionStorage keys auth_prefill_email and auth_prefill_password (set by password-success)
+// and pre-fills the signin form. The password is kept in sessionStorage only until the user submits,
+// then both prefill keys are removed for safety.
+
+export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [prefilled, setPrefilled] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState(null);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    // If the password-success placed prefill values, read them and prefill the form.
+    const prefEmail = sessionStorage.getItem('auth_prefill_email');
+    const prefPassword = sessionStorage.getItem('auth_prefill_password');
+    if (prefEmail) {
+      setEmail(prefEmail);
+      setPrefilled(true);
+    }
+    if (prefPassword) {
+      setPassword(prefPassword);
+      setPrefilled(true);
+    }
+    // Do NOT remove them here — keep them until user submits (or until they navigate away).
+    // We'll clear them on successful sign-in or after form submit attempt.
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setErr(null);
     setLoading(true);
+    setMessage('');
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) {
-        setErr(error.message || 'Sign-in failed');
-      } else {
-        router.push('/');
+      if (!window.supabase?.auth?.signInWithPassword) {
+        setMessage('Supabase client not ready.');
+        setLoading(false);
+        return;
       }
-    } catch (e) {
-      setErr(e.message || 'Network error');
-    } finally {
+
+      const { data, error } = await window.supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setMessage(error.message || 'Sign in failed.');
+        setLoading(false);
+        return;
+      }
+
+      // Clear the prefill values (security)
+      sessionStorage.removeItem('auth_prefill_email');
+      sessionStorage.removeItem('auth_prefill_password');
+
+      // Wait briefly for session persistence before navigating
+      let attempts = 0;
+      const maxAttempts = 20;
+      let sessionFound = false;
+      while (attempts < maxAttempts) {
+        // eslint-disable-next-line no-await-in-loop
+        const s = await window.supabase.auth.getSession();
+        if (s?.data?.session?.user) {
+          sessionFound = true;
+          break;
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 200));
+        attempts += 1;
+      }
+
+      if (sessionFound) {
+        Router.push('/dashboard');
+      } else {
+        // fallback navigation
+        Router.push('/');
+      }
+    } catch (err) {
+      setMessage(String(err?.message || err));
       setLoading(false);
     }
   }
 
   return (
-    <div style={{ maxWidth: 680, margin: '40px auto', padding: 20 }}>
+    <main style={{ maxWidth: 640, margin: '48px auto', padding: 20 }}>
       <h1>Sign in</h1>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <label style={{ display: 'flex', flexDirection: 'column' }}>
+      {prefilled && (
+        <div style={{ marginBottom: 12, color: '#374151' }}>
+          We pre-filled your email{password ? ' and password' : ''}. Click Sign in to continue.
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12 }}>
+        <label>
           Email
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={{ padding: 8, fontSize: 14 }} />
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
 
-        <label style={{ display: 'flex', flexDirection: 'column' }}>
+        <label>
           Password
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required style={{ padding: 8, fontSize: 14 }} />
+          <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button type="submit" disabled={loading} style={{ padding: '8px 12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6 }}>
+        <div>
+          <button type="submit" style={{ padding: '10px 14px', background: '#0b5fff', color: '#fff', border: 0, borderRadius: 6 }}>
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
-
-          <Link href="/signup"><a style={{ color: '#2563eb' }}>Sign up</a></Link>
-          <Link href="/"><a style={{ marginLeft: 12, color: '#6b7280' }}>Back to Home</a></Link>
         </div>
 
-        {err ? <div style={{ color: 'red' }}>{err}</div> : null}
+        {message && <div style={{ color: 'crimson' }}>{message}</div>}
       </form>
-    </div>
+    </main>
   );
 }
