@@ -1,6 +1,7 @@
+// pages/set-password.js
+// NOTE: do NOT import global CSS here. styles/set-password.css must be imported from pages/_app.js.
+
 import { useEffect, useState } from 'react';
-import Router from 'next/router';
-import '../styles/set-password.css'; // ensure this file exists (you already added it to styles/)
 
 export default function SetPasswordPage() {
   const [email, setEmail] = useState('');
@@ -10,30 +11,28 @@ export default function SetPasswordPage() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    // Priority: URL param 'email' (set by server redirect) -> sessionStorage.stripe_email -> fallback pending
     try {
-      if (typeof window !== 'undefined') {
-        const params = new URLSearchParams(window.location.search);
-        const eParam = params.get('email');
-        if (eParam) {
-          setEmail(eParam);
-          setEmailReadonly(true);
-          try { sessionStorage.setItem('stripe_email', eParam); } catch (e) { /* ignore */ }
-          return;
-        }
+      // Priority: URL param 'email' -> sessionStorage.stripe_email -> auth_pending_email
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const eParam = params?.get('email') || params?.get('customer_email') || params?.get('checkout_email');
+      if (eParam) {
+        setEmail(eParam);
+        setEmailReadonly(true);
+        try { sessionStorage.setItem('stripe_email', eParam); } catch (e) {}
+        return;
+      }
 
-        const fromSession = sessionStorage.getItem('stripe_email');
-        if (fromSession) {
-          setEmail(fromSession);
-          setEmailReadonly(true);
-          return;
-        }
+      const fromSession = typeof window !== 'undefined' ? sessionStorage.getItem('stripe_email') : null;
+      if (fromSession) {
+        setEmail(fromSession);
+        setEmailReadonly(true);
+        return;
+      }
 
-        const pending = sessionStorage.getItem('auth_pending_email');
-        if (pending) {
-          setEmail(pending);
-          setEmailReadonly(true);
-        }
+      const pending = typeof window !== 'undefined' ? sessionStorage.getItem('auth_pending_email') : null;
+      if (pending) {
+        setEmail(pending);
+        setEmailReadonly(true);
       }
     } catch (err) {
       console.warn('prefill email error', err);
@@ -60,7 +59,6 @@ export default function SetPasswordPage() {
           console.warn('sessionStorage write failed', err);
         }
 
-        // Redirect to the success page which will attempt to sign-in automatically
         window.location.href = '/password-success?redirectTo=/dashboard&seconds=5';
         setStatus('ok');
         setMessage(data.message || 'Password set. Redirecting…');
