@@ -1,3 +1,7 @@
+// components/Header.js
+// Client-side header that reads Supabase session, loads profile data, and renders the account pulldown.
+// CSP-friendly: toggles visibility via classes, not inline styles.
+
 import { useEffect, useState } from 'react';
 import AccountMenu from './AccountMenu';
 import Link from 'next/link';
