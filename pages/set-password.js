@@ -1,9 +1,6 @@
-// pages/set-password.js
-// Prefills email (from sessionStorage 'stripe_email' or URL param 'email' or previous auth_pending),
-// only requires the user to enter a password. On success stores pending credentials to sessionStorage
-// and redirects to /password-success?redirectTo=/dashboard&seconds=5
-
 import { useEffect, useState } from 'react';
+import Router from 'next/router';
+import '../styles/set-password.css'; // ensure this file exists (you already added it to styles/)
 
 export default function SetPasswordPage() {
   const [email, setEmail] = useState('');
@@ -13,35 +10,34 @@ export default function SetPasswordPage() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    // Priority: sessionStorage.stripe_email -> URL param 'email' -> sessionStorage.auth_pending_email
+    // Priority: URL param 'email' (set by server redirect) -> sessionStorage.stripe_email -> fallback pending
     try {
-      const fromSession = sessionStorage.getItem('stripe_email');
-      if (fromSession) {
-        setEmail(fromSession);
-        setEmailReadonly(true);
-        return;
-      }
-    } catch (e) { /* ignore sessionStorage read errors */ }
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const eParam = params.get('email');
+        if (eParam) {
+          setEmail(eParam);
+          setEmailReadonly(true);
+          try { sessionStorage.setItem('stripe_email', eParam); } catch (e) { /* ignore */ }
+          return;
+        }
 
-    // URL param
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const eParam = params.get('email') || params.get('customer_email');
-      if (eParam) {
-        setEmail(eParam);
-        setEmailReadonly(true);
-        return;
+        const fromSession = sessionStorage.getItem('stripe_email');
+        if (fromSession) {
+          setEmail(fromSession);
+          setEmailReadonly(true);
+          return;
+        }
+
+        const pending = sessionStorage.getItem('auth_pending_email');
+        if (pending) {
+          setEmail(pending);
+          setEmailReadonly(true);
+        }
       }
+    } catch (err) {
+      console.warn('prefill email error', err);
     }
-
-    // fallback to any auth_pending_email (e.g., user returned mid-flow)
-    try {
-      const pending = sessionStorage.getItem('auth_pending_email');
-      if (pending) {
-        setEmail(pending);
-        setEmailReadonly(true);
-      }
-    } catch (e) {}
   }, []);
 
   async function handleSubmit(e) {
@@ -57,7 +53,6 @@ export default function SetPasswordPage() {
       const data = await res.json().catch(() => ({ ok: false, message: 'Invalid response' }));
 
       if (res.ok && data.ok !== false) {
-        // Save pending credentials to sessionStorage (tab-scoped) for password-success auto sign-in
         try {
           sessionStorage.setItem('auth_pending_email', email);
           sessionStorage.setItem('auth_pending_password', password);
@@ -65,7 +60,7 @@ export default function SetPasswordPage() {
           console.warn('sessionStorage write failed', err);
         }
 
-        // Redirect to success page (it will attempt auto sign-in and then redirect to dashboard)
+        // Redirect to the success page which will attempt to sign-in automatically
         window.location.href = '/password-success?redirectTo=/dashboard&seconds=5';
         setStatus('ok');
         setMessage(data.message || 'Password set. Redirecting…');
@@ -80,50 +75,49 @@ export default function SetPasswordPage() {
   }
 
   return (
-    <div style={{ maxWidth: 680, margin: '48px auto', padding: 24 }}>
-      <h1>Set a password</h1>
-      <p style={{ color: '#374151', marginTop: 0 }}>
-        Enter a password for {emailReadonly ? 'your account' : 'your email address'} below.
-      </p>
+    <div className="setpw-root">
+      <div className="setpw-card">
+        <h1>Set a password</h1>
 
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12 }}>
-        <label>
-          Email
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            readOnly={emailReadonly}
-            placeholder="you@example.com"
-            style={{ display: 'block', width: '100%', padding: '8px 10px', marginTop: 6 }}
-          />
-        </label>
+        <p className="setpw-sub">
+          {email ? `We found your email: ${email}. Only choose a password.` : 'Enter your email and choose a password.'}
+        </p>
 
-        <label>
-          Password
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Choose a password"
-            style={{ display: 'block', width: '100%', padding: '8px 10px', marginTop: 6 }}
-          />
-        </label>
+        <form onSubmit={handleSubmit} className="setpw-form">
+          <label className="setpw-label">
+            Email
+            <input
+              className="setpw-input"
+              type="email"
+              required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              readOnly={emailReadonly}
+              placeholder="you@example.com"
+            />
+          </label>
 
-        <div>
-          <button
-            type="submit"
-            style={{ padding: '10px 14px', background: '#0b5fff', color: '#fff', border: 'none', borderRadius: 6 }}
-          >
-            Set password
-          </button>
-        </div>
+          <label className="setpw-label">
+            Password
+            <input
+              className={`setpw-input ${password ? '' : 'setpw-required'}`}
+              type="password"
+              required
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Choose a password"
+              autoFocus
+            />
+          </label>
 
-        {status === 'loading' && <div>Working…</div>}
-        {status === 'error' && <div style={{ color: 'crimson' }}>Error: {message}</div>}
-      </form>
+          <div className="setpw-actions">
+            <button type="submit" className="setpw-btn">Set password</button>
+          </div>
+
+          {status === 'loading' && <div className="setpw-note">Working…</div>}
+          {status === 'error' && <div className="setpw-error">Error: {message}</div>}
+        </form>
+      </div>
     </div>
   );
 }
