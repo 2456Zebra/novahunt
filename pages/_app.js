@@ -1,9 +1,8 @@
 // pages/_app.js
-// Global CSS must be imported here (Next.js rule). This file also initializes the Supabase client.
 import '../styles/globals.css';
 import '../styles/header.css';
 import '../styles/password-success.css';
-import '../styles/set-password.css'; // keep the global import here
+import '../styles/set-password.css'; // global CSS must be here
 import { useState, useEffect } from 'react';
 
 function MyApp({ Component, pageProps }) {
@@ -19,7 +18,6 @@ function MyApp({ Component, pageProps }) {
       const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       if (url && anon) {
         const client = createClient(url, anon);
-        // Expose for debugging — remove in production
         window.supabase = client;
         setSupabase(client);
       } else {
