@@ -8,10 +8,6 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'dev-secret-change-me';
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.warn('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set - DB operations will fail.');
-}
-
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
   : null;
@@ -19,9 +15,13 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
 /**
  * POST /api/set-password
  * - Accepts { password, session_id?, token? }
- * - Hashes password, upserts user in Supabase "users" table, issues JWT cookie, returns redirect.
+ * - Hashes password, upserts user in Supabase "users" table if configured,
+ *   otherwise falls back to demo mode (no DB) and still issues an auth cookie.
  *
- * Ensure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in Vercel (server-only).
+ * NOTE:
+ * - In production you should set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY and
+ *   replace/extend the TODOs as needed.
+ * - Do NOT treat Stripe session_id as an authentication token in production.
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -37,15 +37,16 @@ export default async function handler(req, res) {
 
   let email = null;
 
-  // 1) Token verification placeholder (if you implement one-time tokens)
+  // Token verification placeholder (optional)
   if (token) {
-    // TODO: verify token and set email from token payload
+    // TODO: verify token and extract email from token payload
+    // Example:
     // const payload = verifyOneTimeToken(token);
     // if (!payload || !payload.email) return res.status(400).json({ error: 'Invalid token' });
     // email = payload.email;
   }
 
-  // 2) Fallback: resolve email from Stripe Checkout session (server-side)
+  // Try Stripe Checkout session to get customer email if needed
   if (!email && session_id && stripe) {
     try {
       const session = await stripe.checkout.sessions.retrieve(session_id, {
@@ -62,38 +63,51 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Unable to determine account email. Provide a valid token or session_id.' });
   }
 
-  if (!supabase) {
-    return res.status(500).json({ error: 'Database client not configured (SUPABASE env variables missing).' });
-  }
-
   try {
-    // Hash password using scrypt + salt
+    // Hash password using scrypt + salt (built-in crypto)
     const salt = randomBytes(16).toString('hex');
     const derived = scryptSync(password, salt, 64);
     const passwordHash = `${salt}:${derived.toString('hex')}`;
 
-    // Upsert user in Supabase users table
-    // Note: this requires SUPABASE_SERVICE_ROLE_KEY (server-side)
-    const upsertPayload = { email, password_hash: passwordHash, updated_at: new Date().toISOString() };
-    const { data: upsertData, error: upsertError } = await supabase
-      .from('users')
-      .upsert(upsertPayload, { onConflict: 'email' })
-      .select()
-      .single();
+    let userId = null;
 
-    if (upsertError) {
-      console.error('Supabase upsert error', upsertError);
-      return res.status(500).json({ error: 'Database error while creating/updating user' });
+    if (supabase) {
+      // Upsert user in Supabase users table (requires SUPABASE_SERVICE_ROLE_KEY)
+      try {
+        const upsertPayload = {
+          email,
+          password_hash: passwordHash,
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: upsertData, error: upsertError } = await supabase
+          .from('users')
+          .upsert(upsertPayload, { onConflict: 'email' })
+          .select()
+          .single();
+
+        if (upsertError) {
+          console.error('Supabase upsert error', upsertError);
+          return res.status(500).json({ error: 'Database error while creating/updating user' });
+        }
+
+        userId = upsertData?.id || `supabase:${upsertData?.email || email}`;
+      } catch (err) {
+        console.error('Supabase upsert failed', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+    } else {
+      // No DB configured — demo fallback: issue cookie and continue
+      console.warn('SUPABASE not configured; running set-password in demo mode (no DB persistence).');
+      userId = `demo:${email}`;
     }
-
-    const userId = upsertData?.id || `supabase:${upsertData?.email || email}`;
 
     // Issue a JWT for the session
     const tokenPayload = { sub: userId, email };
     const jwtOptions = { expiresIn: '7d' };
     const authToken = jwt.sign(tokenPayload, JWT_SECRET, jwtOptions);
 
-    // Set cookie (HttpOnly). Use Secure=true in production.
+    // Set cookie (HttpOnly). Use Secure in production.
     const secure = process.env.NODE_ENV === 'production';
     const cookieParts = [
       `auth=${authToken}`,
