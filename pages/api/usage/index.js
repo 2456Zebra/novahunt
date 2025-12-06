@@ -14,22 +14,11 @@ const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SEC
  * GET -> returns { searches, reveals, searchesMax, revealsMax }
  * POST { action: 'search'|'reveal' } -> increments the counter and returns updated values.
  *
- * If Supabase is configured, it will persist in users table fields:
- *  - searches_count (integer)
- *  - reveals_count (integer)
- *  - plan (text)
- *
- * If Supabase is not configured, returns demo values (non-persistent).
- *
- * This handler will also attempt to detect the user's Stripe subscription (by email)
- * to infer the plan (e.g. "Pro") and apply the correct limits.
+ * Plan mapping now includes 'enterprise' for higher limits.
  */
 export default async function handler(req, res) {
-  // verify JWT from cookie
   const token = (req.cookies && req.cookies.auth) || null;
-  if (!token) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
+  if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
   let payload;
   try {
@@ -40,18 +29,14 @@ export default async function handler(req, res) {
   }
 
   const email = payload.email;
-  if (!email) {
-    return res.status(400).json({ error: 'No email in token' });
-  }
+  if (!email) return res.status(400).json({ error: 'No email in token' });
 
-  // Default plan limits (starter)
   const PLAN_MAP = {
     starter: { searchesMax: 50, revealsMax: 25 },
     pro: { searchesMax: 1000, revealsMax: 500 },
-    // add more plans here if needed
+    enterprise: { searchesMax: 100000, revealsMax: 50000 },
   };
 
-  // Helper to detect plan from Stripe subscriptions for this email
   async function detectStripePlanForEmail(email) {
     if (!stripe) return null;
     try {
@@ -60,31 +45,27 @@ export default async function handler(req, res) {
       if (!customer) return null;
 
       const subs = await stripe.subscriptions.list({ customer: customer.id, limit: 10 });
-      // find the latest active or trialing subscription
       const activeSub = subs.data.find((s) => ['active', 'trialing', 'past_due'].includes(s.status)) || subs.data[0];
       if (!activeSub) return null;
 
       const item = activeSub.items?.data?.[0];
       if (!item) return null;
 
-      // Try to read a friendly name via price.nickname or product.name
       const price = await stripe.prices.retrieve(item.price.id);
-      const nickname = price?.nickname || '';
+      const nickname = (price?.nickname || '').toLowerCase();
       let productName = '';
       if (price && price.product) {
         try {
           const prod = await stripe.products.retrieve(price.product);
-          productName = prod?.name || '';
-        } catch (e) {
-          // ignore product retrieval errors
-        }
+          productName = (prod?.name || '').toLowerCase();
+        } catch (e) { /* ignore */ }
       }
 
-      const combined = `${nickname} ${productName}`.toLowerCase();
+      const combined = `${nickname} ${productName}`;
+      if (combined.includes('enterprise')) return 'enterprise';
       if (combined.includes('pro')) return 'pro';
       if (combined.includes('starter')) return 'starter';
       if (combined.includes('basic')) return 'starter';
-      // fallback: if price unit_amount is high, assume pro (not ideal but safe)
       if (price?.unit_amount && price.unit_amount >= 10000) return 'pro';
 
       return null;
@@ -94,18 +75,14 @@ export default async function handler(req, res) {
     }
   }
 
-  // If no Supabase configured, we can still attempt to detect the plan via Stripe and return limits
   if (!supabase) {
     let planName = null;
-    if (stripe) {
-      planName = await detectStripePlanForEmail(email);
-    }
+    if (stripe) planName = await detectStripePlanForEmail(email);
     const limits = planName ? (PLAN_MAP[planName] || PLAN_MAP.starter) : PLAN_MAP.starter;
 
     if (req.method === 'GET') {
       return res.status(200).json({ searches: 0, reveals: 0, searchesMax: limits.searchesMax, revealsMax: limits.revealsMax });
     } else if (req.method === 'POST') {
-      // Demo increment (non-persistent) - simply return 1 increments
       const { action } = req.body || {};
       let searches = 0, reveals = 0;
       if (action === 'search') searches = 1;
@@ -117,7 +94,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // With Supabase: fetch and optionally increment; also try to detect Stripe plan if missing
   try {
     const selectResult = await supabase
       .from('users')
@@ -127,33 +103,27 @@ export default async function handler(req, res) {
 
     const user = selectResult?.data || null;
     const selectErr = selectResult?.error || null;
-
     if (selectErr) {
       console.error('Supabase select error', selectErr);
       return res.status(500).json({ error: 'DB error' });
     }
 
     let currentUser = user;
-
     if (!currentUser) {
       const createResult = await supabase
         .from('users')
         .insert({ email, searches_count: 0, reveals_count: 0 })
         .select()
         .single();
-
       const created = createResult?.data || null;
       const createErr = createResult?.error || null;
-
       if (createErr) {
         console.error('Supabase create user error', createErr);
         return res.status(500).json({ error: 'DB error' });
       }
-
       currentUser = created;
     }
 
-    // If user has no plan set, attempt to detect from Stripe (and persist)
     let planName = currentUser.plan || null;
     if (!planName && stripe) {
       const detected = await detectStripePlanForEmail(email);
@@ -168,7 +138,6 @@ export default async function handler(req, res) {
     }
 
     const limits = (planName && PLAN_MAP[planName]) ? PLAN_MAP[planName] : PLAN_MAP.starter;
-
     let searches = currentUser.searches_count || 0;
     let reveals = currentUser.reveals_count || 0;
 
@@ -193,10 +162,8 @@ export default async function handler(req, res) {
         .eq('email', email)
         .select()
         .single();
-
       const updated = updateResult?.data || null;
       const updateErr = updateResult?.error || null;
-
       if (updateErr) {
         console.error('Supabase update error', updateErr);
         return res.status(500).json({ error: 'DB error' });
