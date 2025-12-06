@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 /**
  * Generic checkout / password-success display component.
- * - Uses the new copy: "Thanks — your password has been registered."
+ * - Uses the copy: "Thanks — your password has been registered."
  * - Does NOT perform any automatic redirect or countdown.
  * - Provides an explicit Sign in button/link.
  */
