@@ -10,7 +10,7 @@ import { useAuth } from '../pages/_app';
  * Usage: import Header from '../components/Header' and include at top of pages.
  */
 export default function Header() {
-  const { loading: authLoading, authenticated, user, refresh } = useAuth();
+  const { loading: authLoading, authenticated, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState({ searches: 0, reveals: 0 });
   const [limits, setLimits] = useState({ searchesMax: 50, revealsMax: 25 });
@@ -39,39 +39,9 @@ export default function Header() {
     }
 
     if (!authLoading && authenticated) load();
+    return () => { mounted.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, authenticated]);
-
-  useEffect(() => {
-    return () => { mounted.current = false; };
-  }, []);
-
-  // optimistic increment for local UI; also POST to server
-  async function doActionIncrement(type) {
-    setCounts((c) => {
-      const next = { ...c };
-      if (type === 'search') next.searches = (next.searches || 0) + 1;
-      if (type === 'reveal') next.reveals = (next.reveals || 0) + 1;
-      return next;
-    });
-
-    try {
-      const res = await fetch('/api/usage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ action: type }),
-      });
-      const json = await res.json();
-      if (res.ok) {
-        setCounts({ searches: json.searches || 0, reveals: json.reveals || 0 });
-      } else {
-        console.warn('usage increment failed', json);
-      }
-    } catch (err) {
-      console.error('usage increment error', err);
-    }
-  }
 
   function percent(current, max) {
     if (!max || max <= 0) return 0;
@@ -103,11 +73,12 @@ export default function Header() {
               aria-expanded={open}
               onClick={() => setOpen((v) => !v)}
               style={{
-                padding: '8px 10px',
-                borderRadius: 8,
+                padding: '6px 10px',
+                borderRadius: 6,
                 border: '1px solid #ddd',
                 background: '#fff',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontSize: 13
               }}
             >
               Account ▾
@@ -149,23 +120,40 @@ export default function Header() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <Link href="/account"><a style={{ flex: 1, padding: '8px 10px', textAlign: 'center', borderRadius: 6, border: '1px solid #ddd', textDecoration: 'none' }}>Account</a></Link>
-                  <a href="/api/logout" style={{ flex: 1, padding: '8px 10px', textAlign: 'center', borderRadius: 6, background: '#ef4444', color: '#fff', textDecoration: 'none' }}>Sign out</a>
-                </div>
+                  <Link href="/account">
+                    <a
+                      style={{
+                        flex: 1,
+                        padding: '6px 8px',
+                        textAlign: 'center',
+                        borderRadius: 6,
+                        background: '#12b76a',
+                        color: '#fff',
+                        textDecoration: 'none',
+                        fontSize: 13,
+                        display: 'inline-block'
+                      }}
+                    >
+                      Account
+                    </a>
+                  </Link>
 
-                <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
-                  <button
-                    onClick={() => { doActionIncrement('search'); }}
-                    style={{ background: 'transparent', border: 'none', color: '#0b74de', cursor: 'pointer', padding: 0, marginRight: 8 }}
+                  <a
+                    href="/api/logout"
+                    style={{
+                      flex: 1,
+                      padding: '6px 8px',
+                      textAlign: 'center',
+                      borderRadius: 6,
+                      background: '#12b76a',
+                      color: '#fff',
+                      textDecoration: 'none',
+                      fontSize: 13,
+                      display: 'inline-block'
+                    }}
                   >
-                    Simulate +1 Search
-                  </button>
-                  <button
-                    onClick={() => { doActionIncrement('reveal'); }}
-                    style={{ background: 'transparent', border: 'none', color: '#0b74de', cursor: 'pointer', padding: 0 }}
-                  >
-                    Simulate +1 Reveal
-                  </button>
+                    Sign out
+                  </a>
                 </div>
               </div>
             )}
