@@ -1,54 +1,52 @@
 import { NextResponse } from 'next/server';
 
 /**
- * Temporary defensive middleware to prevent server-side redirects away from
- * the set-password / password-success flow while we debug persistence.
+ * Server-side middleware to protect routes and avoid client-side redirect flashes.
  *
- * IMPORTANT: This is a small, temporary safety net. It intentionally allows
- * requests for set-password and password-success to continue without redirect.
- * After you've validated the flow, replace with your normal auth middleware
- * that enforces server-side auth (or implement server-side session persistence).
+ * Behavior:
+ * - If the request path is a protected route (e.g. /dashboard, /account, /settings),
+ *   and there is no auth cookie, middleware performs a server redirect to /signin.
+ * - Skips static and API paths.
+ *
+ * Adjust `protectedPaths` to match the pages you want server-protected.
+ *
+ * Note: middleware runs on the Edge runtime. Keep logic small and avoid heavy libs here.
  */
-
 export function middleware(req) {
-  const url = req.nextUrl.clone();
-  const pathname = url.pathname || '';
+  const { pathname } = req.nextUrl;
 
-  // Allow static files, _next, api routes, and public assets through
+  // Skip next internals, static files, and API endpoints
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
-    pathname.startsWith('/static') ||
-    pathname === '/favicon.ico' ||
-    pathname === '/robots.txt' ||
-    pathname.match(/\.(svg|png|jpg|jpeg|css|js|map|ico)$/)
+    pathname.includes('.') // static assets like .css, .png
   ) {
     return NextResponse.next();
   }
 
-  // Paths we definitely must NOT redirect away from while debugging
-  const safePaths = [
-    '/set-password',
-    '/password-success',
-    '/signin',
-    '/sign-in',
-    '/dashboard', // allow dashboard client-side (we make it client-only elsewhere)
-  ];
+  // Define protected paths - adjust as needed
+  const protectedPaths = ['/dashboard', '/account', '/settings'];
+  const isProtected = protectedPaths.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
 
-  for (const p of safePaths) {
-    if (pathname === p || pathname.startsWith(p + '/') ) {
-      return NextResponse.next();
-    }
+  if (!isProtected) {
+    return NextResponse.next();
   }
 
-  // If you previously had middleware that redirected unauthenticated users
-  // to /signin, do NOT perform that redirect here. Just continue the request.
-  // This ensures the browser stays on the password-success page and the client
-  // can finish persisting the Supabase session.
+  // Read auth cookie set by your set-password API ("auth")
+  const token = req.cookies.get && req.cookies.get('auth') ? req.cookies.get('auth').value : null;
+
+  if (!token) {
+    // Redirect unauthenticated users to signin with redirect back
+    const signinUrl = new URL('/signin', req.url);
+    signinUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(signinUrl);
+  }
+
+  // If token exists, allow request to continue. Server-side verification is optional here.
   return NextResponse.next();
 }
 
-// Apply middleware to all routes (adjust matcher as needed)
-export const config = {
-  matcher: '/:path*'
-};
+// Apply middleware to all routes; you can scope via matcher if needed.
+// export const config = { matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'] };
