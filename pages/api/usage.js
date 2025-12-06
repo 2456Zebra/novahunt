@@ -59,40 +59,48 @@ export default async function handler(req, res) {
 
   // With Supabase: fetch and optionally increment
   try {
-    // get current counts
-    const { data: user, error: selectErr } = await supabase
+    // get current counts (use selectResult so we don't reassign a const)
+    const selectResult = await supabase
       .from('users')
       .select('id, email, searches_count, reveals_count, plan')
       .eq('email', email)
       .maybeSingle();
+
+    const user = selectResult?.data || null;
+    const selectErr = selectResult?.error || null;
 
     if (selectErr) {
       console.error('Supabase select error', selectErr);
       return res.status(500).json({ error: 'DB error' });
     }
 
-    if (!user) {
+    let currentUser = user;
+
+    if (!currentUser) {
       // Create a user row with zeroed counts (service role)
-      const { data: created, error: createErr } = await supabase
+      const createResult = await supabase
         .from('users')
         .insert({ email, searches_count: 0, reveals_count: 0 })
         .select()
         .single();
+
+      const created = createResult?.data || null;
+      const createErr = createResult?.error || null;
 
       if (createErr) {
         console.error('Supabase create user error', createErr);
         return res.status(500).json({ error: 'DB error' });
       }
 
-      user = created;
+      currentUser = created;
     }
 
-    let searches = user.searches_count || 0;
-    let reveals = user.reveals_count || 0;
+    let searches = currentUser.searches_count || 0;
+    let reveals = currentUser.reveals_count || 0;
     // You can store plan limits in user.plan or other table. Fallback to defaults.
     const limits = {
-      searchesMax: (user.plan && user.plan.searchesMax) || defaultLimits.searchesMax,
-      revealsMax: (user.plan && user.plan.revealsMax) || defaultLimits.revealsMax,
+      searchesMax: (currentUser.plan && currentUser.plan.searchesMax) || defaultLimits.searchesMax,
+      revealsMax: (currentUser.plan && currentUser.plan.revealsMax) || defaultLimits.revealsMax,
     };
 
     if (req.method === 'GET') {
@@ -110,12 +118,15 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid action' });
       }
 
-      const { data: updated, error: updateErr } = await supabase
+      const updateResult = await supabase
         .from('users')
         .update(updates)
         .eq('email', email)
         .select()
         .single();
+
+      const updated = updateResult?.data || null;
+      const updateErr = updateResult?.error || null;
 
       if (updateErr) {
         console.error('Supabase update error', updateErr);
