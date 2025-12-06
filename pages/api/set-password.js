@@ -1,20 +1,27 @@
 import { randomBytes, scryptSync } from 'crypto';
 import jwt from 'jsonwebtoken';
 import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'dev-secret-change-me';
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.warn('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set - DB operations will fail.');
+}
+
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  : null;
 
 /**
  * POST /api/set-password
- * - Accepts JSON { password, session_id?, token? }
- * - Hashes password, upserts user in DB (TODO), then issues a JWT and sets an HttpOnly cookie.
- * - Returns { ok: true, redirect: "/dashboard" } on success.
+ * - Accepts { password, session_id?, token? }
+ * - Hashes password, upserts user in Supabase "users" table, issues JWT cookie, returns redirect.
  *
- * IMPORTANT:
- * - Replace the TODO DB upsert sections with your actual DB logic (Prisma/Mongoose/etc).
- * - Use a strong JWT_SECRET in production and store it in Vercel env vars.
- * - Do not rely on Stripe session_id as an authentication token in production.
+ * Ensure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in Vercel (server-only).
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -32,7 +39,7 @@ export default async function handler(req, res) {
 
   // 1) Token verification placeholder (if you implement one-time tokens)
   if (token) {
-    // TODO: verify token and extract email from payload
+    // TODO: verify token and set email from token payload
     // const payload = verifyOneTimeToken(token);
     // if (!payload || !payload.email) return res.status(400).json({ error: 'Invalid token' });
     // email = payload.email;
@@ -55,26 +62,31 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Unable to determine account email. Provide a valid token or session_id.' });
   }
 
+  if (!supabase) {
+    return res.status(500).json({ error: 'Database client not configured (SUPABASE env variables missing).' });
+  }
+
   try {
     // Hash password using scrypt + salt
     const salt = randomBytes(16).toString('hex');
     const derived = scryptSync(password, salt, 64);
     const passwordHash = `${salt}:${derived.toString('hex')}`;
 
-    // TODO: Replace with your DB upsert/update logic.
-    // Example pseudocode (Prisma):
-    // import prisma from '../../lib/prisma';
-    // let user = await prisma.user.findUnique({ where: { email } });
-    // if (!user) {
-    //   user = await prisma.user.create({ data: { email, passwordHash } });
-    // } else {
-    //   user = await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
-    // }
-    //
-    // Ensure you set userId to the correct persisted user id.
-    const userId = `demo-${email}`; // replace with real user id from DB
+    // Upsert user in Supabase users table
+    // Note: this requires SUPABASE_SERVICE_ROLE_KEY (server-side)
+    const upsertPayload = { email, password_hash: passwordHash, updated_at: new Date().toISOString() };
+    const { data: upsertData, error: upsertError } = await supabase
+      .from('users')
+      .upsert(upsertPayload, { onConflict: 'email' })
+      .select()
+      .single();
 
-    console.info(`SET-PASSWORD: would set password for ${email}`);
+    if (upsertError) {
+      console.error('Supabase upsert error', upsertError);
+      return res.status(500).json({ error: 'Database error while creating/updating user' });
+    }
+
+    const userId = upsertData?.id || `supabase:${upsertData?.email || email}`;
 
     // Issue a JWT for the session
     const tokenPayload = { sub: userId, email };
@@ -96,7 +108,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ ok: true, redirect: '/dashboard', email });
   } catch (err) {
-    console.error('Error setting password', err);
+    console.error('Error in set-password handler', err);
     return res.status(500).json({ error: 'Failed to set password' });
   }
 }
