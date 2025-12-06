@@ -9,8 +9,6 @@ import { NextResponse } from 'next/server';
  * - Skips static and API paths.
  *
  * Adjust `protectedPaths` to match the pages you want server-protected.
- *
- * Note: middleware runs on the Edge runtime. Keep logic small and avoid heavy libs here.
  */
 export function middleware(req) {
   const { pathname } = req.nextUrl;
@@ -44,9 +42,6 @@ export function middleware(req) {
     return NextResponse.redirect(signinUrl);
   }
 
-  // If token exists, allow request to continue. Server-side verification is optional here.
+  // If token exists, allow request to continue.
   return NextResponse.next();
 }
-
-// Apply middleware to all routes; you can scope via matcher if needed.
-// export const config = { matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'] };
