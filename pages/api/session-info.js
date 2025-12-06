@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 /**
  * GET /api/session-info?session_id=...
@@ -8,7 +8,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
  * Server-side helper that:
  * - Retrieves Stripe Checkout session to read customer/email
  * - Looks up your user DB by email/customer to determine if a password exists
- * - Returns JSON { hasPassword: boolean, email?: string, note?: string, setPasswordToken?: string }
+ * - Returns JSON { hasPassword: boolean, email?: string, setPasswordToken?: string }
  *
  * IMPORTANT: Replace the placeholder DB logic below with your real user lookup.
  */
@@ -20,19 +20,17 @@ export default async function handler(req, res) {
   }
 
   if (!process.env.STRIPE_SECRET_KEY) {
-    // If Stripe secret isn't configured, return minimal safe info so the app can continue
     return res.status(200).json({ hasPassword: false, note: 'no stripe key configured' });
   }
 
   try {
-    // Retrieve the Checkout session (server-side)
     const session = await stripe.checkout.sessions.retrieve(session_id, {
       expand: ['customer', 'customer_details'],
     });
 
     const email = session?.customer_details?.email || (session.customer && session.customer.email) || null;
 
-    // TODO: Replace this block with your DB/identity lookup to decide if this user already has a password.
+    // TODO: Replace with your DB/identity lookup to decide if this user already has a password.
     // Example (pseudo):
     // const user = await db.users.findOne({ email });
     // const hasPassword = !!(user && user.passwordHash);
