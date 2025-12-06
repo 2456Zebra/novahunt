@@ -9,8 +9,6 @@ import CheckoutSuccess from '../components/CheckoutSuccess';
  * - Calls /api/session-info?session_id=... to determine whether the customer already has a password
  * - If hasPassword === true => show "Thanks — your password has been registered." + Sign in button
  * - Otherwise => show "Payment successful. Set a password to sign in and access your account." + Set password button
- *
- * Note: /api/session-info must be implemented server-side to securely check Stripe + your user DB.
  */
 export default function SuccessPage() {
   const router = useRouter();
