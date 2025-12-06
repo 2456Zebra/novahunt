@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import CheckoutSuccess from '../components/CheckoutSuccess';
 
 /**
  * /success page
@@ -26,7 +27,6 @@ export default function SuccessPage() {
     setLoading(true);
     setError(null);
 
-    // Call server API to get session + account info
     fetch(`/api/session-info?session_id=${encodeURIComponent(session_id)}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -44,12 +44,9 @@ export default function SuccessPage() {
         if (mounted) setLoading(false);
       });
 
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [session_id]);
 
-  // Render states
   if (!session_id) {
     return (
       <main style={{ maxWidth: 720, margin: '48px auto', padding: '0 16px', textAlign: 'center' }}>
@@ -81,11 +78,8 @@ export default function SuccessPage() {
     );
   }
 
-  // info should be an object returned by /api/session-info
-  // Expected shape: { hasPassword: boolean, email?: string, note?: string, setPasswordToken?: string }
   const { hasPassword = false, email, setPasswordToken } = info || {};
 
-  // If user already has a password
   if (hasPassword) {
     return (
       <main style={{ maxWidth: 720, margin: '48px auto', padding: '0 16px', textAlign: 'center' }}>
@@ -107,8 +101,6 @@ export default function SuccessPage() {
     );
   }
 
-  // Otherwise user needs to set a password
-  // Prefer a secure token-based flow (setPasswordToken). If none, fall back to session_id
   const setPasswordHref = setPasswordToken
     ? `/set-password?token=${encodeURIComponent(setPasswordToken)}`
     : `/set-password?session_id=${encodeURIComponent(session_id)}`;
