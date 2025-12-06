@@ -1,16 +1,20 @@
 import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  : null;
 
 /**
  * GET /api/session-info?session_id=...
+ * - Retrieves the Stripe Checkout session to get customer email
+ * - Looks up Supabase users table for that email to determine hasPassword
  *
- * Server-side helper that:
- * - Retrieves Stripe Checkout session to read customer/email
- * - Looks up your user DB by email/customer to determine if a password exists
- * - Returns JSON { hasPassword: boolean, email?: string, setPasswordToken?: string }
- *
- * IMPORTANT: Replace the placeholder DB logic below with your real user lookup.
+ * Response: { hasPassword: boolean, email?: string, setPasswordToken?: string }
  */
 export default async function handler(req, res) {
   const { session_id } = req.query;
@@ -19,8 +23,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'missing session_id' });
   }
 
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return res.status(200).json({ hasPassword: false, note: 'no stripe key configured' });
+  if (!stripe) {
+    return res.status(200).json({ hasPassword: false, note: 'stripe secret not configured' });
   }
 
   try {
@@ -30,16 +34,30 @@ export default async function handler(req, res) {
 
     const email = session?.customer_details?.email || (session.customer && session.customer.email) || null;
 
-    // TODO: Replace with your DB/identity lookup to decide if this user already has a password.
-    // Example (pseudo):
-    // const user = await db.users.findOne({ email });
-    // const hasPassword = !!(user && user.passwordHash);
-    //
-    // If you need to create a one-time token to set password:
-    // const setPasswordToken = createOneTimeTokenForEmail(email, expiresIn='1h')
-    //
-    // For now, return hasPassword=false to force the set-password flow.
-    const hasPassword = false;
+    if (!email) {
+      return res.status(200).json({ hasPassword: false, email: null });
+    }
+
+    if (!supabase) {
+      // No DB configured; return fallback
+      return res.status(200).json({ hasPassword: false, email });
+    }
+
+    // Query Supabase users table for this email
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, email, password_hash')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Supabase query error', error);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    const hasPassword = !!(user && user.password_hash);
+
+    // Optionally generate a one-time token here
     const setPasswordToken = null;
 
     return res.status(200).json({ hasPassword, email, setPasswordToken });
