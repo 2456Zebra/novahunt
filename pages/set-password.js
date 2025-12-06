@@ -5,9 +5,7 @@ import CheckoutSuccess from '../components/CheckoutSuccess';
 /**
  * Client-side set-password page.
  * - Posts password + session_id (from query) to /api/set-password
- * - Displays success or error messages returned by the API
- *
- * Paste this full file into pages/set-password.js replacing your existing file.
+ * - On success, performs a full-page redirect to the provided redirect URL (so cookie is sent)
  */
 export default function SetPasswordPage() {
   const router = useRouter();
@@ -33,11 +31,19 @@ export default function SetPasswordPage() {
         body: JSON.stringify(payload),
       });
 
+      const json = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
         throw new Error(json?.error || `HTTP ${res.status}`);
       }
 
+      // If the server set a cookie, do a full-page redirect so the cookie is sent and server renders the dashboard
+      if (json?.redirect) {
+        window.location.assign(json.redirect);
+        return;
+      }
+
+      // Otherwise show success UI
       setStatus('success');
     } catch (err) {
       console.error('set-password error', err);
@@ -82,7 +88,6 @@ export default function SetPasswordPage() {
       </form>
 
       <p style={{ marginTop: 16, color: '#666', fontSize: 13 }}>
-        {/* Show session id for debugging; remove in production */}
         {session_id ? <>session_id: <code>{session_id}</code></> : null}
       </p>
     </main>
