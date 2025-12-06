@@ -1,33 +1,24 @@
-/**
- * POST /api/set-password
- *
- * Expected JSON body:
- * {
- *   "password": "newPassword",
- *   "session_id": "cs_test_....",   // optional if you use session-based flow
- *   "token": "oneTimeToken"         // optional if you use your own one-time token flow
- * }
- *
- * Behavior:
- * - Only accepts POST. Returns 405 for other methods.
- * - Determines an email for the account from (in order):
- *    1) a validated one-time token (if you implement token verification)
- *    2) a Stripe Checkout session (if session_id provided and STRIPE_SECRET_KEY is configured)
- * - Looks up or creates the user record and saves a password hash.
- * - Responds with JSON { ok: true } on success or { error: "message" } with appropriate HTTP status.
- *
- * SECURITY NOTE:
- * - This file includes placeholders for DB lookups and token verification. Replace those sections
- *   with your real user/store logic (Prisma, Mongoose, Supabase, etc.) before using in production.
- * - Do NOT use the Stripe session_id as a long-lived authentication token. Prefer creating one-time
- *   server-generated tokens and verifying them here (or use a verified email link flow).
- */
-
-import bcrypt from 'bcryptjs';
+import { randomBytes, scryptSync } from 'crypto';
 import Stripe from 'stripe';
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
+/**
+ * POST /api/set-password
+ *
+ * This implementation uses Node's built-in crypto (scrypt) instead of bcryptjs
+ * so you don't need to add a new dependency. It:
+ * - Accepts POST only (405 for others)
+ * - Validates password length
+ * - Tries to resolve the account email from a one-time token (not implemented)
+ *   or from a Stripe Checkout session_id (if provided and STRIPE_SECRET_KEY is set)
+ * - Hashes password with salt using scryptSync and returns success.
+ *
+ * IMPORTANT:
+ * Replace the TODO DB sections with your real DB upsert/update logic (Prisma, Mongoose, Supabase, etc.).
+ * Do NOT treat Stripe session_id as an authentication token in production — prefer a server-generated
+ * one-time token emailed to the user or verify ownership server-side before updating a password.
+ */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -42,21 +33,17 @@ export default async function handler(req, res) {
 
   let email = null;
 
-  // 1) If you use your own one-time tokens for setting password, verify them here.
-  // Example placeholder:
+  // 1) Token verification placeholder (if you implement one-time tokens)
   if (token) {
-    // TODO: Replace with your real token verification logic.
-    // Example (pseudo):
+    // TODO: verify token and extract email from payload
+    // Example pseudo:
     // const payload = verifyOneTimeToken(token);
     // if (!payload || !payload.email) return res.status(400).json({ error: 'Invalid token' });
     // email = payload.email;
-    //
-    // For now, we'll not accept tokens unless you implement verifyOneTimeToken.
-    // If you plan to use tokens, implement and set `email` from the token payload.
     console.warn('pages/api/set-password: token support requires server-side implementation.');
   }
 
-  // 2) If no token, and a Stripe secret key is configured, try to pull the Checkout session to get customer email.
+  // 2) Try Stripe Checkout session to get customer email
   if (!email && session_id && stripe) {
     try {
       const session = await stripe.checkout.sessions.retrieve(session_id, {
@@ -70,20 +57,17 @@ export default async function handler(req, res) {
   }
 
   if (!email) {
-    // If you don't have an email, you can't reliably attach a password. Return error.
-    // If your flow uses a different identifier, adapt this section accordingly.
     return res.status(400).json({ error: 'Unable to determine account email. Provide a valid token or session_id.' });
   }
 
   try {
-    // Hash the password
-    const saltRounds = 10;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
+    // Hash password using scrypt with a random salt.
+    const salt = randomBytes(16).toString('hex'); // 32 chars
+    const derivedKey = scryptSync(password, salt, 64); // 64 bytes
+    const passwordHash = `${salt}:${derivedKey.toString('hex')}`;
 
-    // TODO: Replace the pseudo DB code below with your real DB / user-store logic.
-    // Examples for common stacks (pseudocode):
-    //
-    // Prisma (example):
+    // TODO: Replace with your actual DB logic to create or update a user record.
+    // Example pseudocode (Prisma):
     // import prisma from '../../lib/prisma';
     // let user = await prisma.user.findUnique({ where: { email } });
     // if (!user) {
@@ -92,7 +76,7 @@ export default async function handler(req, res) {
     //   user = await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
     // }
     //
-    // Mongoose (example):
+    // Example pseudocode (Mongoose):
     // import User from '../../models/User';
     // let user = await User.findOne({ email });
     // if (!user) {
@@ -101,13 +85,10 @@ export default async function handler(req, res) {
     //   user.passwordHash = passwordHash;
     //   await user.save();
     // }
-    //
-    // Supabase / Postgres / other: perform equivalent upsert/update operations and persist the password hash.
-    //
-    // For now (no DB configured), we log the email and return success for testing.
+
+    // For demo/testing (no DB configured) just log and return success.
     console.info(`SET-PASSWORD (demo): would set password for ${email}`);
 
-    // If you want to return helpful info (do not expose sensitive data)
     return res.status(200).json({ ok: true, email });
   } catch (err) {
     console.error('Error setting password', err);
