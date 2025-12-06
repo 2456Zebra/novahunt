@@ -4,8 +4,10 @@ import { useAuth } from '../pages/_app';
 import styles from './Header.module.css';
 
 /**
- * Header component (no inline styles).
- * Progress bar widths use CSS classes (p0..p100 in 5% steps).
+ * Header component (improved layout)
+ * - Buttons in dropdown are equal size, centered, bold white text.
+ * - No inline styles except small safe usages removed.
+ * - Works with enterprise/pro/starter detection returned by /api/usage.
  */
 export default function Header() {
   const { loading: authLoading, authenticated, user } = useAuth();
@@ -45,7 +47,6 @@ export default function Header() {
     return Math.min(100, Math.round((current / max) * 100));
   }
 
-  // round percent to nearest 5 to match CSS classes
   function percentClass(current, max) {
     const p = percent(current, max);
     const rounded = Math.round(p / 5) * 5;
@@ -91,7 +92,7 @@ export default function Header() {
                   <div className={`${styles.progressFill} ${styles[percentClass(counts.searches||0, limits.searchesMax)]}`} />
                 </div>
 
-                <div className={styles.usageRow} style={{ marginTop: 10 }}>
+                <div className={styles.usageRow} data-gap>
                   <div className={styles.usageLabel}>Reveals</div>
                   <div className={styles.usageValue}>{counts.reveals || 0} / {limits.revealsMax}</div>
                 </div>
@@ -100,8 +101,10 @@ export default function Header() {
                 </div>
 
                 <div className={styles.buttonRow}>
-                  <Link href="/account"><a className={styles.primaryButton}>Account</a></Link>
-                  <a href="/api/logout" className={styles.primaryButton}>Sign out</a>
+                  <Link href="/account">
+                    <a className={styles.primaryButton} role="menuitem">Account</a>
+                  </Link>
+                  <a href="/api/logout" className={styles.primaryButton} role="menuitem">Sign out</a>
                 </div>
               </div>
             )}
