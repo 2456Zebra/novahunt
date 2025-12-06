@@ -1,6 +1,6 @@
 import { useEffect, useState, createContext, useContext } from 'react';
 import Router from 'next/router';
-import '../styles/globals.css'; // adjust if your project uses different path
+import '../styles/globals.css'; // adjust if your project uses a different path
 
 // Auth context to share auth state across the app
 const AuthContext = createContext({
@@ -65,13 +65,8 @@ export default function MyApp({ Component, pageProps }) {
   // Client-side guard for pages that opt-in to require auth.
   // Pages can set `PageComponent.authRequired = true` (static property).
   useEffect(() => {
-    // If component doesn't require auth, nothing to do.
     if (!Component?.authRequired) return;
-
-    // If still loading, do not redirect yet — this prevents flashes.
-    if (loading) return;
-
-    // If not authenticated, redirect to signin (preserving redirect back)
+    if (loading) return; // do not redirect until auth state is known
     if (!authenticated) {
       const redirectTo = Router.asPath || '/';
       Router.replace(`/signin?redirect=${encodeURIComponent(redirectTo)}`);
@@ -85,8 +80,6 @@ export default function MyApp({ Component, pageProps }) {
     refresh,
   };
 
-  // If a page wants to show a loading indicator while auth is unknown,
-  // that page can check useAuth().loading.
   return (
     <AuthContext.Provider value={ctx}>
       <Component {...pageProps} />
