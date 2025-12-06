@@ -1,40 +1,52 @@
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import CheckoutSuccess from '../components/CheckoutSuccess';
 
 /**
- * Minimal set-password page:
- * - When password is submitted, show the new registered message.
- * - Does NOT automatically navigate away; user can click Sign in when ready.
+ * Client-side set-password page.
+ * - Posts password + session_id (from query) to /api/set-password
+ * - Displays success or error messages returned by the API
  *
- * Note: adapt the API call below to match your actual endpoint.
+ * Paste this full file into pages/set-password.js replacing your existing file.
  */
 export default function SetPasswordPage() {
+  const router = useRouter();
+  const { session_id, token } = router.query; // token optional if you use one-time tokens
+
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
+  const [errorMsg, setErrorMsg] = useState('');
 
   async function handleSubmit(e) {
     e.preventDefault();
     setStatus('loading');
+    setErrorMsg('');
 
     try {
-      // Example API call — please adapt to your real API route.
+      const payload = { password };
+      if (session_id) payload.session_id = session_id;
+      if (token) payload.token = token;
+
       const res = await fetch('/api/set-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error || `HTTP ${res.status}`);
+      }
 
       setStatus('success');
     } catch (err) {
-      console.error(err);
+      console.error('set-password error', err);
+      setErrorMsg(err.message || 'Failed');
       setStatus('error');
     }
   }
 
   if (status === 'success') {
-    // Show the updated registered message. No automatic redirect.
     return <CheckoutSuccess message="Thanks — your password has been registered." />;
   }
 
@@ -64,10 +76,15 @@ export default function SetPasswordPage() {
 
         {status === 'error' && (
           <p role="alert" style={{ color: 'red', marginTop: 12 }}>
-            There was an error saving your password. Please try again.
+            {errorMsg || 'There was an error saving your password. Please try again.'}
           </p>
         )}
       </form>
+
+      <p style={{ marginTop: 16, color: '#666', fontSize: 13 }}>
+        {/* Show session id for debugging; remove in production */}
+        {session_id ? <>session_id: <code>{session_id}</code></> : null}
+      </p>
     </main>
   );
 }
