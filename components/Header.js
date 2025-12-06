@@ -29,7 +29,6 @@ export default function Header() {
           setCounts({ searches: json.searches || 0, reveals: json.reveals || 0 });
           setLimits({ searchesMax: json.searchesMax || 50, revealsMax: json.revealsMax || 25 });
         } else {
-          // fallback to defaults
           setCounts({ searches: 0, reveals: 0 });
         }
       } catch (err) {
@@ -79,7 +78,6 @@ export default function Header() {
     return Math.min(100, Math.round((current / max) * 100));
   }
 
-  // Render
   return (
     <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16, padding: '12px 20px', borderBottom: '1px solid #eee' }}>
       {/* Signed-out */}
