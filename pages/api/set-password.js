@@ -7,14 +7,14 @@ const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'dev
 
 /**
  * POST /api/set-password
- * - Accepts { password, session_id?, token? }
+ * - Accepts JSON { password, session_id?, token? }
  * - Hashes password, upserts user in DB (TODO), then issues a JWT and sets an HttpOnly cookie.
  * - Returns { ok: true, redirect: "/dashboard" } on success.
  *
  * IMPORTANT:
  * - Replace the TODO DB upsert sections with your actual DB logic (Prisma/Mongoose/etc).
  * - Use a strong JWT_SECRET in production and store it in Vercel env vars.
- * - Do NOT treat Stripe session_id as authentication in production; verify ownership or use one-time tokens.
+ * - Do not rely on Stripe session_id as an authentication token in production.
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -30,10 +30,10 @@ export default async function handler(req, res) {
 
   let email = null;
 
-  // 1) If you implement token-based flow, verify token and set email here.
+  // 1) Token verification placeholder (if you implement one-time tokens)
   if (token) {
-    // TODO: verify token, set email from payload
-    // const payload = verifyToken(token);
+    // TODO: verify token and extract email from payload
+    // const payload = verifyOneTimeToken(token);
     // if (!payload || !payload.email) return res.status(400).json({ error: 'Invalid token' });
     // email = payload.email;
   }
@@ -57,45 +57,43 @@ export default async function handler(req, res) {
 
   try {
     // Hash password using scrypt + salt
-    const salt = randomBytes(16).toString('hex'); // 32 chars
-    const derived = scryptSync(password, salt, 64); // 64 bytes
+    const salt = randomBytes(16).toString('hex');
+    const derived = scryptSync(password, salt, 64);
     const passwordHash = `${salt}:${derived.toString('hex')}`;
 
-    // TODO: Replace this block with your DB upsert / update logic
-    // Example pseudocode:
-    // let user = await db.users.findOne({ email });
+    // TODO: Replace with your DB upsert/update logic.
+    // Example pseudocode (Prisma):
+    // import prisma from '../../lib/prisma';
+    // let user = await prisma.user.findUnique({ where: { email } });
     // if (!user) {
-    //   user = await db.users.create({ email, passwordHash });
+    //   user = await prisma.user.create({ data: { email, passwordHash } });
     // } else {
-    //   user = await db.users.update({ id: user.id }, { passwordHash });
+    //   user = await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
     // }
     //
-    // Also, set user.id variable to use in the token below.
-
-    // For demo/testing only (no DB), generate a fake user id:
-    const userId = `demo-${email}`;
+    // Ensure you set userId to the correct persisted user id.
+    const userId = `demo-${email}`; // replace with real user id from DB
 
     console.info(`SET-PASSWORD: would set password for ${email}`);
 
-    // Issue a JWT for the session (short-lived or as you prefer)
+    // Issue a JWT for the session
     const tokenPayload = { sub: userId, email };
-    const jwtOptions = { expiresIn: '7d' }; // adjust as needed
+    const jwtOptions = { expiresIn: '7d' };
     const authToken = jwt.sign(tokenPayload, JWT_SECRET, jwtOptions);
 
-    // Set cookie (HttpOnly, Secure in production)
+    // Set cookie (HttpOnly). Use Secure=true in production.
     const secure = process.env.NODE_ENV === 'production';
     const cookieParts = [
       `auth=${authToken}`,
       'HttpOnly',
       'Path=/',
-      `Max-Age=${7 * 24 * 60 * 60}`, // 7 days
+      `Max-Age=${7 * 24 * 60 * 60}`,
       'SameSite=Lax',
     ];
     if (secure) cookieParts.push('Secure');
 
     res.setHeader('Set-Cookie', cookieParts.join('; '));
 
-    // Return redirect target for client to navigate to
     return res.status(200).json({ ok: true, redirect: '/dashboard', email });
   } catch (err) {
     console.error('Error setting password', err);
