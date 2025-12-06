@@ -1,134 +1,179 @@
-// components/Header.js
-// Client-side header that reads Supabase session, loads profile data, and renders the account pulldown.
-// CSP-friendly: toggles visibility via classes, not inline styles.
-
-import { useEffect, useState } from 'react';
-import AccountMenu from './AccountMenu';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import { useAuth } from '../pages/_app';
 
+/**
+ * Header component
+ * - If not authenticated: shows Sign in link.
+ * - If authenticated: shows email, live usage counts and a dropdown with progress bars, Account and Sign out.
+ *
+ * Usage: import Header from '../components/Header' and include at top of pages.
+ */
 export default function Header() {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const { loading: authLoading, authenticated, user, refresh } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState({ searches: 0, reveals: 0 });
+  const [limits, setLimits] = useState({ searchesMax: 50, revealsMax: 25 });
+  const [open, setOpen] = useState(false);
+  const mounted = useRef(true);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function init() {
+    mounted.current = true;
+    async function load() {
+      setLoading(true);
       try {
-        if (typeof window === 'undefined') return;
-
-        if (window.supabase?.auth?.getSession) {
-          const { data } = await window.supabase.auth.getSession();
-          const u = data?.session?.user ?? null;
-          if (mounted) setUser(u);
-
-          // subscribe to auth changes
-          window.supabase.auth.onAuthStateChange((_event, session) => {
-            if (mounted) setUser(session?.user ?? null);
-          });
-        } else if (window.supabase?.auth?.user) {
-          const u = window.supabase.auth.user();
-          if (mounted) setUser(u);
-          window.supabase.auth.onAuthStateChange((_event, session) => {
-            if (mounted) setUser(session ? session.user : null);
-          });
+        const res = await fetch('/api/usage', { credentials: 'same-origin' });
+        const json = await res.json();
+        if (!mounted.current) return;
+        if (res.ok) {
+          setCounts({ searches: json.searches || 0, reveals: json.reveals || 0 });
+          setLimits({ searchesMax: json.searchesMax || 50, revealsMax: json.revealsMax || 25 });
+        } else {
+          // fallback to defaults
+          setCounts({ searches: 0, reveals: 0 });
         }
       } catch (err) {
-        console.warn('Header init error', err);
+        console.error('Header load usage error', err);
+      } finally {
+        if (mounted.current) setLoading(false);
       }
     }
 
-    init();
-    return () => { mounted = false; };
+    if (!authLoading && authenticated) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, authenticated]);
+
+  useEffect(() => {
+    return () => { mounted.current = false; };
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-    async function loadProfile() {
-      try {
-        if (!user || !window.supabase) return;
-        const { data, error } = await window.supabase
-          .from('profiles')
-          .select('display_name,plan,search_count,search_limit,reveals_count,reveals_limit')
-          .eq('id', user.id)
-          .single();
+  // optimistic increment for local UI; also POST to server
+  async function doActionIncrement(type) {
+    setCounts((c) => {
+      const next = { ...c };
+      if (type === 'search') next.searches = (next.searches || 0) + 1;
+      if (type === 'reveal') next.reveals = (next.reveals || 0) + 1;
+      return next;
+    });
 
-        if (!error && data) {
-          if (mounted) {
-            setProfile({
-              display_name: data.display_name || user.email,
-              plan: data.plan || null,
-              search_count: data.search_count || 0,
-              search_limit: data.search_limit || 0,
-              reveals_count: data.reveals_count || 0,
-              reveals_limit: data.reveals_limit || 0
-            });
-          }
-          return;
-        }
-
-        const um = user?.user_metadata || {};
-        if (mounted) {
-          setProfile({
-            display_name: um.display_name || user.email,
-            plan: um.plan || null,
-            search_count: um.search_count || 0,
-            search_limit: um.search_limit || 0,
-            reveals_count: um.reveals_count || 0,
-            reveals_limit: um.reveals_limit || 0
-          });
-        }
-      } catch (err) {
-        console.warn('loadProfile error', err);
+    try {
+      const res = await fetch('/api/usage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: type }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setCounts({ searches: json.searches || 0, reveals: json.reveals || 0 });
+      } else {
+        console.warn('usage increment failed', json);
       }
+    } catch (err) {
+      console.error('usage increment error', err);
     }
-    loadProfile();
-    return () => { mounted = false; };
-  }, [user]);
-
-  function computePercent(count = 0, limit = 0) {
-    if (!limit || limit === 0) return 0;
-    return Math.min(100, Math.round((count / limit) * 100));
   }
 
+  function percent(current, max) {
+    if (!max || max <= 0) return 0;
+    return Math.min(100, Math.round((current / max) * 100));
+  }
+
+  // Render
   return (
-    <header className="site-header">
-      <div className="brand">
-        <Link href="/"><a>NovaHunt</a></Link>
-      </div>
+    <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16, padding: '12px 20px', borderBottom: '1px solid #eee' }}>
+      {/* Signed-out */}
+      {!authLoading && !authenticated && (
+        <div style={{ marginLeft: 'auto' }}>
+          <Link href="/signin"><a style={{ textDecoration: 'none', color: '#111' }}>Sign in</a></Link>
+        </div>
+      )}
 
-      <nav className="site-nav">
-        <Link href="/plans"><a>Plans</a></Link>
-        <Link href="/searches"><a>Searches</a></Link>
-        <Link href="/reveals"><a>Reveals</a></Link>
-      </nav>
-
-      <div className="auth-area">
-        {!user && <Link href="/signin"><a className="btn">Sign in</a></Link>}
-
-        {user && (
-          <div className="account-area">
-            <div className="header-user">
-              <div className="header-user-info">
-                <div className="header-user-name">{profile?.display_name || user.email}</div>
-                <div className="header-user-plan">{profile?.plan ? profile.plan : 'Free'}</div>
-              </div>
-
-              <div className="header-progress">
-                <label className="progress-label">Searches</label>
-                <progress value={computePercent(profile?.search_count, profile?.search_limit)} max="100"></progress>
-                <small>{(profile?.search_count ?? 0)} / {(profile?.search_limit ?? '—')}</small>
-
-                <label className="progress-label">Reveals</label>
-                <progress value={computePercent(profile?.reveals_count, profile?.reveals_limit)} max="100"></progress>
-                <small>{(profile?.reveals_count ?? 0)} / {(profile?.reveals_limit ?? '—')}</small>
-              </div>
-
-              <AccountMenu user={user} />
+      {/* Signed-in header (no NovaHunt text on left per request) */}
+      {!authLoading && authenticated && user && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontSize: 13, color: '#222', textAlign: 'right' }}>
+            <div style={{ fontWeight: 600 }}>{user.email}</div>
+            <div style={{ fontSize: 12, color: '#666' }}>
+              {counts.searches || 0} of {limits.searchesMax} searches &nbsp;·&nbsp; {counts.reveals || 0} of {limits.revealsMax} reveals
             </div>
           </div>
-        )}
-      </div>
+
+          <div style={{ position: 'relative' }}>
+            <button
+              aria-haspopup="true"
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+              style={{
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1px solid #ddd',
+                background: '#fff',
+                cursor: 'pointer'
+              }}
+            >
+              Account ▾
+            </button>
+
+            {open && (
+              <div style={{
+                position: 'absolute',
+                right: 0,
+                marginTop: 8,
+                width: 320,
+                background: '#fff',
+                border: '1px solid #e6e6e6',
+                boxShadow: '0 6px 18px rgba(0,0,0,0.08)',
+                borderRadius: 8,
+                padding: 12,
+                zIndex: 100
+              }}>
+                <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 600 }}>Usage</div>
+
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <div style={{ fontSize: 13 }}>Searches</div>
+                    <div style={{ fontSize: 13 }}>{counts.searches || 0} / {limits.searchesMax}</div>
+                  </div>
+                  <div style={{ height: 10, background: '#f0f0f0', borderRadius: 6 }}>
+                    <div style={{ height: '100%', width: `${percent(counts.searches||0, limits.searchesMax)}%`, background: '#0b74de', borderRadius: 6 }} />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <div style={{ fontSize: 13 }}>Reveals</div>
+                    <div style={{ fontSize: 13 }}>{counts.reveals || 0} / {limits.revealsMax}</div>
+                  </div>
+                  <div style={{ height: 10, background: '#f0f0f0', borderRadius: 6 }}>
+                    <div style={{ height: '100%', width: `${percent(counts.reveals||0, limits.revealsMax)}%`, background: '#12b76a', borderRadius: 6 }} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <Link href="/account"><a style={{ flex: 1, padding: '8px 10px', textAlign: 'center', borderRadius: 6, border: '1px solid #ddd', textDecoration: 'none' }}>Account</a></Link>
+                  <a href="/api/logout" style={{ flex: 1, padding: '8px 10px', textAlign: 'center', borderRadius: 6, background: '#ef4444', color: '#fff', textDecoration: 'none' }}>Sign out</a>
+                </div>
+
+                <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
+                  <button
+                    onClick={() => { doActionIncrement('search'); }}
+                    style={{ background: 'transparent', border: 'none', color: '#0b74de', cursor: 'pointer', padding: 0, marginRight: 8 }}
+                  >
+                    Simulate +1 Search
+                  </button>
+                  <button
+                    onClick={() => { doActionIncrement('reveal'); }}
+                    style={{ background: 'transparent', border: 'none', color: '#0b74de', cursor: 'pointer', padding: 0 }}
+                  >
+                    Simulate +1 Reveal
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }
