@@ -57,10 +57,11 @@ export default function MyApp({ Component, pageProps }) {
     refresh,
   };
 
-  // Render Header globally so homepage shows account header
+  // Render Header only when the user is authenticated.
+  // This ensures the homepage (and other public pages) do not show the header until sign-in.
   return (
     <AuthContext.Provider value={ctx}>
-      <Header />
+      {authenticated && <Header />}
       <Component {...pageProps} />
     </AuthContext.Provider>
   );
