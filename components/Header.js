@@ -5,9 +5,9 @@ import styles from './Header.module.css';
 
 /**
  * Header
- * - polls /api/usage periodically (5s)
- * - listens for 'usage-updated' custom events and localStorage signals for immediate updates
- * - account dropdown: account/manage and sign out buttons are same width and left/right aligned
+ * - polls /api/usage (single global poll) to avoid duplicate fetches
+ * - listens for 'nh_usage_updated' custom events and localStorage marker nh_usage_last_update
+ * - dropdown action buttons are equal width and aligned left/right
  */
 export default function Header() {
   const { loading: authLoading, authenticated, user } = useAuth();
@@ -16,7 +16,6 @@ export default function Header() {
   const [limits, setLimits] = useState({ searchesMax: 50, revealsMax: 25 });
   const [open, setOpen] = useState(false);
   const mounted = useRef(true);
-  const pollRef = useRef(null);
 
   async function loadUsage() {
     try {
@@ -27,7 +26,7 @@ export default function Header() {
       setCounts({ searches: json.searches || 0, reveals: json.reveals || 0 });
       setLimits({ searchesMax: json.searchesMax || 50, revealsMax: json.revealsMax || 25 });
     } catch (err) {
-      // ignore
+      // ignore network errors
     } finally {
       if (mounted.current) setLoading(false);
     }
@@ -37,36 +36,51 @@ export default function Header() {
     mounted.current = true;
 
     if (!authLoading && authenticated) {
+      // initial load
       loadUsage();
-      // poll in background to catch server increments
-      if (!pollRef.current) {
-        pollRef.current = setInterval(loadUsage, 5000);
+
+      // Ensure only one global poll exists across mounts/pages
+      try {
+        if (!window.__nh_usage_poll_installed) {
+          window.__nh_usage_poll_installed = true;
+          window.__nh_usage_poll = setInterval(() => {
+            // ensure the page still has an authenticated user before hitting API aggressively
+            fetch('/api/usage', { credentials: 'same-origin' }).then(r => {
+              if (r.ok) return r.json();
+              return null;
+            }).then(json => {
+              if (!json) return;
+              try {
+                // dispatch a synthetic event so all Header instances can pick it up
+                window.dispatchEvent(new CustomEvent('nh_usage_updated'));
+              } catch (e) {}
+            }).catch(() => {});
+          }, 5000);
+        }
+      } catch (e) {
+        // ignore
       }
     }
 
     function onUsageUpdated() {
-      loadUsage();
+      // small debounce to avoid duplicate reloads
+      setTimeout(() => loadUsage(), 150);
     }
     function onStorage(e) {
-      // react to our nh_usage_last_update marker written by SearchClient or reveal handler
       if (!e) return;
       if (e.key === 'nh_usage_last_update' || e.key === 'nh_last_domain' || e.key === 'nh_usage') {
-        // small debounce
-        setTimeout(() => loadUsage(), 200);
+        setTimeout(() => loadUsage(), 150);
       }
     }
 
-    window.addEventListener('usage-updated', onUsageUpdated);
+    window.addEventListener('nh_usage_updated', onUsageUpdated);
     window.addEventListener('storage', onStorage);
 
     return () => {
       mounted.current = false;
-      window.removeEventListener('usage-updated', onUsageUpdated);
+      window.removeEventListener('nh_usage_updated', onUsageUpdated);
       window.removeEventListener('storage', onStorage);
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
+      // keep the global poll alive across navigations (do not clear on unmount)
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, authenticated]);
