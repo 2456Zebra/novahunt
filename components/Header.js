@@ -4,10 +4,7 @@ import { useAuth } from '../pages/_app';
 import styles from './Header.module.css';
 
 /**
- * Header component (improved layout)
- * - Buttons in dropdown are equal size, centered, bold white text.
- * - No inline styles except small safe usages removed.
- * - Works with enterprise/pro/starter detection returned by /api/usage.
+ * Header component (no inline styles)
  */
 export default function Header() {
   const { loading: authLoading, authenticated, user } = useAuth();
@@ -23,8 +20,8 @@ export default function Header() {
       setLoading(true);
       try {
         const res = await fetch('/api/usage', { credentials: 'same-origin' });
-        const json = await res.json();
         if (!mounted.current) return;
+        const json = await res.json();
         if (res.ok) {
           setCounts({ searches: json.searches || 0, reveals: json.reveals || 0 });
           setLimits({ searchesMax: json.searchesMax || 50, revealsMax: json.revealsMax || 25 });
@@ -66,7 +63,7 @@ export default function Header() {
           <div className={styles.accountInfo}>
             <div className={styles.email}>{user.email}</div>
             <div className={styles.usageSummary}>
-              {counts.searches || 0} of {limits.searchesMax} searches &nbsp;·&nbsp; {counts.reveals || 0} of {limits.revealsMax} reveals
+              {counts.searches || 0} of {limits.searchesMax} searches · {counts.reveals || 0} of {limits.revealsMax} reveals
             </div>
           </div>
 
@@ -76,6 +73,7 @@ export default function Header() {
               aria-expanded={open}
               onClick={() => setOpen((v) => !v)}
               className={styles.accountButton}
+              type="button"
             >
               Account ▾
             </button>
@@ -92,7 +90,7 @@ export default function Header() {
                   <div className={`${styles.progressFill} ${styles[percentClass(counts.searches||0, limits.searchesMax)]}`} />
                 </div>
 
-                <div className={styles.usageRow} data-gap>
+                <div className={styles.usageRow}>
                   <div className={styles.usageLabel}>Reveals</div>
                   <div className={styles.usageValue}>{counts.reveals || 0} / {limits.revealsMax}</div>
                 </div>
