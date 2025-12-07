@@ -1,14 +1,9 @@
 /**
  * GlobalRevealInterceptor
  *
- * - Intercepts legacy "Reveal" clicks (buttons/anchors) and also listens for the
- *   custom 'nh_inline_reveal' event dispatched by SearchClient.
- * - Calls /api/find-company?domain=... to obtain reveal data (safe, reuses existing API).
- * - If server replies 402/403 it prompts the user (no automatic redirect).
- * - On success it shows the revealed email via confirm()/alert() and dispatches
- *   the 'usage-updated' event so the Header refreshes counters immediately.
- *
- * This keeps UI changes minimal and avoids adding complex DOM overlays (avoids CSP issues).
+ * - Intercepts legacy Reveal clicks and listens for 'nh_inline_reveal' custom events from SearchClient.
+ * - Falls back to the last searched domain (written by SearchClient to window.__nh_last_domain and localStorage).
+ * - Calls /api/find-company?domain=... and dispatches 'usage-updated' and writes localStorage markers so Header updates immediately.
  */
 import { useEffect } from 'react';
 
@@ -38,6 +33,16 @@ function inferDomainFromElement(anchor) {
   return null;
 }
 
+function getLastDomainFallback() {
+  // primary: window variable written by SearchClient
+  if (typeof window !== 'undefined' && window.__nh_last_domain) return window.__nh_last_domain;
+  try {
+    const ls = localStorage.getItem('nh_last_domain');
+    if (ls) return ls;
+  } catch (e) {}
+  return null;
+}
+
 export default function GlobalRevealInterceptor() {
   useEffect(() => {
     async function doRevealForDomain(domain, maybeContact) {
@@ -50,7 +55,7 @@ export default function GlobalRevealInterceptor() {
         const res = await fetch(findUrl, { credentials: 'same-origin' });
         if (!res.ok) {
           if (res.status === 402 || res.status === 403) {
-            const go = confirm('Revealing requires upgrading your plan. View plans?');
+            const go = confirm('Revealing this contact requires upgrading your plan. View plans?');
             if (go) window.location.href = '/plans';
             return;
           }
@@ -60,34 +65,17 @@ export default function GlobalRevealInterceptor() {
         }
         const json = await res.json().catch(() => null);
 
-        // try to find the contact email:
-        let email = null;
-        if (maybeContact && maybeContact.email) {
-          // server might already include the email for that contact
-          email = maybeContact.email;
-        }
-        // attempt to locate matching contact by index, name, or domain lists
-        if (!email && maybeContact && typeof maybeContact.idx === 'number' && Array.isArray(json.contacts)) {
-          const c = json.contacts[maybeContact.idx];
-          if (c) email = c.email || c.revealedEmail || null;
-        }
-        if (!email && maybeContact && maybeContact.first_name) {
-          const candidates = (json.contacts || []).filter(c => {
-            const fn = (c.first_name || '').trim().toLowerCase();
-            const ln = (c.last_name || '').trim().toLowerCase();
-            return fn === (maybeContact.first_name || '').trim().toLowerCase() && (maybeContact.last_name ? ln === (maybeContact.last_name || '').trim().toLowerCase() : true);
-          });
-          if (candidates.length) email = candidates[0].email || candidates[0].revealedEmail || null;
-        }
-        // fallback: if json.email or json.revealedEmail exist at top-level
-        if (!email && json) {
-          email = json.email || json.revealedEmail || json.result?.email || null;
-        }
+        const email = (maybeContact && maybeContact.email) ||
+                      (maybeContact && typeof maybeContact.idx === 'number' && json?.contacts?.[maybeContact.idx]?.email) ||
+                      json?.email || json?.revealedEmail || json?.result?.email || null;
 
         if (!email) {
-          // succeeded but didn't find an email — still notify and update usage
           alert('Reveal completed but no email returned.');
-          window.dispatchEvent(new CustomEvent('usage-updated'));
+          // mark usage updated (server may have incremented)
+          try {
+            window.dispatchEvent(new CustomEvent('usage-updated'));
+            localStorage.setItem('nh_usage_last_update', String(Date.now()));
+          } catch (e) {}
           return;
         }
 
@@ -111,8 +99,11 @@ export default function GlobalRevealInterceptor() {
           }
         }
 
-        // notify header and other components to refresh usage counts
-        window.dispatchEvent(new CustomEvent('usage-updated'));
+        // notify header & other listeners to refresh usage immediately
+        try {
+          window.dispatchEvent(new CustomEvent('usage-updated'));
+          localStorage.setItem('nh_usage_last_update', String(Date.now()));
+        } catch (e) {}
       } catch (err) {
         console.error('GlobalRevealInterceptor.doReveal error', err);
         alert('Reveal error: ' + String(err && err.message ? err.message : err));
@@ -132,49 +123,24 @@ export default function GlobalRevealInterceptor() {
         try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
       }
 
-      const domain = inferDomainFromElement(anchor);
-      // If domain cannot be inferred, try to find a nearby input[name=domain]
-      let domainToUse = domain;
-      if (!domainToUse) {
-        try {
-          const form = anchor.closest && anchor.closest('form');
-          if (form) {
-            const inp = form.querySelector && (form.querySelector('input[name="domain"]') || form.querySelector('input[data-role="domain"]') || form.querySelector('input[name="q"]'));
-            if (inp) domainToUse = inp.value;
-          }
-        } catch (e) {}
-      }
+      let domain = inferDomainFromElement(anchor);
+      if (!domain) domain = getLastDomainFallback();
 
-      // may pass a contact selector (not available here)
-      await doRevealForDomain(domainToUse, null);
+      await doRevealForDomain(domain, null);
     }
 
     function handleInlineRevealEvent(e) {
-      // e.detail should include { domain, idx, contact } as provided by SearchClient
       const detail = e && e.detail ? e.detail : null;
-      const domain = detail?.domain || null;
-      const maybeContact = { idx: typeof detail?.idx === 'number' ? detail.idx : undefined, first_name: detail?.contact?.first_name, last_name: detail?.contact?.last_name, email: detail?.contact?.email };
-      doRevealForDomain(domain, maybeContact);
-    }
-
-    // Listen for search form submissions to refresh usage (kept for legacy flows)
-    function handleSubmit(e) {
-      const form = e.target;
-      try {
-        const hasDomain = !!(form.querySelector && (form.querySelector('input[name="domain"]') || form.querySelector('input[name="q"]') || form.querySelector('input[data-role="domain"]')));
-        if (hasDomain) {
-          setTimeout(() => window.dispatchEvent(new CustomEvent('usage-updated')), 1000);
-        }
-      } catch (err) {}
+      const domain = detail?.domain || getLastDomainFallback();
+      const contact = detail?.contact || (typeof detail?.idx === 'number' ? { idx: detail.idx } : null);
+      doRevealForDomain(domain, contact);
     }
 
     document.addEventListener('click', handleClick, true);
-    document.addEventListener('submit', handleSubmit, true);
     window.addEventListener('nh_inline_reveal', handleInlineRevealEvent);
 
     return () => {
       document.removeEventListener('click', handleClick, true);
-      document.removeEventListener('submit', handleSubmit, true);
       window.removeEventListener('nh_inline_reveal', handleInlineRevealEvent);
     };
   }, []);
