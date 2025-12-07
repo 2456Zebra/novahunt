@@ -4,9 +4,9 @@ import RightPanel from './RightPanel';
 
 /**
  * SearchClient (updated)
- * - writes last-search domain to window.__nh_last_domain and localStorage so GlobalRevealInterceptor can fallback
- * - dispatches 'usage-updated' event and writes nh_usage_last_update to localStorage after successful search
- * - Reveal button dispatches nh_inline_reveal with domain + contact info
+ * - writes last-search domain to window.__nh_last_domain and localStorage 'nh_last_domain'
+ * - dispatches 'nh_usage_updated' and writes 'nh_usage_last_update' after successful search
+ * - dispatches nh_inline_reveal with { domain, idx, contact } when Reveal is clicked
  */
 
 export default function SearchClient({ onResults }) {
@@ -83,7 +83,7 @@ export default function SearchClient({ onResults }) {
 
       // notify header and other listeners immediately
       try {
-        window.dispatchEvent(new CustomEvent('usage-updated'));
+        window.dispatchEvent(new CustomEvent('nh_usage_updated'));
         localStorage.setItem('nh_usage_last_update', String(Date.now()));
       } catch (e) {}
 
@@ -118,6 +118,9 @@ export default function SearchClient({ onResults }) {
       window.dispatchEvent(new CustomEvent('nh_inline_reveal', { detail }));
     } catch (err) {
       console.warn('dispatchInlineReveal failed', err);
+      // fallback: still call global reveal handler directly by writing last domain
+      try { window.__nh_last_domain = domain; localStorage.setItem('nh_last_domain', domain); } catch (e) {}
+      window.dispatchEvent(new CustomEvent('nh_usage_updated'));
     }
   }
 
@@ -207,7 +210,6 @@ export default function SearchClient({ onResults }) {
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             <a onClick={() => { const q = encodeURIComponent(`${c.first_name} ${c.last_name} ${result.company.domain} site:linkedin.com`); window.open('https://www.google.com/search?q=' + q, '_blank'); }} style={{ fontSize: 12, color: '#6b7280' }}>source</a>
                             <button onClick={() => {
-                              // dispatch inline reveal (domain + idx + contact info) handled by GlobalRevealInterceptor
                               dispatchInlineReveal(result.company.domain || value, i, c);
                             }} style={{ padding: '6px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Reveal</button>
                           </div>
