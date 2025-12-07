@@ -4,10 +4,10 @@ import { useAuth } from '../pages/_app';
 import styles from './Header.module.css';
 
 /**
- * Header component
- * - Polls /api/usage periodically to pick up recent changes (searches/reveals)
- * - Also listens for a custom 'usage-updated' event to refresh immediately
- * - Dropdown buttons are equal width and arranged left/right
+ * Header
+ * - polls /api/usage periodically (5s)
+ * - listens for 'usage-updated' custom events and localStorage signals for immediate updates
+ * - account dropdown: account/manage and sign out buttons are same width and left/right aligned
  */
 export default function Header() {
   const { loading: authLoading, authenticated, user } = useAuth();
@@ -18,43 +18,51 @@ export default function Header() {
   const mounted = useRef(true);
   const pollRef = useRef(null);
 
+  async function loadUsage() {
+    try {
+      const res = await fetch('/api/usage', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (!mounted.current) return;
+      setCounts({ searches: json.searches || 0, reveals: json.reveals || 0 });
+      setLimits({ searchesMax: json.searchesMax || 50, revealsMax: json.revealsMax || 25 });
+    } catch (err) {
+      // ignore
+    } finally {
+      if (mounted.current) setLoading(false);
+    }
+  }
+
   useEffect(() => {
     mounted.current = true;
 
-    async function load() {
-      try {
-        const res = await fetch('/api/usage', { credentials: 'same-origin' });
-        if (!mounted.current) return;
-        if (!res.ok) return;
-        const json = await res.json();
-        setCounts({ searches: json.searches || 0, reveals: json.reveals || 0 });
-        setLimits({ searchesMax: json.searchesMax || 50, revealsMax: json.revealsMax || 25 });
-      } catch (err) {
-        // ignore
-      } finally {
-        if (mounted.current) setLoading(false);
+    if (!authLoading && authenticated) {
+      loadUsage();
+      // poll in background to catch server increments
+      if (!pollRef.current) {
+        pollRef.current = setInterval(loadUsage, 5000);
       }
     }
 
-    // load once when authenticated
-    if (!authLoading && authenticated) load();
-
-    // set up polling to pick up background changes (search/reveal increments)
-    if (!pollRef.current && authenticated) {
-      pollRef.current = setInterval(() => {
-        load();
-      }, 5000);
-    }
-
-    // event listener for immediate updates from other components
     function onUsageUpdated() {
-      load();
+      loadUsage();
     }
+    function onStorage(e) {
+      // react to our nh_usage_last_update marker written by SearchClient or reveal handler
+      if (!e) return;
+      if (e.key === 'nh_usage_last_update' || e.key === 'nh_last_domain' || e.key === 'nh_usage') {
+        // small debounce
+        setTimeout(() => loadUsage(), 200);
+      }
+    }
+
     window.addEventListener('usage-updated', onUsageUpdated);
+    window.addEventListener('storage', onStorage);
 
     return () => {
       mounted.current = false;
       window.removeEventListener('usage-updated', onUsageUpdated);
+      window.removeEventListener('storage', onStorage);
       if (pollRef.current) {
         clearInterval(pollRef.current);
         pollRef.current = null;
@@ -63,13 +71,9 @@ export default function Header() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, authenticated]);
 
-  function percent(current, max) {
-    if (!max || max <= 0) return 0;
-    return Math.min(100, Math.round((current / max) * 100));
-  }
-
   function percentClass(current, max) {
-    const p = percent(current, max);
+    if (!max || max <= 0) return 'p0';
+    const p = Math.min(100, Math.round((current / max) * 100));
     const rounded = Math.round(p / 5) * 5;
     return `p${Math.min(100, Math.max(0, rounded))}`;
   }
@@ -124,9 +128,9 @@ export default function Header() {
 
                 <div className={styles.buttonRow}>
                   <Link href="/account">
-                    <a className={styles.secondaryButton} role="menuitem">Account</a>
+                    <a className={styles.leftButton} role="menuitem">Account</a>
                   </Link>
-                  <a href="/api/logout" className={styles.primaryButton} role="menuitem">Sign out</a>
+                  <a href="/api/logout" className={styles.rightButton} role="menuitem">Sign out</a>
                 </div>
               </div>
             )}
