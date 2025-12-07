@@ -124,7 +124,7 @@ export default function Header() {
 
                 <div className={styles.buttonRow}>
                   <Link href="/account">
-                    <a className={styles.primaryButton} role="menuitem">Account</a>
+                    <a className={styles.secondaryButton} role="menuitem">Account</a>
                   </Link>
                   <a href="/api/logout" className={styles.primaryButton} role="menuitem">Sign out</a>
                 </div>
