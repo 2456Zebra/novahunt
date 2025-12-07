@@ -4,7 +4,10 @@ import { useAuth } from '../pages/_app';
 import styles from './Header.module.css';
 
 /**
- * Header component (no inline styles)
+ * Header component
+ * - Polls /api/usage periodically to pick up recent changes (searches/reveals)
+ * - Also listens for a custom 'usage-updated' event to refresh immediately
+ * - Dropdown buttons are equal width and arranged left/right
  */
 export default function Header() {
   const { loading: authLoading, authenticated, user } = useAuth();
@@ -13,30 +16,51 @@ export default function Header() {
   const [limits, setLimits] = useState({ searchesMax: 50, revealsMax: 25 });
   const [open, setOpen] = useState(false);
   const mounted = useRef(true);
+  const pollRef = useRef(null);
 
   useEffect(() => {
     mounted.current = true;
+
     async function load() {
-      setLoading(true);
       try {
         const res = await fetch('/api/usage', { credentials: 'same-origin' });
         if (!mounted.current) return;
+        if (!res.ok) return;
         const json = await res.json();
-        if (res.ok) {
-          setCounts({ searches: json.searches || 0, reveals: json.reveals || 0 });
-          setLimits({ searchesMax: json.searchesMax || 50, revealsMax: json.revealsMax || 25 });
-        } else {
-          setCounts({ searches: 0, reveals: 0 });
-        }
+        setCounts({ searches: json.searches || 0, reveals: json.reveals || 0 });
+        setLimits({ searchesMax: json.searchesMax || 50, revealsMax: json.revealsMax || 25 });
       } catch (err) {
-        console.error('Header load usage error', err);
+        // ignore
       } finally {
         if (mounted.current) setLoading(false);
       }
     }
 
+    // load once when authenticated
     if (!authLoading && authenticated) load();
-    return () => { mounted.current = false; };
+
+    // set up polling to pick up background changes (search/reveal increments)
+    if (!pollRef.current && authenticated) {
+      pollRef.current = setInterval(() => {
+        load();
+      }, 5000);
+    }
+
+    // event listener for immediate updates from other components
+    function onUsageUpdated() {
+      load();
+    }
+    window.addEventListener('usage-updated', onUsageUpdated);
+
+    return () => {
+      mounted.current = false;
+      window.removeEventListener('usage-updated', onUsageUpdated);
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, authenticated]);
 
   function percent(current, max) {
