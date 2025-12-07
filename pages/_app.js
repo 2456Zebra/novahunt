@@ -50,6 +50,38 @@ export default function MyApp({ Component, pageProps }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // When authenticated, inject a small stylesheet to hide public "Sign in" / "Sign up" links
+  // that may be rendered directly in pages/index.js or other public content.
+  // This avoids editing every page and ensures signed-in users don't see actions for anonymous visitors.
+  useEffect(() => {
+    const STYLE_ID = 'nova-hide-auth-links';
+    // selectors to hide — adjust if your markup uses different hrefs or classes
+    const css = `
+      a[href="/signin"], a[href="/signup"], a[href="/register"], .nav-signin, .nav-signup {
+        display: none !important;
+      }
+    `;
+
+    if (authenticated) {
+      // inject style
+      if (!document.getElementById(STYLE_ID)) {
+        const s = document.createElement('style');
+        s.id = STYLE_ID;
+        s.appendChild(document.createTextNode(css));
+        document.head.appendChild(s);
+      }
+    } else {
+      // remove style if present
+      const existing = document.getElementById(STYLE_ID);
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    }
+    // remove on unmount
+    return () => {
+      const existing = document.getElementById(STYLE_ID);
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    };
+  }, [authenticated]);
+
   const ctx = {
     loading,
     authenticated,
@@ -57,8 +89,7 @@ export default function MyApp({ Component, pageProps }) {
     refresh,
   };
 
-  // Render Header only when the user is authenticated.
-  // This ensures the homepage (and other public pages) do not show the header until sign-in.
+  // Render Header only when authenticated (keeps public pages clean).
   return (
     <AuthContext.Provider value={ctx}>
       {authenticated && <Header />}
