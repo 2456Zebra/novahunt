@@ -1,7 +1,6 @@
 import { useEffect, useState, createContext, useContext } from 'react';
 import '../styles/globals.css';
 import Header from '../components/Header';
-import RevealInterceptor from '../components/RevealInterceptor';
 
 // Auth context
 const AuthContext = createContext({
@@ -59,20 +58,22 @@ export default function MyApp({ Component, pageProps }) {
         display: none !important;
       }
     `;
-    if (authenticated) {
+    if (authenticated && typeof document !== 'undefined') {
       if (!document.getElementById(STYLE_ID)) {
         const s = document.createElement('style');
         s.id = STYLE_ID;
         s.appendChild(document.createTextNode(css));
         document.head.appendChild(s);
       }
-    } else {
+    } else if (typeof document !== 'undefined') {
       const existing = document.getElementById(STYLE_ID);
       if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
     }
     return () => {
-      const existing = document.getElementById(STYLE_ID);
-      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+      if (typeof document !== 'undefined') {
+        const existing = document.getElementById(STYLE_ID);
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+      }
     };
   }, [authenticated]);
 
@@ -86,9 +87,6 @@ export default function MyApp({ Component, pageProps }) {
   return (
     <AuthContext.Provider value={ctx}>
       {authenticated && <Header />}
-      {/* Render RevealInterceptor only in the browser and only when authenticated.
-          This prevents auto-navigation to /plans so you can inspect reveal XHRs. */}
-      {typeof window !== 'undefined' && authenticated && <RevealInterceptor />}
       <Component {...pageProps} />
     </AuthContext.Provider>
   );
