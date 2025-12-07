@@ -1,6 +1,7 @@
 import { useEffect, useState, createContext, useContext } from 'react';
 import '../styles/globals.css';
 import Header from '../components/Header';
+import GlobalRevealInterceptor from '../components/GlobalRevealInterceptor';
 
 // Auth context
 const AuthContext = createContext({
@@ -87,6 +88,8 @@ export default function MyApp({ Component, pageProps }) {
   return (
     <AuthContext.Provider value={ctx}>
       {authenticated && <Header />}
+      {/* Global interceptor handles legacy Reveal UI clicks on any page when signed in */}
+      {typeof window !== 'undefined' && authenticated && <GlobalRevealInterceptor />}
       <Component {...pageProps} />
     </AuthContext.Provider>
   );
