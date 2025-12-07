@@ -3,10 +3,11 @@ import ClientOnly from './ClientOnly';
 import RightPanel from './RightPanel';
 
 /**
- * SearchClient (updated)
- * - writes last-search domain to window.__nh_last_domain and localStorage 'nh_last_domain'
- * - dispatches 'nh_usage_updated' and writes 'nh_usage_last_update' after successful search
- * - dispatches nh_inline_reveal with { domain, idx, contact } when Reveal is clicked
+ * Restored SearchClient with one small, safe addition:
+ * - After a successful search it writes the last domain to window.__nh_last_domain and localStorage 'nh_last_domain'
+ * - Also dispatches 'nh_usage_updated' and writes nh_usage_last_update so the AccountMenu updates immediately.
+ *
+ * Otherwise it's identical to your working version.
  */
 
 export default function SearchClient({ onResults }) {
@@ -17,12 +18,13 @@ export default function SearchClient({ onResults }) {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const mountedRef = useRef(true);
-  const lastSearchRef = useRef(null);
+  const lastSearchRef = useRef(null); // to avoid double increments
 
   useEffect(() => {
     return () => { mountedRef.current = false; };
   }, []);
 
+  // If ?domain= exists when component mounts, auto-run a search
   useEffect(() => {
     try {
       if (typeof window === 'undefined') return;
@@ -31,12 +33,16 @@ export default function SearchClient({ onResults }) {
       if (q) {
         const normalized = q.trim();
         setValue(normalized);
+        // run search in next tick so UI updates
         setTimeout(() => performSearch(normalized), 0);
       }
-    } catch (e) {}
+    } catch (e) {
+      // ignore in SSR
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Small helper: do the fetch with timeout
   async function fetchWithTimeout(url, opts = {}, timeout = 10000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
@@ -50,6 +56,7 @@ export default function SearchClient({ onResults }) {
 
   const performSearch = useCallback(async (domain) => {
     if (!domain) return;
+    // avoid duplicate concurrent searches for same domain
     if (querying && lastSearchRef.current === domain) return;
 
     setQuerying(true);
@@ -66,30 +73,33 @@ export default function SearchClient({ onResults }) {
 
       const payload = await res.json();
 
-      const company = payload.company || payload || {};
-      company.contacts = (payload.contacts || company.contacts || []).map(c => ({ ...c, _revealed: !!c.email, _saved: false }));
+      // normalize company shape
+      const company = payload.company || {};
+      company.contacts = (payload.contacts || company.contacts || []).map(c => ({ ...c, _revealed: false, _saved: false }));
       company.total = payload.total || (company.contacts && company.contacts.length) || 0;
       company.shown = payload.shown || (company.contacts && company.contacts.length) || 0;
 
+      // update local state only if still mounted
       if (!mountedRef.current) return;
       setResult({ company });
       lastSearchRef.current = domain;
 
-      // write last domain for reveal fallback
+      // Emit results only after success
+      if (typeof onResults === 'function') {
+        try { onResults({ domain, result: { company } }); } catch (e) {}
+      }
+
+      // --- Small additions to restore Reveal fallback & header updates ---
       try {
         window.__nh_last_domain = domain;
         localStorage.setItem('nh_last_domain', domain);
       } catch (e) {}
 
-      // notify header and other listeners immediately
       try {
         window.dispatchEvent(new CustomEvent('nh_usage_updated'));
         localStorage.setItem('nh_usage_last_update', String(Date.now()));
       } catch (e) {}
-
-      if (typeof onResults === 'function') {
-        try { onResults({ domain, result: { company } }); } catch (e) {}
-      }
+      // --- end additions ---
     } catch (err) {
       if (!mountedRef.current) return;
       console.error('Search error', err);
@@ -99,6 +109,7 @@ export default function SearchClient({ onResults }) {
     }
   }, [onResults, querying]);
 
+  // user submitted the form or clicked Search
   const onSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     const cleaned = (value || '').trim();
@@ -106,23 +117,12 @@ export default function SearchClient({ onResults }) {
     await performSearch(cleaned);
   };
 
+  // sample click: set value and run search, prevent default navigation
   const onSampleClick = (domain, e) => {
     if (e && e.preventDefault) e.preventDefault();
     setValue(domain);
     setTimeout(() => performSearch(domain), 0);
   };
-
-  function dispatchInlineReveal(domain, idx, contact) {
-    try {
-      const detail = { domain, idx, contact };
-      window.dispatchEvent(new CustomEvent('nh_inline_reveal', { detail }));
-    } catch (err) {
-      console.warn('dispatchInlineReveal failed', err);
-      // fallback: still call global reveal handler directly by writing last domain
-      try { window.__nh_last_domain = domain; localStorage.setItem('nh_last_domain', domain); } catch (e) {}
-      window.dispatchEvent(new CustomEvent('nh_usage_updated'));
-    }
-  }
 
   return (
     <div style={{ padding: 20 }}>
@@ -177,6 +177,7 @@ export default function SearchClient({ onResults }) {
 
         <div style={{ marginTop: 18 }}>
           <ClientOnly fallback={<div style={{ minHeight: 260 }} />}>
+            {/* Simple results area — the homepage uses the same company shape so this is safe */}
             {querying && !result && <div style={{ padding: 18, color: '#6b7280' }}>Searching…</div>}
             {error && <div style={{ padding: 18, color: '#dc2626' }}>{error}</div>}
             {!querying && !error && result && (
@@ -198,6 +199,7 @@ export default function SearchClient({ onResults }) {
                   </div>
                 </div>
 
+                {/* Render contacts + RightPanel uses persisted nh_company; keep results simple here */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 18 }}>
                   <div>
                     {(result.company.contacts && result.company.contacts.length) ? result.company.contacts.map((c, i) => (
@@ -210,7 +212,9 @@ export default function SearchClient({ onResults }) {
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             <a onClick={() => { const q = encodeURIComponent(`${c.first_name} ${c.last_name} ${result.company.domain} site:linkedin.com`); window.open('https://www.google.com/search?q=' + q, '_blank'); }} style={{ fontSize: 12, color: '#6b7280' }}>source</a>
                             <button onClick={() => {
-                              dispatchInlineReveal(result.company.domain || value, i, c);
+                              // bubble custom event for parent (home) to handle reveals/persistence consistently
+                              const ev = new CustomEvent('nh_inline_reveal', { detail: { idx: i } });
+                              window.dispatchEvent(ev);
                             }} style={{ padding: '6px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Reveal</button>
                           </div>
                         </div>
