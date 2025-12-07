@@ -118,8 +118,8 @@
   gap: 8px;
   margin-top: 8px;
 }
-/* Make the two buttons equal width and sit left/right */
-.primaryButton, .secondaryButton {
+/* make left/right buttons identical size */
+.leftButton, .rightButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -132,16 +132,16 @@
   min-height: 40px;
   box-sizing: border-box;
 }
-.primaryButton {
-  background: #12b76a;
-  color: #fff;
-  border: none;
-}
-.secondaryButton {
+.leftButton {
   background: #fff;
   color: #0b1220;
   border: 1px solid #e6edf3;
 }
-.primaryButton:hover, .secondaryButton:hover {
+.rightButton {
+  background: #12b76a;
+  color: #fff;
+  border: none;
+}
+.leftButton:hover, .rightButton:hover {
   opacity: 0.95;
 }
