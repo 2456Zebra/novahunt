@@ -7,8 +7,8 @@ import RightPanel from './RightPanel';
  *
  * - Controlled input (no pills)
  * - performSearch only increments usage on a successful response
- * - robust error handling so 'Searching…' is cleared on error/timeouts
- * - emits onResults only for actual searches (so parent won't treat arbitrary clicks as searches)
+ * - emits usage-updated for Header to refresh counters
+ * - dispatches nh_inline_reveal events with domain + contact data (Legacy kept) but also supports direct inline reveal via dispatch
  */
 
 export default function SearchClient({ onResults }) {
@@ -48,7 +48,7 @@ export default function SearchClient({ onResults }) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
-      const res = await fetch(url, { ...opts, signal: controller.signal });
+      const res = await fetch(url, { ...opts, signal: controller.signal, credentials: 'same-origin' });
       return res;
     } finally {
       clearTimeout(id);
@@ -75,8 +75,8 @@ export default function SearchClient({ onResults }) {
       const payload = await res.json();
 
       // normalize company shape
-      const company = payload.company || {};
-      company.contacts = (payload.contacts || company.contacts || []).map(c => ({ ...c, _revealed: false, _saved: false }));
+      const company = payload.company || payload || {};
+      company.contacts = (payload.contacts || company.contacts || []).map(c => ({ ...c, _revealed: !!c.email, _saved: false }));
       company.total = payload.total || (company.contacts && company.contacts.length) || 0;
       company.shown = payload.shown || (company.contacts && company.contacts.length) || 0;
 
@@ -89,6 +89,12 @@ export default function SearchClient({ onResults }) {
       if (typeof onResults === 'function') {
         try { onResults({ domain, result: { company } }); } catch (e) {}
       }
+
+      // Notify header / global UI to refresh usage immediately
+      try {
+        window.dispatchEvent(new CustomEvent('usage-updated'));
+      } catch (e) {}
+
     } catch (err) {
       if (!mountedRef.current) return;
       console.error('Search error', err);
@@ -112,6 +118,16 @@ export default function SearchClient({ onResults }) {
     setValue(domain);
     setTimeout(() => performSearch(domain), 0);
   };
+
+  // Inline reveal: dispatch event with domain + contact info (legacy) so GlobalRevealInterceptor can handle,
+  // but also callers can listen for this event or the parent SearchClient UI can be extended to reveal in-place.
+  function dispatchInlineReveal(domain, idx, contact) {
+    try {
+      window.dispatchEvent(new CustomEvent('nh_inline_reveal', { detail: { domain, idx, contact } }));
+    } catch (err) {
+      console.warn('dispatchInlineReveal failed', err);
+    }
+  }
 
   return (
     <div style={{ padding: 20 }}>
@@ -166,7 +182,6 @@ export default function SearchClient({ onResults }) {
 
         <div style={{ marginTop: 18 }}>
           <ClientOnly fallback={<div style={{ minHeight: 260 }} />}>
-            {/* Simple results area — the homepage uses the same company shape so this is safe */}
             {querying && !result && <div style={{ padding: 18, color: '#6b7280' }}>Searching…</div>}
             {error && <div style={{ padding: 18, color: '#dc2626' }}>{error}</div>}
             {!querying && !error && result && (
@@ -188,7 +203,6 @@ export default function SearchClient({ onResults }) {
                   </div>
                 </div>
 
-                {/* Render contacts + RightPanel uses persisted nh_company; keep results simple here */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 18 }}>
                   <div>
                     {(result.company.contacts && result.company.contacts.length) ? result.company.contacts.map((c, i) => (
@@ -196,14 +210,13 @@ export default function SearchClient({ onResults }) {
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                           <div>
                             <div style={{ fontWeight: 700 }}>{c.first_name} {c.last_name}</div>
-                            <div style={{ color: '#6b7280', fontSize: 13 }}>{c._revealed ? (c.email || '') : maskEmail(c.email)}</div>
+                            <div style={{ color: '#6b7280', fontSize: 13 }}>{c._revealed ? (c.email || '') : (c.email ? c.email.replace(/(.{2})(.*)(@.*)/, (m, a, b, d) => `${a}***${d}`) : '')}</div>
                           </div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             <a onClick={() => { const q = encodeURIComponent(`${c.first_name} ${c.last_name} ${result.company.domain} site:linkedin.com`); window.open('https://www.google.com/search?q=' + q, '_blank'); }} style={{ fontSize: 12, color: '#6b7280' }}>source</a>
                             <button onClick={() => {
-                              // bubble custom event for parent (home) to handle reveals/persistence consistently
-                              const ev = new CustomEvent('nh_inline_reveal', { detail: { idx: i } });
-                              window.dispatchEvent(ev);
+                              // dispatch inline reveal (domain + idx + contact info) handled by GlobalRevealInterceptor
+                              dispatchInlineReveal(result.company.domain || value, i, c);
                             }} style={{ padding: '6px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Reveal</button>
                           </div>
                         </div>
