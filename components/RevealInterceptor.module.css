@@ -1,18 +1,146 @@
-.wrap {
-  position: fixed;
-  top: 8px;
-  right: 8px;
-  z-index: 9999;
-  pointer-events: none;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+/**
+ * GlobalRevealInterceptor
+ *
+ * - Intercepts legacy Reveal clicks and listens for 'nh_inline_reveal' custom events from SearchClient.
+ * - Falls back to the last searched domain saved at window.__nh_last_domain or localStorage 'nh_last_domain'.
+ * - Calls /api/find-company?domain=... and dispatches 'nh_usage_updated' and writes localStorage marker so Header updates immediately.
+ */
+import { useEffect } from 'react';
+
+function findRevealAnchor(el) {
+  if (!el) return null;
+  const a = el.closest && el.closest('[data-action="reveal"], [data-reveal], [data-domain], .reveal, .js-reveal, .btn-reveal, [aria-label="reveal"]');
+  if (a) return a;
+  const btn = el.closest && el.closest('button, a, [role="button"]');
+  if (btn) {
+    try {
+      const text = (btn.textContent || '').trim().toLowerCase();
+      if (text === 'reveal' || text.startsWith('reveal') || text.includes(' reveal')) return btn;
+    } catch (err) {}
+  }
+  return null;
 }
-.banner {
-  pointer-events: auto;
-  background: rgba(18,183,106,0.95);
-  color: #fff;
-  padding: 6px 10px;
-  border-radius: 8px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-  font-size: 13px;
-  font-weight: 600;
+
+function inferDomainFromElement(anchor) {
+  try {
+    const explicit = anchor.getAttribute && (anchor.getAttribute('data-reveal') || anchor.getAttribute('data-domain')) || (anchor.dataset && (anchor.dataset.reveal || anchor.dataset.domain));
+    if (explicit) return explicit;
+    if (anchor.href) {
+      const u = new URL(anchor.href, window.location.href);
+      return u.searchParams.get('domain') || u.searchParams.get('q') || null;
+    }
+  } catch (e) {}
+  return null;
+}
+
+function getLastDomainFallback() {
+  if (typeof window !== 'undefined' && window.__nh_last_domain) return window.__nh_last_domain;
+  try {
+    const ls = localStorage.getItem('nh_last_domain');
+    if (ls) return ls;
+  } catch (e) {}
+  return null;
+}
+
+export default function GlobalRevealInterceptor() {
+  useEffect(() => {
+    async function doRevealForDomain(domain, maybeContact) {
+      if (!domain) {
+        alert('Reveal: missing domain value');
+        return;
+      }
+      try {
+        const findUrl = `/api/find-company?domain=${encodeURIComponent(domain)}`;
+        const res = await fetch(findUrl, { credentials: 'same-origin' });
+        if (!res.ok) {
+          if (res.status === 402 || res.status === 403) {
+            const go = confirm('Revealing this contact requires upgrading your plan. View plans?');
+            if (go) window.location.href = '/plans';
+            return;
+          }
+          const txt = await res.text().catch(() => '');
+          alert('Reveal failed: ' + (txt || `status ${res.status}`));
+          return;
+        }
+        const json = await res.json().catch(() => null);
+
+        const email = (maybeContact && maybeContact.email) ||
+                      (maybeContact && typeof maybeContact.idx === 'number' && json?.contacts?.[maybeContact.idx]?.email) ||
+                      json?.email || json?.revealedEmail || json?.result?.email || null;
+
+        if (!email) {
+          alert('Reveal completed but no email returned.');
+          try {
+            window.dispatchEvent(new CustomEvent('nh_usage_updated'));
+            localStorage.setItem('nh_usage_last_update', String(Date.now()));
+          } catch (e) {}
+          return;
+        }
+
+        const save = confirm(`Revealed: ${email}\n\nSave this contact to your account?`);
+        if (save) {
+          try {
+            const saveRes = await fetch('/api/save-contact', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ domain, email }),
+            });
+            if (!saveRes.ok) {
+              const txt = await saveRes.text().catch(() => '');
+              alert('Save failed: ' + (txt || `status ${saveRes.status}`));
+            } else {
+              alert('Saved ✓');
+            }
+          } catch (err) {
+            alert('Save failed (network). The reveal succeeded.');
+          }
+        }
+
+        try {
+          window.dispatchEvent(new CustomEvent('nh_usage_updated'));
+          localStorage.setItem('nh_usage_last_update', String(Date.now()));
+        } catch (e) {}
+      } catch (err) {
+        console.error('GlobalRevealInterceptor.doReveal error', err);
+        alert('Reveal error: ' + String(err && err.message ? err.message : err));
+      }
+    }
+
+    async function handleClick(e) {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const el = e.target;
+      const anchor = findRevealAnchor(el);
+      if (!anchor) return;
+
+      try {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      } catch (err) {
+        try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+      }
+
+      let domain = inferDomainFromElement(anchor);
+      if (!domain) domain = getLastDomainFallback();
+
+      await doRevealForDomain(domain, null);
+    }
+
+    function handleInlineRevealEvent(e) {
+      const detail = e && e.detail ? e.detail : null;
+      const domain = detail?.domain || getLastDomainFallback();
+      const contact = detail?.contact || (typeof detail?.idx === 'number' ? { idx: detail.idx } : null);
+      doRevealForDomain(domain, contact);
+    }
+
+    document.addEventListener('click', handleClick, true);
+    window.addEventListener('nh_inline_reveal', handleInlineRevealEvent);
+
+    return () => {
+      document.removeEventListener('click', handleClick, true);
+      window.removeEventListener('nh_inline_reveal', handleInlineRevealEvent);
+    };
+  }, []);
+
+  return null;
 }
