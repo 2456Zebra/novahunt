@@ -55,7 +55,7 @@ export default function MyApp({ Component, pageProps }) {
   useEffect(() => {
     const STYLE_ID = 'nova-hide-auth-links';
     const css = `
-      a[href="/signin"], a[href="/signup"], a[href="/register"], .nav-signin, .nav-signup {
+      a[href="/signin"], a[href="/signup"], a[href="/register"], a[href*="signup"], a[href*="register"], .nav-signin, .nav-signup {
         display: none !important;
       }
     `;
@@ -88,7 +88,6 @@ export default function MyApp({ Component, pageProps }) {
   return (
     <AuthContext.Provider value={ctx}>
       {authenticated && <Header />}
-      {/* Global interceptor handles legacy Reveal UI clicks on any page when signed in */}
       {typeof window !== 'undefined' && authenticated && <GlobalRevealInterceptor />}
       <Component {...pageProps} />
     </AuthContext.Provider>
