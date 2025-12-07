@@ -3,12 +3,10 @@ import ClientOnly from './ClientOnly';
 import RightPanel from './RightPanel';
 
 /**
- * SearchClient
- *
- * - Controlled input (no pills)
- * - performSearch only increments usage on a successful response
- * - emits usage-updated for Header to refresh counters
- * - dispatches nh_inline_reveal events with domain + contact data (Legacy kept) but also supports direct inline reveal via dispatch
+ * SearchClient (updated)
+ * - writes last-search domain to window.__nh_last_domain and localStorage so GlobalRevealInterceptor can fallback
+ * - dispatches 'usage-updated' event and writes nh_usage_last_update to localStorage after successful search
+ * - Reveal button dispatches nh_inline_reveal with domain + contact info
  */
 
 export default function SearchClient({ onResults }) {
@@ -19,13 +17,12 @@ export default function SearchClient({ onResults }) {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const mountedRef = useRef(true);
-  const lastSearchRef = useRef(null); // to avoid double increments
+  const lastSearchRef = useRef(null);
 
   useEffect(() => {
     return () => { mountedRef.current = false; };
   }, []);
 
-  // If ?domain= exists when component mounts, auto-run a search
   useEffect(() => {
     try {
       if (typeof window === 'undefined') return;
@@ -34,16 +31,12 @@ export default function SearchClient({ onResults }) {
       if (q) {
         const normalized = q.trim();
         setValue(normalized);
-        // run search in next tick so UI updates
         setTimeout(() => performSearch(normalized), 0);
       }
-    } catch (e) {
-      // ignore in SSR
-    }
+    } catch (e) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Small helper: do the fetch with timeout
   async function fetchWithTimeout(url, opts = {}, timeout = 10000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
@@ -57,7 +50,6 @@ export default function SearchClient({ onResults }) {
 
   const performSearch = useCallback(async (domain) => {
     if (!domain) return;
-    // avoid duplicate concurrent searches for same domain
     if (querying && lastSearchRef.current === domain) return;
 
     setQuerying(true);
@@ -74,27 +66,30 @@ export default function SearchClient({ onResults }) {
 
       const payload = await res.json();
 
-      // normalize company shape
       const company = payload.company || payload || {};
       company.contacts = (payload.contacts || company.contacts || []).map(c => ({ ...c, _revealed: !!c.email, _saved: false }));
       company.total = payload.total || (company.contacts && company.contacts.length) || 0;
       company.shown = payload.shown || (company.contacts && company.contacts.length) || 0;
 
-      // update local state only if still mounted
       if (!mountedRef.current) return;
       setResult({ company });
       lastSearchRef.current = domain;
 
-      // Emit results only after success
+      // write last domain for reveal fallback
+      try {
+        window.__nh_last_domain = domain;
+        localStorage.setItem('nh_last_domain', domain);
+      } catch (e) {}
+
+      // notify header and other listeners immediately
+      try {
+        window.dispatchEvent(new CustomEvent('usage-updated'));
+        localStorage.setItem('nh_usage_last_update', String(Date.now()));
+      } catch (e) {}
+
       if (typeof onResults === 'function') {
         try { onResults({ domain, result: { company } }); } catch (e) {}
       }
-
-      // Notify header / global UI to refresh usage immediately
-      try {
-        window.dispatchEvent(new CustomEvent('usage-updated'));
-      } catch (e) {}
-
     } catch (err) {
       if (!mountedRef.current) return;
       console.error('Search error', err);
@@ -104,7 +99,6 @@ export default function SearchClient({ onResults }) {
     }
   }, [onResults, querying]);
 
-  // user submitted the form or clicked Search
   const onSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     const cleaned = (value || '').trim();
@@ -112,18 +106,16 @@ export default function SearchClient({ onResults }) {
     await performSearch(cleaned);
   };
 
-  // sample click: set value and run search, prevent default navigation
   const onSampleClick = (domain, e) => {
     if (e && e.preventDefault) e.preventDefault();
     setValue(domain);
     setTimeout(() => performSearch(domain), 0);
   };
 
-  // Inline reveal: dispatch event with domain + contact info (legacy) so GlobalRevealInterceptor can handle,
-  // but also callers can listen for this event or the parent SearchClient UI can be extended to reveal in-place.
   function dispatchInlineReveal(domain, idx, contact) {
     try {
-      window.dispatchEvent(new CustomEvent('nh_inline_reveal', { detail: { domain, idx, contact } }));
+      const detail = { domain, idx, contact };
+      window.dispatchEvent(new CustomEvent('nh_inline_reveal', { detail }));
     } catch (err) {
       console.warn('dispatchInlineReveal failed', err);
     }
