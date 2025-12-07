@@ -117,10 +117,10 @@
   gap: 8px;
   margin-top: 8px;
 }
-.buttonRow > * {
+.primaryButton {
   flex: 1 1 0;
   box-sizing: border-box;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 8px 10px;
@@ -131,6 +131,6 @@
   font-size: 13px;
   font-weight: 700;
 }
-.buttonRow > *:hover {
+.primaryButton:hover {
   opacity: 0.95;
 }
