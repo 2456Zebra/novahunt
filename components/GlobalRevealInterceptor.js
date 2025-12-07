@@ -1,40 +1,16 @@
 /**
  * GlobalRevealInterceptor
  *
- * - Intercepts legacy Reveal clicks and listens for 'nh_inline_reveal' custom events from SearchClient.
- * - Falls back to the last searched domain (written by SearchClient to window.__nh_last_domain and localStorage).
- * - Calls /api/find-company?domain=... and dispatches 'usage-updated' and writes localStorage markers so Header updates immediately.
+ * - Listens for nh_inline_reveal custom events (legacy SearchClient Reveal dispatch).
+ * - Falls back to the last searched domain from window.__nh_last_domain or localStorage 'nh_last_domain'.
+ * - Calls /api/find-company?domain=... and shows the revealed email via confirm/alert.
+ * - Writes a localStorage marker (nh_usage_last_update) and dispatches 'nh_usage_updated' so your AccountMenu updates immediately.
+ *
+ * This is conservative and mirrors the older working behavior you provided.
  */
 import { useEffect } from 'react';
 
-function findRevealAnchor(el) {
-  if (!el) return null;
-  const a = el.closest && el.closest('[data-action="reveal"], [data-reveal], [data-domain], .reveal, .js-reveal, .btn-reveal, [aria-label="reveal"]');
-  if (a) return a;
-  const btn = el.closest && el.closest('button, a, [role="button"]');
-  if (btn) {
-    try {
-      const text = (btn.textContent || '').trim().toLowerCase();
-      if (text === 'reveal' || text.startsWith('reveal') || text.includes(' reveal')) return btn;
-    } catch (err) {}
-  }
-  return null;
-}
-
-function inferDomainFromElement(anchor) {
-  try {
-    const explicit = anchor.getAttribute && (anchor.getAttribute('data-reveal') || anchor.getAttribute('data-domain')) || (anchor.dataset && (anchor.dataset.reveal || anchor.dataset.domain));
-    if (explicit) return explicit;
-    if (anchor.href) {
-      const u = new URL(anchor.href, window.location.href);
-      return u.searchParams.get('domain') || u.searchParams.get('q') || null;
-    }
-  } catch (e) {}
-  return null;
-}
-
 function getLastDomainFallback() {
-  // primary: window variable written by SearchClient
   if (typeof window !== 'undefined' && window.__nh_last_domain) return window.__nh_last_domain;
   try {
     const ls = localStorage.getItem('nh_last_domain');
@@ -71,9 +47,8 @@ export default function GlobalRevealInterceptor() {
 
         if (!email) {
           alert('Reveal completed but no email returned.');
-          // mark usage updated (server may have incremented)
           try {
-            window.dispatchEvent(new CustomEvent('usage-updated'));
+            window.dispatchEvent(new CustomEvent('nh_usage_updated'));
             localStorage.setItem('nh_usage_last_update', String(Date.now()));
           } catch (e) {}
           return;
@@ -99,34 +74,14 @@ export default function GlobalRevealInterceptor() {
           }
         }
 
-        // notify header & other listeners to refresh usage immediately
         try {
-          window.dispatchEvent(new CustomEvent('usage-updated'));
+          window.dispatchEvent(new CustomEvent('nh_usage_updated'));
           localStorage.setItem('nh_usage_last_update', String(Date.now()));
         } catch (e) {}
       } catch (err) {
         console.error('GlobalRevealInterceptor.doReveal error', err);
         alert('Reveal error: ' + String(err && err.message ? err.message : err));
       }
-    }
-
-    async function handleClick(e) {
-      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      const el = e.target;
-      const anchor = findRevealAnchor(el);
-      if (!anchor) return;
-
-      try {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-      } catch (err) {
-        try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
-      }
-
-      let domain = inferDomainFromElement(anchor);
-      if (!domain) domain = getLastDomainFallback();
-
-      await doRevealForDomain(domain, null);
     }
 
     function handleInlineRevealEvent(e) {
@@ -136,13 +91,8 @@ export default function GlobalRevealInterceptor() {
       doRevealForDomain(domain, contact);
     }
 
-    document.addEventListener('click', handleClick, true);
     window.addEventListener('nh_inline_reveal', handleInlineRevealEvent);
-
-    return () => {
-      document.removeEventListener('click', handleClick, true);
-      window.removeEventListener('nh_inline_reveal', handleInlineRevealEvent);
-    };
+    return () => window.removeEventListener('nh_inline_reveal', handleInlineRevealEvent);
   }, []);
 
   return null;
