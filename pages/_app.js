@@ -1,6 +1,7 @@
 import { useEffect, useState, createContext, useContext } from 'react';
 import '../styles/globals.css';
 import Header from '../components/Header';
+import RevealInterceptor from '../components/RevealInterceptor';
 
 // Auth context
 const AuthContext = createContext({
@@ -51,19 +52,14 @@ export default function MyApp({ Component, pageProps }) {
   }, []);
 
   // When authenticated, inject a small stylesheet to hide public "Sign in" / "Sign up" links
-  // that may be rendered directly in pages/index.js or other public content.
-  // This avoids editing every page and ensures signed-in users don't see actions for anonymous visitors.
   useEffect(() => {
     const STYLE_ID = 'nova-hide-auth-links';
-    // selectors to hide — adjust if your markup uses different hrefs or classes
     const css = `
       a[href="/signin"], a[href="/signup"], a[href="/register"], .nav-signin, .nav-signup {
         display: none !important;
       }
     `;
-
     if (authenticated) {
-      // inject style
       if (!document.getElementById(STYLE_ID)) {
         const s = document.createElement('style');
         s.id = STYLE_ID;
@@ -71,11 +67,9 @@ export default function MyApp({ Component, pageProps }) {
         document.head.appendChild(s);
       }
     } else {
-      // remove style if present
       const existing = document.getElementById(STYLE_ID);
       if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
     }
-    // remove on unmount
     return () => {
       const existing = document.getElementById(STYLE_ID);
       if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
@@ -89,10 +83,12 @@ export default function MyApp({ Component, pageProps }) {
     refresh,
   };
 
-  // Render Header only when authenticated (keeps public pages clean).
   return (
     <AuthContext.Provider value={ctx}>
       {authenticated && <Header />}
+      {/* Render RevealInterceptor only in the browser and only when authenticated.
+          This prevents auto-navigation to /plans so you can inspect reveal XHRs. */}
+      {typeof window !== 'undefined' && authenticated && <RevealInterceptor />}
       <Component {...pageProps} />
     </AuthContext.Provider>
   );
