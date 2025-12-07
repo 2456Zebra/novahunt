@@ -114,12 +114,13 @@
 
 .buttonRow {
   display: flex;
-  justify-content: space-between;
   gap: 8px;
   margin-top: 8px;
+  align-items: stretch;
 }
-/* make left/right buttons identical size */
+/* make left/right buttons identical using flex so they adapt to content */
 .leftButton, .rightButton {
+  flex: 1 1 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -128,7 +129,6 @@
   text-decoration: none;
   font-size: 13px;
   font-weight: 700;
-  width: 48%;
   min-height: 40px;
   box-sizing: border-box;
 }
