@@ -1,68 +1,108 @@
-import Stripe from 'stripe';
+// pages/api/session-info.js
+// Returns server-side usage & plan info for the current authenticated session.
+// Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars.
+// Behavior:
+// - If SUPABASE configured: validate session token (from cookie or Authorization header or body.session_id),
+//   lookup user and their usage/subscription, return a canonical usage object.
+// - If SUPABASE not configured: returns 501 with an explanatory message.
+
 import { createClient } from '@supabase/supabase-js';
 
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-  : null;
+function jsonResponse(res, status, body) {
+  res.status(status).json(body);
+}
 
-/**
- * GET /api/session-info?session_id=...
- * - Retrieves the Stripe Checkout session to get customer email
- * - Looks up Supabase users table for that email to determine hasPassword
- *
- * Response: { hasPassword: boolean, email?: string, setPasswordToken?: string }
- */
 export default async function handler(req, res) {
-  const { session_id } = req.query;
-
-  if (!session_id) {
-    return res.status(400).json({ error: 'missing session_id' });
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    return jsonResponse(res, 501, { error: 'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.' });
   }
 
-  if (!stripe) {
-    return res.status(200).json({ hasPassword: false, note: 'stripe secret not configured' });
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
+
+  // Try to find a session token:
+  const authHeader = req.headers.authorization || '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const cookie = req.headers.cookie || '';
+  const cookies = Object.fromEntries(cookie.split(';').map(s => s.trim()).filter(Boolean).map(c => {
+    const i = c.indexOf('=');
+    return [c.slice(0,i), c.slice(i+1)];
+  }));
+  const sessionIdFromBody = req.method === 'POST' && req.body && req.body.session_id ? req.body.session_id : null;
+
+  const token = bearer || cookies['session'] || cookies['session_id'] || cookies['sb:token'] || sessionIdFromBody;
+
+  if (!token) {
+    return jsonResponse(res, 400, { error: 'missing session_id' });
   }
 
   try {
-    const session = await stripe.checkout.sessions.retrieve(session_id, {
-      expand: ['customer', 'customer_details'],
-    });
+    // Verify session/token with Supabase auth admin
+    // This uses the service role key to look up the user by JWT or session.
+    // Try to parse user via supabase.auth.getUser (works if token is a JWT)
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      // fallback: if token is a standard Supabase session string, try to fetch from auth.sessions table
+      const { data: sessions, error: sErr } = await supabase
+        .from('auth.sessions')
+        .select('*')
+        .eq('access_token', token)
+        .limit(1);
 
-    const email = session?.customer_details?.email || (session.customer && session.customer.email) || null;
+      if (sErr || !sessions || sessions.length === 0) {
+        return jsonResponse(res, 401, { error: 'invalid session' });
+      }
+      // find user via sessions.user_id
+      const session = sessions[0];
+      const { data: u2 } = await supabase.from('users').select('*').eq('id', session.user_id).limit(1);
+      if (!u2 || u2.length === 0) return jsonResponse(res, 401, { error: 'user not found' });
+      const user = u2[0];
 
-    if (!email) {
-      return res.status(200).json({ hasPassword: false, email: null });
+      // Query usage/subscription tables (adapt to your schema)
+      // Example assumes you have a table 'subscriptions' and 'usage' keyed by user_id.
+      const [{ data: subs }] = await Promise.all([
+        supabase.from('subscriptions').select('*').eq('user_id', user.id).limit(1)
+      ]).catch(()=>[{}]);
+
+      // build a canonical response
+      const usage = {
+        searches: 0,
+        reveals: 0,
+        limitSearches: 0,
+        limitReveals: 0,
+        plan: subs && subs.length ? subs[0].plan : null
+      };
+      return jsonResponse(res, 200, usage);
     }
 
-    if (!supabase) {
-      // No DB configured; return fallback
-      return res.status(200).json({ hasPassword: false, email });
-    }
+    const user = userData.user;
 
-    // Query Supabase users table for this email
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id, email, password_hash')
-      .eq('email', email)
-      .maybeSingle();
+    // Query subscription & usage for this user
+    // Adjust these queries to match your DB: subscriptions table, usage table, etc.
+    const [{ data: subsRes }, { data: usageRes }] = await Promise.all([
+      supabase.from('subscriptions').select('*').eq('user_id', user.id).limit(1).maybeSingle(),
+      supabase.from('usage').select('*').eq('user_id', user.id).limit(1).maybeSingle()
+    ]);
 
-    if (error) {
-      console.error('Supabase query error', error);
-      return res.status(500).json({ error: 'Database error' });
-    }
+    const plan = subsRes?.plan ?? subsRes?.tier ?? null;
+    const searchesUsed = usageRes?.searches ?? 0;
+    const revealsUsed = usageRes?.reveals ?? 0;
+    const limitSearches = subsRes?.limit_searches ?? subsRes?.maxSearches ?? 0;
+    const limitReveals = subsRes?.limit_reveals ?? subsRes?.maxReveals ?? 0;
 
-    const hasPassword = !!(user && user.password_hash);
+    const result = {
+      searches: Number(searchesUsed || 0),
+      reveals: Number(revealsUsed || 0),
+      limitSearches: Number(limitSearches || 0),
+      limitReveals: Number(limitReveals || 0),
+      plan: plan || null
+    };
 
-    // Optionally generate a one-time token here
-    const setPasswordToken = null;
-
-    return res.status(200).json({ hasPassword, email, setPasswordToken });
+    return jsonResponse(res, 200, result);
   } catch (err) {
-    console.error('session-info error', err);
-    return res.status(500).json({ error: 'failed to fetch session' });
+    console.error('session-info err', err);
+    return jsonResponse(res, 500, { error: 'internal' });
   }
 }
