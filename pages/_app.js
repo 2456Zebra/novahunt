@@ -8,19 +8,12 @@ import Router from 'next/router';
 import GlobalRevealInterceptor from '../components/GlobalRevealInterceptor';
 
 /**
- * Improved _app.js
- *
- * Fixes and behaviors:
- * - After /api/me confirms authenticated, fetch /api/session-info and normalize nh_usage.
- *   Polls /api/session-info a few times on mount if server still reporting free values so the header updates quickly
- *   after a plan change.
- * - Sign out:
- *   - Attempts server signout endpoints.
- *   - Clears local storage and local session state immediately so the header is hidden for the user.
- *   - Attempts to delete common auth cookies (best-effort).
- *   - Polls /api/me a few times and logs/alerts if server session remains active (helps debugging).
- *   - Even if server doesn't clear the session, local UI is cleared so you are effectively signed out on the client.
- * - Emits nh_usage_updated and nh_auth_changed appropriately.
+ * Defensive client auth/session handling:
+ * - Uses /api/me as the authoritative signed-in source and writes nh_user_email
+ * - Attempts /api/session-info; if it returns missing session_id, tries candidate cookie values
+ *   by POSTing { session_id } as a fallback.
+ * - Sign out tries POST/GET/DELETE on common endpoints, clears client state immediately,
+ *   then polls /api/me a few times and warns if server still reports authenticated.
  */
 
 function normalizeUsage(obj) {
@@ -32,9 +25,7 @@ function normalizeUsage(obj) {
   out.limitReveals = obj.limitReveals ?? obj.maxReveals ?? obj.quotaReveals ?? obj.reveal_limit ?? obj.limit_reveals ?? 0;
   out.plan = obj.plan ?? obj.tier ?? obj.product ?? null;
 
-  if (!out.searches && obj.usage && typeof obj.usage === 'object') {
-    return normalizeUsage(obj.usage);
-  }
+  if (!out.searches && obj.usage && typeof obj.usage === 'object') return normalizeUsage(obj.usage);
   if (!out.searches && obj.searches && typeof obj.searches === 'object') {
     out.searches = obj.searches.used ?? obj.searches.value ?? out.searches;
     out.limitSearches = obj.searches.limit ?? obj.searches.max ?? out.limitSearches;
@@ -91,80 +82,6 @@ function AccountMenu({ email }) {
       window.removeEventListener('nh_auth_changed', readUsage);
     };
   }, []);
-
-  async function handleSignOut() {
-    // Try several server endpoints (best-effort)
-    try {
-      const endpoints = ['/api/auth/signout', '/api/signout', '/api/auth/sign-out', '/api/auth/logout'];
-      for (const url of endpoints) {
-        try {
-          await fetch(url, { method: 'POST', credentials: 'same-origin' });
-        } catch (e) { /* ignore */ }
-      }
-    } catch (e) {
-      console.error('signout server attempts failed', e);
-    }
-
-    // Clear local session state immediately so UI updates for the user
-    try { clearClientSignedIn(); } catch (e) {}
-    try {
-      localStorage.removeItem('nh_user_email');
-      localStorage.removeItem('nh_usage');
-      localStorage.removeItem('nh_saved_contacts_last_update');
-      localStorage.removeItem('nh_saved_contacts');
-      localStorage.removeItem('nh_usage_last_update');
-      localStorage.removeItem('nh_last_domain');
-    } catch (e) {}
-
-    // Best-effort cookie deletion for common cookie names
-    try {
-      const cookieNames = ['sb:token', 'session', 'session_token', 'supabase-auth-token', 'auth'];
-      cookieNames.forEach(name => {
-        try {
-          document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
-          document.cookie = `${name}=; Path=/; Domain=${window.location.hostname}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
-        } catch (e) {}
-      });
-    } catch (e) {}
-
-    // Hide header locally
-    setOpen(false);
-    try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (e) {}
-
-    // Poll server /api/me a few times; if still authenticated we log and alert (for debugging)
-    try {
-      let serverStillAuth = false;
-      for (let i = 0; i < 5; i++) {
-        try {
-          const r = await fetch('/api/me', { credentials: 'same-origin' });
-          if (!r.ok) { serverStillAuth = false; break; }
-          const txt = await r.text().catch(()=>null);
-          if (!txt) { serverStillAuth = false; break; }
-          try {
-            const body = JSON.parse(txt);
-            if (!body || !body.authenticated) { serverStillAuth = false; break; }
-            serverStillAuth = true;
-          } catch (e) {
-            serverStillAuth = false;
-            break;
-          }
-        } catch (e) {
-          serverStillAuth = false;
-          break;
-        }
-        await new Promise(res => setTimeout(res, 300));
-      }
-      // If server still thinks you're signed in, inform user but keep client cleared
-      if (serverStillAuth) {
-        try { alert('Sign out attempted but server session still appears active. Please try a hard refresh or clear cookies. If problem persists contact support.'); } catch (e) {}
-        console.warn('Client cleared session but server still reports authenticated after signout attempts.');
-      }
-    } catch (e) {
-      console.error('signout verification failed', e);
-    }
-
-    try { Router.push('/'); } catch (e) { window.location.href = '/'; }
-  }
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
@@ -228,7 +145,72 @@ function AccountMenu({ email }) {
               </a>
 
               <button
-                onClick={handleSignOut}
+                onClick={async () => {
+                  // robust signout: try several endpoints/methods
+                  const endpoints = [
+                    { url: '/api/auth/signout', method: 'POST' },
+                    { url: '/api/signout', method: 'POST' },
+                    { url: '/api/auth/sign-out', method: 'POST' },
+                    { url: '/api/auth/logout', method: 'POST' },
+                    { url: '/api/logout', method: 'POST' },
+                    { url: '/api/auth/signout', method: 'GET' },
+                    { url: '/api/signout', method: 'GET' },
+                    { url: '/api/logout', method: 'GET' },
+                    { url: '/api/auth/signout', method: 'DELETE' },
+                    { url: '/api/signout', method: 'DELETE' },
+                  ];
+                  for (const ep of endpoints) {
+                    try {
+                      await fetch(ep.url, { method: ep.method, credentials: 'same-origin' }).catch(()=>null);
+                    } catch (e) {}
+                  }
+
+                  // immediate client-side cleanup
+                  try { clearClientSignedIn(); } catch (e) {}
+                  try {
+                    localStorage.removeItem('nh_user_email');
+                    localStorage.removeItem('nh_usage');
+                    localStorage.removeItem('nh_saved_contacts_last_update');
+                    localStorage.removeItem('nh_saved_contacts');
+                    localStorage.removeItem('nh_usage_last_update');
+                    localStorage.removeItem('nh_last_domain');
+                  } catch (e) {}
+
+                  // best-effort cookie deletion
+                  try {
+                    const names = ['session', 'session_id', 'sb:token', 'session_token', 'supabase-auth-token', 'auth'];
+                    names.forEach(n => {
+                      try {
+                        document.cookie = `${n}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
+                        document.cookie = `${n}=; Domain=${window.location.hostname}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
+                      } catch (e) {}
+                    });
+                  } catch (e) {}
+
+                  try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (e) {}
+
+                  // poll /api/me a few times to verify server session cleared; alert if still active
+                  let stillAuth = false;
+                  for (let i = 0; i < 5; i++) {
+                    try {
+                      const r = await fetch('/api/me', { credentials: 'same-origin' });
+                      const txt = await r.text().catch(()=>null);
+                      if (!r.ok) { stillAuth = false; break; }
+                      if (!txt) { stillAuth = false; break; }
+                      try {
+                        const body = JSON.parse(txt);
+                        if (!body || !body.authenticated) { stillAuth = false; break; }
+                        stillAuth = true;
+                      } catch (e) { stillAuth = false; break; }
+                    } catch (e) { stillAuth = false; break; }
+                    await new Promise(res => setTimeout(res, 300));
+                  }
+                  if (stillAuth) {
+                    try { alert('Sign out attempted but server session still appears active. Try a hard refresh / clear cookies. If this persists contact support.'); } catch (e) {}
+                    console.warn('server still reports authenticated after signout attempts');
+                  }
+                  try { Router.push('/'); } catch (e) { window.location.href = '/'; }
+                }}
                 style={{
                   flex: 1,
                   padding: '6px 8px',
@@ -262,67 +244,83 @@ export default function MyApp({ Component, pageProps }) {
     if (typeof window === 'undefined') return;
     setMounted(true);
 
-    let mountedFlag = true;
+    async function trySessionInfoWithSessionId(sessionId) {
+      try {
+        const res = await fetch('/api/session-info', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+        if (!res.ok) return null;
+        const body = await res.json().catch(()=>null);
+        return body;
+      } catch (e) { return null; }
+    }
 
     async function readAuthAndSession() {
       try {
-        const res = await fetch('/api/me', { credentials: 'same-origin' });
-        if (res.ok) {
-          const body = await res.json().catch(() => null);
+        const r = await fetch('/api/me', { credentials: 'same-origin' });
+        const txt = await r.text().catch(()=>null);
+        if (r.ok && txt) {
+          let body = null;
+          try { body = JSON.parse(txt); } catch (e) { body = null; }
           if (body && body.authenticated) {
-            const e = (body.user && (body.user.email || body.user.id)) || body.email || null;
-            if (e) {
-              setEmail(e);
-              try { localStorage.setItem('nh_user_email', e); } catch (err) {}
-
-              // fetch session-info and normalize usage
-              try {
-                const sess = await fetch('/api/session-info', { credentials: 'same-origin' });
-                if (sess && sess.ok) {
-                  const sessBody = await sess.json().catch(() => null);
-                  const normalized = normalizeUsage(sessBody);
-                  if (normalized) {
-                    try {
-                      localStorage.setItem('nh_usage', JSON.stringify(normalized));
-                      try { window.dispatchEvent(new CustomEvent('nh_usage_updated')); } catch (e) {}
-                    } catch (e) {}
-                  }
+            const eMail = (body.user && (body.user.email || body.user.id)) || body.email || null;
+            if (eMail) {
+              setEmail(eMail);
+              try { localStorage.setItem('nh_user_email', eMail); } catch (err) {}
+            }
+            // First try normal GET session-info
+            try {
+              const sess = await fetch('/api/session-info', { credentials: 'same-origin' });
+              if (sess && sess.ok) {
+                const sessBody = await sess.json().catch(()=>null);
+                const normalized = normalizeUsage(sessBody);
+                if (normalized) {
+                  try {
+                    localStorage.setItem('nh_usage', JSON.stringify(normalized));
+                    try { window.dispatchEvent(new CustomEvent('nh_usage_updated')); } catch (e) {}
+                  } catch (e) {}
                 }
-              } catch (e) {
-                console.error('session-info fetch error', e);
-              }
-
-              // If the server returns free limits but user likely just upgraded, poll session-info a few times
-              // to pick up the new plan quickly (helps race between webhook and client redirect).
-              const pollAttempts = 6;
-              for (let i = 0; i < pollAttempts; i++) {
-                try {
-                  const sess2 = await fetch('/api/session-info', { credentials: 'same-origin' });
-                  if (sess2 && sess2.ok) {
-                    const sbody = await sess2.json().catch(()=>null);
-                    const normalized2 = normalizeUsage(sbody);
-                    if (normalized2 && (normalized2.limitSearches > 0 || normalized2.plan)) {
-                      try {
-                        localStorage.setItem('nh_usage', JSON.stringify(normalized2));
+              } else {
+                // if error and server indicates missing session_id try to post candidate cookie values
+                const errText = await sess.text().catch(()=>null);
+                let parsed = null;
+                try { parsed = JSON.parse(errText); } catch (e) { parsed = null; }
+                const missing = parsed && parsed.error && parsed.error.toLowerCase().includes('missing session_id');
+                if (missing) {
+                  // try cookies as possible session ids
+                  const cookies = document.cookie ? document.cookie.split(';').map(s => s.trim()) : [];
+                  for (const c of cookies) {
+                    const parts = c.split('=');
+                    if (!parts || parts.length < 2) continue;
+                    const val = parts.slice(1).join('=');
+                    const tryBody = await trySessionInfoWithSessionId(val);
+                    if (tryBody) {
+                      const normalized = normalizeUsage(tryBody);
+                      if (normalized) {
+                        try { localStorage.setItem('nh_usage', JSON.stringify(normalized)); } catch (e) {}
                         try { window.dispatchEvent(new CustomEvent('nh_usage_updated')); } catch (e) {}
                         break;
-                      } catch (e) {}
+                      }
                     }
                   }
-                } catch (e) {}
-                await new Promise(res => setTimeout(res, 500));
+                }
               }
-
-              try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (err) {}
-              return;
+            } catch (e) {
+              console.error('session-info attempt error', e);
             }
+
+            try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (e) {}
+            return;
           }
         }
       } catch (err) {
         console.error('readAuth /api/me error', err);
       }
 
-      // fallback to client-side stored email if available
+      // fallback to client-side stored email if /api/me failed
       try {
         const clientE = getClientEmail();
         if (clientE) {
@@ -341,19 +339,15 @@ export default function MyApp({ Component, pageProps }) {
 
     readAuthAndSession();
 
-    function onStore(e) {
+    const onStore = (e) => {
       if (!e) return;
       if (['nh_user_email', 'nh_usage', 'nh_usage_last_update', 'nh_saved_contacts_last_update'].includes(e.key)) {
-        try {
-          const v = localStorage.getItem('nh_user_email');
-          setEmail(v || null);
-        } catch (err) {}
+        try { const v = localStorage.getItem('nh_user_email'); setEmail(v || null); } catch (err) {}
       }
-    }
+    };
 
     window.addEventListener('storage', onStore);
     return () => {
-      mountedFlag = false;
       window.removeEventListener('storage', onStore);
     };
   }, []);
