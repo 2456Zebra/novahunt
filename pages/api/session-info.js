@@ -1,10 +1,6 @@
 // pages/api/session-info.js
 // Returns server-side usage & plan info for the current authenticated session.
 // Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars.
-// Behavior:
-// - If SUPABASE configured: validate session token (from cookie or Authorization header or body.session_id),
-//   lookup user and their usage/subscription, return a canonical usage object.
-// - If SUPABASE not configured: returns 501 with an explanatory message.
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -26,10 +22,16 @@ export default async function handler(req, res) {
   const authHeader = req.headers.authorization || '';
   const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   const cookie = req.headers.cookie || '';
-  const cookies = Object.fromEntries(cookie.split(';').map(s => s.trim()).filter(Boolean).map(c => {
-    const i = c.indexOf('=');
-    return [c.slice(0,i), c.slice(i+1)];
-  }));
+  const cookies = Object.fromEntries(
+    cookie
+      .split(';')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(c => {
+        const i = c.indexOf('=');
+        return [c.slice(0, i), c.slice(i + 1)];
+      })
+  );
   const sessionIdFromBody = req.method === 'POST' && req.body && req.body.session_id ? req.body.session_id : null;
 
   const token = bearer || cookies['session'] || cookies['session_id'] || cookies['sb:token'] || sessionIdFromBody;
@@ -39,12 +41,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Verify session/token with Supabase auth admin
-    // This uses the service role key to look up the user by JWT or session.
-    // Try to parse user via supabase.auth.getUser (works if token is a JWT)
+    // Verify session/token with Supabase admin
     const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    let user = null;
+
     if (userErr || !userData?.user) {
-      // fallback: if token is a standard Supabase session string, try to fetch from auth.sessions table
+      // fallback: lookup auth.sessions by access_token
       const { data: sessions, error: sErr } = await supabase
         .from('auth.sessions')
         .select('*')
@@ -54,36 +56,18 @@ export default async function handler(req, res) {
       if (sErr || !sessions || sessions.length === 0) {
         return jsonResponse(res, 401, { error: 'invalid session' });
       }
-      // find user via sessions.user_id
       const session = sessions[0];
       const { data: u2 } = await supabase.from('users').select('*').eq('id', session.user_id).limit(1);
       if (!u2 || u2.length === 0) return jsonResponse(res, 401, { error: 'user not found' });
-      const user = u2[0];
-
-      // Query usage/subscription tables (adapt to your schema)
-      // Example assumes you have a table 'subscriptions' and 'usage' keyed by user_id.
-      const [{ data: subs }] = await Promise.all([
-        supabase.from('subscriptions').select('*').eq('user_id', user.id).limit(1)
-      ]).catch(()=>[{}]);
-
-      // build a canonical response
-      const usage = {
-        searches: 0,
-        reveals: 0,
-        limitSearches: 0,
-        limitReveals: 0,
-        plan: subs && subs.length ? subs[0].plan : null
-      };
-      return jsonResponse(res, 200, usage);
+      user = u2[0];
+    } else {
+      user = userData.user;
     }
 
-    const user = userData.user;
-
     // Query subscription & usage for this user
-    // Adjust these queries to match your DB: subscriptions table, usage table, etc.
     const [{ data: subsRes }, { data: usageRes }] = await Promise.all([
-      supabase.from('subscriptions').select('*').eq('user_id', user.id).limit(1).maybeSingle(),
-      supabase.from('usage').select('*').eq('user_id', user.id).limit(1).maybeSingle()
+      supabase.from('subscriptions').select('*').eq('user_id', user.id).limit(1).maybeSingle().catch(()=>({ data: null })),
+      supabase.from('usage').select('*').eq('user_id', user.id).limit(1).maybeSingle().catch(()=>({ data: null })),
     ]);
 
     const plan = subsRes?.plan ?? subsRes?.tier ?? null;
