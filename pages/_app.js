@@ -12,7 +12,7 @@ import GlobalRevealInterceptor from '../components/GlobalRevealInterceptor';
  *  - Renders GlobalRevealInterceptor for signed-in users so Reveal clicks are handled inline.
  *  - Injects a tiny style to hide Sign Up links when signed-in.
  *
- * Everything else is unchanged from your working snippet.
+ * This mirrors the working snippet you provided.
  */
 
 function Progress({ value = 0, max = 1 }) {
