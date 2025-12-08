@@ -10,9 +10,12 @@ import GlobalRevealInterceptor from '../components/GlobalRevealInterceptor';
 /**
  * pages/_app.js
  *
- * Adjusted pulldown button sizing to be smaller and equal width.
- * Injects a small helper CSS class `.go-home-button` for the "Go to Homepage" link
- * (so you can opt-in that link for a bold font). I did NOT change other global fonts.
+ * Fixes applied:
+ * - After /api/me confirms authenticated, also fetch /api/session-info and write nh_usage to localStorage
+ *   so header shows the server-side plan/limits immediately.
+ * - Sign out now calls the server sign-out endpoint (POST /api/auth/signout) and falls back to /api/signout,
+ *   then clears local keys and notifies listeners.
+ * - Keeps previous localStorage compatibility and dispatches nh_usage_updated / nh_auth_changed events.
  */
 
 function Progress({ value = 0, max = 1 }) {
@@ -61,10 +64,44 @@ function AccountMenu({ email }) {
     };
   }, []);
 
-  function handleSignOut() {
-    try { clearClientSignedIn(); } catch (e) { /* ignore */ }
+  async function handleSignOut() {
+    try {
+      // try server signout first so session cookie is cleared
+      const endpoints = ['/api/auth/signout', '/api/signout', '/api/auth/sign-out'];
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url, { method: 'POST', credentials: 'same-origin' });
+          // if any signout endpoint returns ok, break and proceed to local cleanup
+          if (res && (res.status === 200 || res.status === 204 || res.status === 201)) break;
+        } catch (e) {
+          // ignore and try next endpoint
+        }
+      }
+    } catch (err) {
+      // ignore network errors but still proceed to local cleanup
+      console.error('signout server call failed', err);
+    }
+
+    // local cleanup
+    try {
+      clearClientSignedIn();
+    } catch (e) {}
+    try {
+      localStorage.removeItem('nh_user_email');
+      localStorage.removeItem('nh_usage');
+      localStorage.removeItem('nh_saved_contacts_last_update');
+      localStorage.removeItem('nh_usage_last_update');
+      localStorage.removeItem('nh_last_domain');
+    } catch (e) {}
     setOpen(false);
-    try { Router.push('/'); } catch (e) { window.location.href = '/'; }
+    try {
+      window.dispatchEvent(new Event('nh_auth_changed'));
+    } catch (e) {}
+    try {
+      Router.push('/');
+    } catch (e) {
+      window.location.href = '/';
+    }
   }
 
   return (
@@ -176,7 +213,26 @@ export default function MyApp({ Component, pageProps }) {
             if (e) {
               setEmail(e);
               try { localStorage.setItem('nh_user_email', e); } catch (err) {}
-              // notify any listeners that auth changed
+
+              // fetch session-info to get plan/usage and write to nh_usage so header shows server state
+              try {
+                const sess = await fetch('/api/session-info', { credentials: 'same-origin' });
+                if (sess && sess.ok) {
+                  const sessBody = await sess.json().catch(() => null);
+                  if (sessBody) {
+                    try {
+                      // canonicalize usage object; some servers return { usage: {...} } others return direct usage
+                      const usageObj = sessBody.usage || sessBody;
+                      localStorage.setItem('nh_usage', JSON.stringify(usageObj));
+                      try { window.dispatchEvent(new CustomEvent('nh_usage_updated')); } catch (e) {}
+                    } catch (e) {}
+                  }
+                }
+              } catch (e) {
+                // ignore session-info errors
+                console.error('session-info fetch error', e);
+              }
+
               try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (err) {}
               return;
             }
