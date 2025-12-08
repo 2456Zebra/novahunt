@@ -8,28 +8,33 @@ import Router from 'next/router';
 import GlobalRevealInterceptor from '../components/GlobalRevealInterceptor';
 
 /**
- * pages/_app.js
- * - Robust session-info parsing into a normalized nh_usage object.
- * - Sign out attempts server endpoints and verifies /api/me is unauthenticated (polls a few times).
- * - Emits nh_usage_updated and nh_auth_changed so UI updates.
+ * Improved _app.js
+ *
+ * Fixes and behaviors:
+ * - After /api/me confirms authenticated, fetch /api/session-info and normalize nh_usage.
+ *   Polls /api/session-info a few times on mount if server still reporting free values so the header updates quickly
+ *   after a plan change.
+ * - Sign out:
+ *   - Attempts server signout endpoints.
+ *   - Clears local storage and local session state immediately so the header is hidden for the user.
+ *   - Attempts to delete common auth cookies (best-effort).
+ *   - Polls /api/me a few times and logs/alerts if server session remains active (helps debugging).
+ *   - Even if server doesn't clear the session, local UI is cleared so you are effectively signed out on the client.
+ * - Emits nh_usage_updated and nh_auth_changed appropriately.
  */
 
 function normalizeUsage(obj) {
   if (!obj || typeof obj !== 'object') return null;
-  // possible shapes; try to extract canonical values
   const out = {};
-  // direct numeric fields
   out.searches = obj.searches ?? obj.usedSearches ?? obj.search_count ?? obj.searches_used ?? obj.searchesCount ?? 0;
   out.reveals = obj.reveals ?? obj.usedReveals ?? obj.reveal_count ?? obj.reveals_used ?? 0;
-  // limits
   out.limitSearches = obj.limitSearches ?? obj.maxSearches ?? obj.quotaSearches ?? obj.search_limit ?? obj.limit_searches ?? 0;
   out.limitReveals = obj.limitReveals ?? obj.maxReveals ?? obj.quotaReveals ?? obj.reveal_limit ?? obj.limit_reveals ?? 0;
   out.plan = obj.plan ?? obj.tier ?? obj.product ?? null;
-  // if nested
+
   if (!out.searches && obj.usage && typeof obj.usage === 'object') {
     return normalizeUsage(obj.usage);
   }
-  // if server returns { searches: { used, limit } } style
   if (!out.searches && obj.searches && typeof obj.searches === 'object') {
     out.searches = obj.searches.used ?? obj.searches.value ?? out.searches;
     out.limitSearches = obj.searches.limit ?? obj.searches.max ?? out.limitSearches;
@@ -38,10 +43,7 @@ function normalizeUsage(obj) {
     out.reveals = obj.reveals.used ?? obj.reveals.value ?? out.reveals;
     out.limitReveals = obj.reveals.limit ?? obj.reveals.max ?? out.limitReveals;
   }
-  // ensure numbers
-  ['searches','reveals','limitSearches','limitReveals'].forEach(k => {
-    out[k] = Number(out[k] ?? 0) || 0;
-  });
+  ['searches','reveals','limitSearches','limitReveals'].forEach(k => { out[k] = Number(out[k] ?? 0) || 0; });
   return out;
 }
 
@@ -89,6 +91,80 @@ function AccountMenu({ email }) {
       window.removeEventListener('nh_auth_changed', readUsage);
     };
   }, []);
+
+  async function handleSignOut() {
+    // Try several server endpoints (best-effort)
+    try {
+      const endpoints = ['/api/auth/signout', '/api/signout', '/api/auth/sign-out', '/api/auth/logout'];
+      for (const url of endpoints) {
+        try {
+          await fetch(url, { method: 'POST', credentials: 'same-origin' });
+        } catch (e) { /* ignore */ }
+      }
+    } catch (e) {
+      console.error('signout server attempts failed', e);
+    }
+
+    // Clear local session state immediately so UI updates for the user
+    try { clearClientSignedIn(); } catch (e) {}
+    try {
+      localStorage.removeItem('nh_user_email');
+      localStorage.removeItem('nh_usage');
+      localStorage.removeItem('nh_saved_contacts_last_update');
+      localStorage.removeItem('nh_saved_contacts');
+      localStorage.removeItem('nh_usage_last_update');
+      localStorage.removeItem('nh_last_domain');
+    } catch (e) {}
+
+    // Best-effort cookie deletion for common cookie names
+    try {
+      const cookieNames = ['sb:token', 'session', 'session_token', 'supabase-auth-token', 'auth'];
+      cookieNames.forEach(name => {
+        try {
+          document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
+          document.cookie = `${name}=; Path=/; Domain=${window.location.hostname}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
+        } catch (e) {}
+      });
+    } catch (e) {}
+
+    // Hide header locally
+    setOpen(false);
+    try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (e) {}
+
+    // Poll server /api/me a few times; if still authenticated we log and alert (for debugging)
+    try {
+      let serverStillAuth = false;
+      for (let i = 0; i < 5; i++) {
+        try {
+          const r = await fetch('/api/me', { credentials: 'same-origin' });
+          if (!r.ok) { serverStillAuth = false; break; }
+          const txt = await r.text().catch(()=>null);
+          if (!txt) { serverStillAuth = false; break; }
+          try {
+            const body = JSON.parse(txt);
+            if (!body || !body.authenticated) { serverStillAuth = false; break; }
+            serverStillAuth = true;
+          } catch (e) {
+            serverStillAuth = false;
+            break;
+          }
+        } catch (e) {
+          serverStillAuth = false;
+          break;
+        }
+        await new Promise(res => setTimeout(res, 300));
+      }
+      // If server still thinks you're signed in, inform user but keep client cleared
+      if (serverStillAuth) {
+        try { alert('Sign out attempted but server session still appears active. Please try a hard refresh or clear cookies. If problem persists contact support.'); } catch (e) {}
+        console.warn('Client cleared session but server still reports authenticated after signout attempts.');
+      }
+    } catch (e) {
+      console.error('signout verification failed', e);
+    }
+
+    try { Router.push('/'); } catch (e) { window.location.href = '/'; }
+  }
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
@@ -152,56 +228,7 @@ function AccountMenu({ email }) {
               </a>
 
               <button
-                onClick={async () => {
-                  // attempt server signout and verify
-                  try {
-                    const endpoints = ['/api/auth/signout', '/api/signout', '/api/auth/sign-out'];
-                    for (const url of endpoints) {
-                      try {
-                        await fetch(url, { method: 'POST', credentials: 'same-origin' });
-                      } catch (e) {}
-                    }
-                    // poll /api/me a few times
-                    let unauthenticated = false;
-                    for (let i = 0; i < 4; i++) {
-                      try {
-                        const r = await fetch('/api/me', { credentials: 'same-origin' });
-                        if (!r.ok) { unauthenticated = true; break; }
-                        const txt = await r.text().catch(() => '');
-                        if (!txt) { unauthenticated = true; break; }
-                        try {
-                          const body = JSON.parse(txt);
-                          if (!body || !body.authenticated) { unauthenticated = true; break; }
-                        } catch (e) {
-                          // if text is not JSON evaluate as unauthenticated if empty
-                        }
-                      } catch (e) {
-                        unauthenticated = true;
-                        break;
-                      }
-                      // wait 350ms before next check
-                      await new Promise(res => setTimeout(res, 350));
-                    }
-                    // local cleanup regardless
-                    try { clearClientSignedIn(); } catch (e) {}
-                    try {
-                      localStorage.removeItem('nh_user_email');
-                      localStorage.removeItem('nh_usage');
-                      localStorage.removeItem('nh_saved_contacts_last_update');
-                      localStorage.removeItem('nh_usage_last_update');
-                      localStorage.removeItem('nh_last_domain');
-                    } catch (e) {}
-                    try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (e) {}
-                    if (!unauthenticated) {
-                      alert('Sign out attempted but server session still appears active. If you remain signed in, try a hard refresh or clearing cookies. If the problem persists please contact support.');
-                    }
-                    try { Router.push('/'); } catch (e) { window.location.href = '/'; }
-                  } catch (err) {
-                    console.error('signout flow error', err);
-                    try { clearClientSignedIn(); } catch (e) {}
-                    try { Router.push('/'); } catch (e) { window.location.href = '/'; }
-                  }
-                }}
+                onClick={handleSignOut}
                 style={{
                   flex: 1,
                   padding: '6px 8px',
@@ -235,7 +262,9 @@ export default function MyApp({ Component, pageProps }) {
     if (typeof window === 'undefined') return;
     setMounted(true);
 
-    async function readAuth() {
+    let mountedFlag = true;
+
+    async function readAuthAndSession() {
       try {
         const res = await fetch('/api/me', { credentials: 'same-origin' });
         if (res.ok) {
@@ -261,6 +290,27 @@ export default function MyApp({ Component, pageProps }) {
                 }
               } catch (e) {
                 console.error('session-info fetch error', e);
+              }
+
+              // If the server returns free limits but user likely just upgraded, poll session-info a few times
+              // to pick up the new plan quickly (helps race between webhook and client redirect).
+              const pollAttempts = 6;
+              for (let i = 0; i < pollAttempts; i++) {
+                try {
+                  const sess2 = await fetch('/api/session-info', { credentials: 'same-origin' });
+                  if (sess2 && sess2.ok) {
+                    const sbody = await sess2.json().catch(()=>null);
+                    const normalized2 = normalizeUsage(sbody);
+                    if (normalized2 && (normalized2.limitSearches > 0 || normalized2.plan)) {
+                      try {
+                        localStorage.setItem('nh_usage', JSON.stringify(normalized2));
+                        try { window.dispatchEvent(new CustomEvent('nh_usage_updated')); } catch (e) {}
+                        break;
+                      } catch (e) {}
+                    }
+                  }
+                } catch (e) {}
+                await new Promise(res => setTimeout(res, 500));
               }
 
               try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (err) {}
@@ -289,7 +339,7 @@ export default function MyApp({ Component, pageProps }) {
       try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (err) {}
     }
 
-    readAuth();
+    readAuthAndSession();
 
     function onStore(e) {
       if (!e) return;
@@ -303,11 +353,12 @@ export default function MyApp({ Component, pageProps }) {
 
     window.addEventListener('storage', onStore);
     return () => {
+      mountedFlag = false;
       window.removeEventListener('storage', onStore);
     };
   }, []);
 
-  // small helper class injection for an opt-in bold homepage link
+  // small helper css for opt-in bold homepage link
   useEffect(() => {
     const STYLE_ID = 'nova-small-fixes';
     const css = `
