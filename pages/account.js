@@ -1,13 +1,12 @@
 // Full replacement for pages/account.js
-// - Fetches saved reveals from server and displays them.
-// - Listens to nh_saved_contact and storage changes for nh_saved_contacts_last_update to refresh in-place.
-// - Minimal, defensive code: tries multiple possible saved-contacts endpoints so it works with different backends.
-// - No styling changes beyond a clean, neutral layout. Replace your existing pages/account.js with this file.
+// - Adds "Back to Homepage" link.
+// - Fetches saved reveals and refreshes on saved-contact events.
+// - Uses defensive endpoints and shows simple messages if endpoints are missing.
 
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { getClientEmail } from '../lib/auth-client';
-import AccountSavedUpdater from '../components/AccountSavedUpdater'; // optional helper previously provided
+import AccountSavedUpdater from '../components/AccountSavedUpdater';
 import Router from 'next/router';
 
 export default function AccountPage() {
@@ -32,7 +31,6 @@ export default function AccountPage() {
       setLoading(true);
       setError(null);
 
-      // try several likely endpoints for saved contacts
       const endpoints = [
         '/api/saved-contacts',
         '/api/get-saved-contacts',
@@ -47,42 +45,19 @@ export default function AccountPage() {
           const res = await fetch(url, { credentials: 'same-origin' });
           if (!res) continue;
           if (res.status === 404 || res.status === 410) continue;
-          // Accept 200+ responses; try to parse JSON
           const txt = await res.text().catch(() => null);
-          if (!txt) {
-            // empty body but ok - skip
-            continue;
-          }
+          if (!txt) continue;
           try {
             const json = JSON.parse(txt);
-            // Expect an array or object with 'saved'/'contacts' property
-            if (Array.isArray(json)) {
-              got = json;
-              break;
-            }
-            if (Array.isArray(json.saved)) {
-              got = json.saved;
-              break;
-            }
-            if (Array.isArray(json.contacts)) {
-              got = json.contacts;
-              break;
-            }
-            // fallback: if object has any keys that look like saved contacts, use it as single-item array
-            if (json && typeof json === 'object') {
-              // try to locate an array inside
-              const arr = Object.values(json).find(v => Array.isArray(v));
-              if (arr) {
-                got = arr;
-                break;
-              }
-            }
+            if (Array.isArray(json)) { got = json; break; }
+            if (Array.isArray(json.saved)) { got = json.saved; break; }
+            if (Array.isArray(json.contacts)) { got = json.contacts; break; }
+            const arr = Object.values(json).find(v => Array.isArray(v));
+            if (arr) { got = arr; break; }
           } catch (e) {
-            // not json, skip
             continue;
           }
         } catch (err) {
-          // network/other error, try next endpoint
           continue;
         }
       }
@@ -101,13 +76,14 @@ export default function AccountPage() {
 
     fetchSaved();
 
-    // refresh when saved-contact event or storage marker changes
     function savedHandler() {
       fetchSaved();
     }
+
     window.addEventListener('nh_saved_contact', savedHandler);
     window.addEventListener('nh_saved_contacts_last_update', savedHandler);
-    window.addEventListener('nh_usage_updated', savedHandler); // usage change might accompany saves
+    window.addEventListener('nh_usage_updated', savedHandler);
+
     function storageHandler(e) {
       if (!e || !e.key) return;
       if (['nh_saved_contacts_last_update', 'nh_usage_last_update'].includes(e.key)) {
@@ -127,14 +103,17 @@ export default function AccountPage() {
 
   return (
     <>
-      <Head>
-        <title>Account</title>
-      </Head>
+      <Head><title>Account</title></Head>
 
       <main style={{ maxWidth: 980, margin: '20px auto', padding: '0 16px' }}>
-        <h1 style={{ marginBottom: 6 }}>Account</h1>
-        <div style={{ color: '#555', marginBottom: 18 }}>
-          {email ? `Signed in as ${email}` : 'Not signed in'}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div>
+            <h1 style={{ margin: 0 }}>Account</h1>
+            <div style={{ color: '#555', marginTop: 6 }}>{email ? `Signed in as ${email}` : 'Not signed in'}</div>
+          </div>
+          <div>
+            <a href="/" className="go-home-button" style={{ textDecoration: 'none', color: '#0b1220', fontWeight: 700 }}>Back to Homepage</a>
+          </div>
         </div>
 
         <section style={{ marginBottom: 28 }}>
@@ -158,14 +137,11 @@ export default function AccountPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'center' }}>
                       <a href={c.source || '#'} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#2563eb' }}>source</a>
                       <button onClick={async () => {
-                        // simple remove saved contact locally then ask server to delete (try delete endpoints)
-                        // optimistic UI: remove visually immediately
                         try {
                           const idx = saved.indexOf(c);
                           const newSaved = [...saved];
                           newSaved.splice(idx, 1);
                           setSaved(newSaved);
-                          // try server delete endpoints
                           const delEndpoints = ['/api/delete-saved-contact', '/api/remove-saved-contact', '/api/saved-contacts'];
                           for (const url of delEndpoints) {
                             try {
@@ -176,11 +152,8 @@ export default function AccountPage() {
                                 body: JSON.stringify({ email: c.email, id: c.id, domain: c.domain }),
                               });
                               if (res && (res.status === 200 || res.status === 204)) break;
-                            } catch (err) {
-                              // ignore
-                            }
+                            } catch (err) {}
                           }
-                          // signal update
                           try { localStorage.setItem('nh_saved_contacts_last_update', String(Date.now())); } catch (e) {}
                           try { window.dispatchEvent(new CustomEvent('nh_saved_contact', { detail: { removed: c } })); } catch (e) {}
                         } catch (err) {
@@ -200,7 +173,7 @@ export default function AccountPage() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => { Router.push('/plans'); }} style={{ padding: '8px 10px', borderRadius: 8, background: '#fff', border: '1px solid #e6edf3', cursor: 'pointer' }}>Change plan</button>
             <button onClick={async () => {
-              // call server signout and navigate home
+              // signout: try server then local cleanup
               try {
                 await fetch('/api/auth/signout', { method: 'POST', credentials: 'same-origin' }).catch(()=>null);
               } catch (e) {}
@@ -210,10 +183,8 @@ export default function AccountPage() {
             }} style={{ padding: '8px 10px', borderRadius: 8, background: '#0ea5e9', color: '#fff', border: 'none', cursor: 'pointer' }}>Sign out</button>
           </div>
         </section>
-
       </main>
 
-      {/* Optional global updater so account refreshes when saved reveals change */}
       <AccountSavedUpdater autoReloadOnAccount={false} />
     </>
   );
