@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Footer from '../components/Footer';
 import LimitModal from '../components/LimitModal';
@@ -8,11 +8,14 @@ import Router from 'next/router';
 import GlobalRevealInterceptor from '../components/GlobalRevealInterceptor';
 
 /**
- * Restored global app wrapper (your proven working code) with two safe additions:
- *  - Renders GlobalRevealInterceptor for signed-in users so Reveal clicks are handled inline.
- *  - Injects a tiny style to hide Sign Up links when signed-in.
+ * pages/_app.js
  *
- * This mirrors the working snippet you provided.
+ * Changes:
+ * - On client mount, call /api/me to get authoritative authenticated state.
+ * - If server says authenticated, set email state and write nh_user_email to localStorage
+ *   so other client code that expects localStorage continues to work.
+ * - If not authenticated, remove nh_user_email.
+ * - Keeps existing behavior: hiding signup links, AccountMenu UI, debug hooks.
  */
 
 function Progress({ value = 0, max = 1 }) {
@@ -30,7 +33,7 @@ function Progress({ value = 0, max = 1 }) {
 function AccountMenu({ email }) {
   const [open, setOpen] = useState(false);
   const [usage, setUsage] = useState(getClientUsage());
-  const ref = useRef(null);
+  const ref = React.useRef(null);
 
   useEffect(() => {
     function docClick(e) {
@@ -133,27 +136,60 @@ export default function MyApp({ Component, pageProps }) {
     if (typeof window === 'undefined') return;
     setMounted(true);
 
-    const readEmail = () => {
+    // Read authoritative session from server; fall back to local storage getter.
+    async function readAuth() {
       try {
-        const e = getClientEmail();
-        setEmail(e || null);
-      } catch (err) { setEmail(null); }
-    };
+        const res = await fetch('/api/me', { credentials: 'same-origin' });
+        if (res.ok) {
+          const body = await res.json().catch(() => null);
+          if (body && body.authenticated) {
+            const e = (body.user && (body.user.email || body.user.id)) || body.email || null;
+            if (e) {
+              setEmail(e);
+              try { localStorage.setItem('nh_user_email', e); } catch (err) {}
+              // notify any listeners that auth changed
+              try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (err) {}
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        // ignore network errors for this check; fall through to local fallback
+      }
 
-    readEmail();
+      // fallback: try client-side stored email (older flows)
+      try {
+        const clientE = getClientEmail();
+        if (clientE) {
+          setEmail(clientE);
+          try { localStorage.setItem('nh_user_email', clientE); } catch (err) {}
+          try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (err) {}
+          return;
+        }
+      } catch (e) {}
+
+      // not authenticated — clear any leftover key
+      try { localStorage.removeItem('nh_user_email'); } catch (e) {}
+      setEmail(null);
+      try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (err) {}
+    }
+
+    readAuth();
 
     function onStore(e) {
       if (!e) return;
-      if (['nh_user_email', 'nh_usage', 'nh_usage_last_update'].includes(e.key)) readEmail();
+      if (['nh_user_email', 'nh_usage', 'nh_usage_last_update'].includes(e.key)) {
+        // re-read auth from local storage if server isn't consulted
+        try {
+          const v = localStorage.getItem('nh_user_email');
+          setEmail(v || null);
+        } catch (err) {}
+      }
     }
-    const onAuth = () => readEmail();
 
     window.addEventListener('storage', onStore);
-    window.addEventListener('nh_auth_changed', onAuth);
-
     return () => {
       window.removeEventListener('storage', onStore);
-      window.removeEventListener('nh_auth_changed', onAuth);
     };
   }, []);
 
