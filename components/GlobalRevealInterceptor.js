@@ -4,9 +4,10 @@
  * - Listens for nh_inline_reveal custom events (legacy SearchClient Reveal dispatch).
  * - Falls back to the last searched domain from window.__nh_last_domain or localStorage 'nh_last_domain'.
  * - Calls /api/find-company?domain=... and shows the revealed email via confirm/alert.
- * - Writes a localStorage marker (nh_usage_last_update) and dispatches 'nh_usage_updated' so your AccountMenu updates immediately.
+ * - When a reveal is saved, writes localStorage 'nh_saved_contacts_last_update' and dispatches 'nh_saved_contact'
+ *   so the Account page (or any listener) can refresh saved reveals.
  *
- * This is conservative and mirrors the older working behavior you provided.
+ * This mirrors the older working behavior plus a small saved-contact event to enable the Account page to refresh.
  */
 import { useEffect } from 'react';
 
@@ -68,6 +69,13 @@ export default function GlobalRevealInterceptor() {
               alert('Save failed: ' + (txt || `status ${saveRes.status}`));
             } else {
               alert('Saved ✓');
+              // signal saved contact to other parts of the app
+              try {
+                localStorage.setItem('nh_saved_contacts_last_update', String(Date.now()));
+              } catch (e) {}
+              try {
+                window.dispatchEvent(new CustomEvent('nh_saved_contact', { detail: { domain, email } }));
+              } catch (e) {}
             }
           } catch (err) {
             alert('Save failed (network). The reveal succeeded.');
