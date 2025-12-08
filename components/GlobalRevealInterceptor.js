@@ -1,13 +1,11 @@
 /**
  * GlobalRevealInterceptor
  *
- * - Listens for nh_inline_reveal custom events (legacy SearchClient Reveal dispatch).
- * - Falls back to the last searched domain from window.__nh_last_domain or localStorage 'nh_last_domain'.
- * - Calls /api/find-company?domain=... and shows the revealed email via confirm/alert.
- * - When a reveal is saved, writes localStorage 'nh_saved_contacts_last_update' and dispatches 'nh_saved_contact'
- *   so the Account page (or any listener) can refresh saved reveals.
+ * - Listens for nh_inline_reveal and does reveal+save flows.
+ * - When a save succeeds, persist the saved contact to localStorage 'nh_saved_contacts' (fallback)
+ *   and dispatch 'nh_saved_contact' + set 'nh_saved_contacts_last_update' marker so Account reads it.
  *
- * This mirrors the older working behavior plus a small saved-contact event to enable the Account page to refresh.
+ * This ensures saved reveals are visible on Account even if the backend doesn't persist them (demo mode).
  */
 import { useEffect } from 'react';
 
@@ -18,6 +16,20 @@ function getLastDomainFallback() {
     if (ls) return ls;
   } catch (e) {}
   return null;
+}
+
+function persistLocalSaved(domain, email, extras = {}) {
+  try {
+    const raw = localStorage.getItem('nh_saved_contacts') || '[]';
+    const arr = JSON.parse(raw);
+    const item = { domain, email, created_at: new Date().toISOString(), ...extras };
+    arr.unshift(item);
+    localStorage.setItem('nh_saved_contacts', JSON.stringify(arr.slice(0, 200))); // cap
+    localStorage.setItem('nh_saved_contacts_last_update', String(Date.now()));
+    try { window.dispatchEvent(new CustomEvent('nh_saved_contact', { detail: item })); } catch (e) {}
+  } catch (e) {
+    console.error('persistLocalSaved error', e);
+  }
 }
 
 export default function GlobalRevealInterceptor() {
@@ -57,6 +69,7 @@ export default function GlobalRevealInterceptor() {
 
         const save = confirm(`Revealed: ${email}\n\nSave this contact to your account?`);
         if (save) {
+          let savedOk = false;
           try {
             const saveRes = await fetch('/api/save-contact', {
               method: 'POST',
@@ -64,21 +77,34 @@ export default function GlobalRevealInterceptor() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ domain, email }),
             });
-            if (!saveRes.ok) {
-              const txt = await saveRes.text().catch(() => '');
-              alert('Save failed: ' + (txt || `status ${saveRes.status}`));
+            if (saveRes && (saveRes.status === 200 || saveRes.status === 201 || saveRes.status === 204)) {
+              savedOk = true;
             } else {
-              alert('Saved ✓');
-              // signal saved contact to other parts of the app
-              try {
-                localStorage.setItem('nh_saved_contacts_last_update', String(Date.now()));
-              } catch (e) {}
-              try {
-                window.dispatchEvent(new CustomEvent('nh_saved_contact', { detail: { domain, email } }));
-              } catch (e) {}
+              // try alternate endpoints
+              const alt = ['/api/save-saved-contact', '/api/saved-contacts'];
+              for (const url of alt) {
+                try {
+                  const r2 = await fetch(url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain, email }),
+                  });
+                  if (r2 && (r2.status === 200 || r2.status === 201 || r2.status === 204)) { savedOk = true; break; }
+                } catch (e) {}
+              }
             }
           } catch (err) {
-            alert('Save failed (network). The reveal succeeded.');
+            console.warn('save contact network error', err);
+          }
+
+          // Always persist locally as fallback so Account page can show saved reveals in demo environments
+          persistLocalSaved(domain, email, { source: 'client-fallback' });
+
+          if (savedOk) {
+            alert('Saved ✓');
+          } else {
+            alert('Saved locally (server save may not be available).');
           }
         }
 
