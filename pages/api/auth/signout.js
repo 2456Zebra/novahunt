@@ -26,16 +26,21 @@ export default async function handler(req, res) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 
   const cookie = req.headers.cookie || '';
-  const cookies = Object.fromEntries(cookie.split(';').map(s => s.trim()).filter(Boolean).map(c => {
-    const i = c.indexOf('=');
-    return [c.slice(0,i), c.slice(i+1)];
-  }));
+  const cookies = Object.fromEntries(
+    cookie
+      .split(';')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(c => {
+        const i = c.indexOf('=');
+        return [c.slice(0, i), c.slice(i + 1)];
+      })
+  );
   const token = cookies['session'] || cookies['session_id'] || cookies['sb:token'] || null;
 
   try {
     if (token) {
-      // Supabase does not have a simple server-side signOut with service role for a session,
-      // but we can revoke refresh tokens if stored. This sample tries to delete sessions row.
+      // Attempt to remove sessions rows matching token (best-effort)
       await supabase.from('auth.sessions').delete().eq('refresh_token', token).catch(()=>null);
       await supabase.from('auth.sessions').delete().eq('access_token', token).catch(()=>null);
     }
