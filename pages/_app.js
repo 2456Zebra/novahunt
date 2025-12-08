@@ -10,13 +10,9 @@ import GlobalRevealInterceptor from '../components/GlobalRevealInterceptor';
 /**
  * pages/_app.js
  *
- * Changes in this file for your request:
- * - Removed Billing and Manage entries from the account pulldown.
- * - The pulldown now shows only: Account (link) and Sign out (button),
- *   with equal width, smaller height, and bold text.
- * - Uses /api/me as authoritative on mount (keeps localStorage compatibility).
- *
- * No other visual/font changes beyond the pulldown button sizing/weight.
+ * Adjusted pulldown button sizing to be smaller and equal width.
+ * Injects a small helper CSS class `.go-home-button` for the "Go to Homepage" link
+ * (so you can opt-in that link for a bold font). I did NOT change other global fonts.
  */
 
 function Progress({ value = 0, max = 1 }) {
@@ -80,9 +76,9 @@ function AccountMenu({ email }) {
         </div>
 
         <button onClick={() => setOpen(v => !v)} aria-haspopup="true" aria-expanded={open} style={{
-          display: 'flex', gap: 8, alignItems: 'center', padding: '8px 10px', borderRadius: 8, border: '1px solid #e6edf3', background: '#fff', cursor: 'pointer', fontSize: 13
+          display: 'flex', gap: 8, alignItems: 'center', padding: '6px 8px', borderRadius: 8, border: '1px solid #e6edf3', background: '#fff', cursor: 'pointer', fontSize: 12
         }}>
-          <span style={{ fontWeight: 600 }}>{email}</span>
+          <span style={{ fontWeight: 700 }}>{email}</span>
           <span style={{ color: '#6b7280', fontSize: 12 }}>{open ? '▴' : '▾'}</span>
         </button>
       </div>
@@ -99,7 +95,7 @@ function AccountMenu({ email }) {
           boxShadow: '0 8px 30px rgba(11,18,32,0.08)',
           zIndex: 120
         }}>
-          <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {/* Usage blocks */}
             <div>
               <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>Searches</div>
@@ -117,7 +113,7 @@ function AccountMenu({ email }) {
                 href="/account"
                 style={{
                   flex: 1,
-                  padding: '8px 10px',
+                  padding: '6px 8px',
                   borderRadius: 6,
                   background: '#ffffff',
                   border: '1px solid #e6edf3',
@@ -125,8 +121,7 @@ function AccountMenu({ email }) {
                   color: '#0b1220',
                   textDecoration: 'none',
                   fontWeight: 700,
-                  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
-                  minHeight: 36,
+                  minHeight: 32,
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -139,15 +134,14 @@ function AccountMenu({ email }) {
                 onClick={handleSignOut}
                 style={{
                   flex: 1,
-                  padding: '8px 10px',
+                  padding: '6px 8px',
                   borderRadius: 6,
                   background: '#0ea5e9',
                   border: 'none',
                   color: '#fff',
                   cursor: 'pointer',
                   fontWeight: 700,
-                  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
-                  minHeight: 36,
+                  minHeight: 32,
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -214,7 +208,6 @@ export default function MyApp({ Component, pageProps }) {
     function onStore(e) {
       if (!e) return;
       if (['nh_user_email', 'nh_usage', 'nh_usage_last_update', 'nh_saved_contacts_last_update'].includes(e.key)) {
-        // re-read auth from local storage if server isn't consulted
         try {
           const v = localStorage.getItem('nh_user_email');
           setEmail(v || null);
@@ -225,6 +218,24 @@ export default function MyApp({ Component, pageProps }) {
     window.addEventListener('storage', onStore);
     return () => {
       window.removeEventListener('storage', onStore);
+    };
+  }, []);
+
+  // Small helper injection: add a CSS class you can use for a bold Go-to-Homepage link.
+  useEffect(() => {
+    const STYLE_ID = 'nova-small-fixes';
+    const css = `
+      .go-home-button { font-weight: 700 !important; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial !important; }
+    `;
+    if (!document.getElementById(STYLE_ID)) {
+      const s = document.createElement('style');
+      s.id = STYLE_ID;
+      s.appendChild(document.createTextNode(css));
+      document.head.appendChild(s);
+    }
+    return () => {
+      const ex = document.getElementById(STYLE_ID);
+      if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
     };
   }, []);
 
