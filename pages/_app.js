@@ -10,12 +10,13 @@ import GlobalRevealInterceptor from '../components/GlobalRevealInterceptor';
 /**
  * pages/_app.js
  *
- * Changes:
- * - On client mount, call /api/me to get authoritative authenticated state.
- * - If server says authenticated, set email state and write nh_user_email to localStorage
- *   so other client code that expects localStorage continues to work.
- * - If not authenticated, remove nh_user_email.
- * - Keeps existing behavior: hiding signup links, AccountMenu UI, debug hooks.
+ * Changes in this file for your request:
+ * - Removed Billing and Manage entries from the account pulldown.
+ * - The pulldown now shows only: Account (link) and Sign out (button),
+ *   with equal width, smaller height, and bold text.
+ * - Uses /api/me as authoritative on mount (keeps localStorage compatibility).
+ *
+ * No other visual/font changes beyond the pulldown button sizing/weight.
  */
 
 function Progress({ value = 0, max = 1 }) {
@@ -110,16 +111,50 @@ function AccountMenu({ email }) {
               <Progress value={usage?.reveals ?? 0} max={usage?.limitReveals ?? 1} />
             </div>
 
-            {/* Links */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <a href="/billing" style={{ flex: 1, padding: '8px 10px', borderRadius: 6, background: '#f3f4f6', textAlign: 'center', color: '#0b1220', textDecoration: 'none' }}>Billing</a>
-              <a href="/account" style={{ flex: 1, padding: '8px 10px', borderRadius: 6, background: '#fff', border: '1px solid #e6edf3', textAlign: 'center', color: '#0b1220', textDecoration: 'none' }}>Account</a>
-            </div>
+            {/* Only Account + Sign out (no Manage or Billing) */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <a
+                href="/account"
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  background: '#ffffff',
+                  border: '1px solid #e6edf3',
+                  textAlign: 'center',
+                  color: '#0b1220',
+                  textDecoration: 'none',
+                  fontWeight: 700,
+                  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+                  minHeight: 36,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                Account
+              </a>
 
-            {/* Side-by-side action buttons (equal width) */}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <a href="/account" style={{ flex: 1, padding: '8px 10px', borderRadius: 6, background: '#ffffff', border: '1px solid #e6edf3', textAlign: 'center', color: '#0b1220', textDecoration: 'none' }}>Manage</a>
-              <button onClick={handleSignOut} style={{ flex: 1, padding: '8px 10px', borderRadius: 6, background: '#0ea5e9', border: 'none', color: '#fff', cursor: 'pointer' }}>Sign out</button>
+              <button
+                onClick={handleSignOut}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  background: '#0ea5e9',
+                  border: 'none',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+                  minHeight: 36,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                Sign out
+              </button>
             </div>
           </div>
         </div>
@@ -178,7 +213,7 @@ export default function MyApp({ Component, pageProps }) {
 
     function onStore(e) {
       if (!e) return;
-      if (['nh_user_email', 'nh_usage', 'nh_usage_last_update'].includes(e.key)) {
+      if (['nh_user_email', 'nh_usage', 'nh_usage_last_update', 'nh_saved_contacts_last_update'].includes(e.key)) {
         // re-read auth from local storage if server isn't consulted
         try {
           const v = localStorage.getItem('nh_user_email');
