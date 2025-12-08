@@ -8,7 +8,7 @@ import Router from 'next/router';
 import GlobalRevealInterceptor from '../components/GlobalRevealInterceptor';
 
 /**
- * Restored global app wrapper (your proven working code) with two tiny, safe additions:
+ * Restored global app wrapper (your proven working code) with two safe additions:
  *  - Renders GlobalRevealInterceptor for signed-in users so Reveal clicks are handled inline.
  *  - Injects a tiny style to hide Sign Up links when signed-in.
  *
