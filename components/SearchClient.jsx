@@ -213,7 +213,7 @@ export default function SearchClient({ onResults }) {
                             <a onClick={() => { const q = encodeURIComponent(`${c.first_name} ${c.last_name} ${result.company.domain} site:linkedin.com`); window.open('https://www.google.com/search?q=' + q, '_blank'); }} style={{ fontSize: 12, color: '#6b7280' }}>source</a>
                             <button onClick={() => {
                               // bubble custom event for parent (home) to handle reveals/persistence consistently
-                              const ev = new CustomEvent('nh_inline_reveal', { detail: { idx: i } });
+                              const ev = new CustomEvent('nh_inline_reveal', { detail: { domain: result.company.domain, idx: i, contact: c } });
                               window.dispatchEvent(ev);
                             }} style={{ padding: '6px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Reveal</button>
                           </div>
