@@ -23,10 +23,16 @@ export default async function handler(req, res) {
   const authHeader = req.headers.authorization || '';
   const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   const cookie = req.headers.cookie || '';
-  const cookies = Object.fromEntries(cookie.split(';').map(s => s.trim()).filter(Boolean).map(c => {
-    const i = c.indexOf('=');
-    return [c.slice(0,i), c.slice(i+1)];
-  }));
+  const cookies = Object.fromEntries(
+    cookie
+      .split(';')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(c => {
+        const i = c.indexOf('=');
+        return [c.slice(0, i), c.slice(i + 1)];
+      })
+  );
   const token = bearer || cookies['session'] || cookies['session_id'] || cookies['sb:token'];
 
   if (!token) return jsonResponse(res, 401, { error: 'missing session' });
