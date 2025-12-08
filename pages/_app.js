@@ -9,14 +9,41 @@ import GlobalRevealInterceptor from '../components/GlobalRevealInterceptor';
 
 /**
  * pages/_app.js
- *
- * Fixes applied:
- * - After /api/me confirms authenticated, also fetch /api/session-info and write nh_usage to localStorage
- *   so header shows the server-side plan/limits immediately.
- * - Sign out now calls the server sign-out endpoint (POST /api/auth/signout) and falls back to /api/signout,
- *   then clears local keys and notifies listeners.
- * - Keeps previous localStorage compatibility and dispatches nh_usage_updated / nh_auth_changed events.
+ * - Robust session-info parsing into a normalized nh_usage object.
+ * - Sign out attempts server endpoints and verifies /api/me is unauthenticated (polls a few times).
+ * - Emits nh_usage_updated and nh_auth_changed so UI updates.
  */
+
+function normalizeUsage(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  // possible shapes; try to extract canonical values
+  const out = {};
+  // direct numeric fields
+  out.searches = obj.searches ?? obj.usedSearches ?? obj.search_count ?? obj.searches_used ?? obj.searchesCount ?? 0;
+  out.reveals = obj.reveals ?? obj.usedReveals ?? obj.reveal_count ?? obj.reveals_used ?? 0;
+  // limits
+  out.limitSearches = obj.limitSearches ?? obj.maxSearches ?? obj.quotaSearches ?? obj.search_limit ?? obj.limit_searches ?? 0;
+  out.limitReveals = obj.limitReveals ?? obj.maxReveals ?? obj.quotaReveals ?? obj.reveal_limit ?? obj.limit_reveals ?? 0;
+  out.plan = obj.plan ?? obj.tier ?? obj.product ?? null;
+  // if nested
+  if (!out.searches && obj.usage && typeof obj.usage === 'object') {
+    return normalizeUsage(obj.usage);
+  }
+  // if server returns { searches: { used, limit } } style
+  if (!out.searches && obj.searches && typeof obj.searches === 'object') {
+    out.searches = obj.searches.used ?? obj.searches.value ?? out.searches;
+    out.limitSearches = obj.searches.limit ?? obj.searches.max ?? out.limitSearches;
+  }
+  if (!out.reveals && obj.reveals && typeof obj.reveals === 'object') {
+    out.reveals = obj.reveals.used ?? obj.reveals.value ?? out.reveals;
+    out.limitReveals = obj.reveals.limit ?? obj.reveals.max ?? out.limitReveals;
+  }
+  // ensure numbers
+  ['searches','reveals','limitSearches','limitReveals'].forEach(k => {
+    out[k] = Number(out[k] ?? 0) || 0;
+  });
+  return out;
+}
 
 function Progress({ value = 0, max = 1 }) {
   const pct = Math.max(0, Math.min(100, Math.round((value / Math.max(1, max)) * 100)));
@@ -53,7 +80,6 @@ function AccountMenu({ email }) {
     window.addEventListener('nh_usage_updated', readUsage);
     window.addEventListener('nh_auth_changed', readUsage);
 
-    // initial read
     readUsage();
 
     return () => {
@@ -63,46 +89,6 @@ function AccountMenu({ email }) {
       window.removeEventListener('nh_auth_changed', readUsage);
     };
   }, []);
-
-  async function handleSignOut() {
-    try {
-      // try server signout first so session cookie is cleared
-      const endpoints = ['/api/auth/signout', '/api/signout', '/api/auth/sign-out'];
-      for (const url of endpoints) {
-        try {
-          const res = await fetch(url, { method: 'POST', credentials: 'same-origin' });
-          // if any signout endpoint returns ok, break and proceed to local cleanup
-          if (res && (res.status === 200 || res.status === 204 || res.status === 201)) break;
-        } catch (e) {
-          // ignore and try next endpoint
-        }
-      }
-    } catch (err) {
-      // ignore network errors but still proceed to local cleanup
-      console.error('signout server call failed', err);
-    }
-
-    // local cleanup
-    try {
-      clearClientSignedIn();
-    } catch (e) {}
-    try {
-      localStorage.removeItem('nh_user_email');
-      localStorage.removeItem('nh_usage');
-      localStorage.removeItem('nh_saved_contacts_last_update');
-      localStorage.removeItem('nh_usage_last_update');
-      localStorage.removeItem('nh_last_domain');
-    } catch (e) {}
-    setOpen(false);
-    try {
-      window.dispatchEvent(new Event('nh_auth_changed'));
-    } catch (e) {}
-    try {
-      Router.push('/');
-    } catch (e) {
-      window.location.href = '/';
-    }
-  }
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
@@ -133,7 +119,6 @@ function AccountMenu({ email }) {
           zIndex: 120
         }}>
           <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {/* Usage blocks */}
             <div>
               <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>Searches</div>
               <Progress value={usage?.searches ?? 0} max={usage?.limitSearches ?? 1} />
@@ -144,7 +129,6 @@ function AccountMenu({ email }) {
               <Progress value={usage?.reveals ?? 0} max={usage?.limitReveals ?? 1} />
             </div>
 
-            {/* Only Account + Sign out (no Manage or Billing) */}
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
               <a
                 href="/account"
@@ -168,7 +152,56 @@ function AccountMenu({ email }) {
               </a>
 
               <button
-                onClick={handleSignOut}
+                onClick={async () => {
+                  // attempt server signout and verify
+                  try {
+                    const endpoints = ['/api/auth/signout', '/api/signout', '/api/auth/sign-out'];
+                    for (const url of endpoints) {
+                      try {
+                        await fetch(url, { method: 'POST', credentials: 'same-origin' });
+                      } catch (e) {}
+                    }
+                    // poll /api/me a few times
+                    let unauthenticated = false;
+                    for (let i = 0; i < 4; i++) {
+                      try {
+                        const r = await fetch('/api/me', { credentials: 'same-origin' });
+                        if (!r.ok) { unauthenticated = true; break; }
+                        const txt = await r.text().catch(() => '');
+                        if (!txt) { unauthenticated = true; break; }
+                        try {
+                          const body = JSON.parse(txt);
+                          if (!body || !body.authenticated) { unauthenticated = true; break; }
+                        } catch (e) {
+                          // if text is not JSON evaluate as unauthenticated if empty
+                        }
+                      } catch (e) {
+                        unauthenticated = true;
+                        break;
+                      }
+                      // wait 350ms before next check
+                      await new Promise(res => setTimeout(res, 350));
+                    }
+                    // local cleanup regardless
+                    try { clearClientSignedIn(); } catch (e) {}
+                    try {
+                      localStorage.removeItem('nh_user_email');
+                      localStorage.removeItem('nh_usage');
+                      localStorage.removeItem('nh_saved_contacts_last_update');
+                      localStorage.removeItem('nh_usage_last_update');
+                      localStorage.removeItem('nh_last_domain');
+                    } catch (e) {}
+                    try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (e) {}
+                    if (!unauthenticated) {
+                      alert('Sign out attempted but server session still appears active. If you remain signed in, try a hard refresh or clearing cookies. If the problem persists please contact support.');
+                    }
+                    try { Router.push('/'); } catch (e) { window.location.href = '/'; }
+                  } catch (err) {
+                    console.error('signout flow error', err);
+                    try { clearClientSignedIn(); } catch (e) {}
+                    try { Router.push('/'); } catch (e) { window.location.href = '/'; }
+                  }
+                }}
                 style={{
                   flex: 1,
                   padding: '6px 8px',
@@ -202,7 +235,6 @@ export default function MyApp({ Component, pageProps }) {
     if (typeof window === 'undefined') return;
     setMounted(true);
 
-    // Read authoritative session from server; fall back to local storage getter.
     async function readAuth() {
       try {
         const res = await fetch('/api/me', { credentials: 'same-origin' });
@@ -214,22 +246,20 @@ export default function MyApp({ Component, pageProps }) {
               setEmail(e);
               try { localStorage.setItem('nh_user_email', e); } catch (err) {}
 
-              // fetch session-info to get plan/usage and write to nh_usage so header shows server state
+              // fetch session-info and normalize usage
               try {
                 const sess = await fetch('/api/session-info', { credentials: 'same-origin' });
                 if (sess && sess.ok) {
                   const sessBody = await sess.json().catch(() => null);
-                  if (sessBody) {
+                  const normalized = normalizeUsage(sessBody);
+                  if (normalized) {
                     try {
-                      // canonicalize usage object; some servers return { usage: {...} } others return direct usage
-                      const usageObj = sessBody.usage || sessBody;
-                      localStorage.setItem('nh_usage', JSON.stringify(usageObj));
+                      localStorage.setItem('nh_usage', JSON.stringify(normalized));
                       try { window.dispatchEvent(new CustomEvent('nh_usage_updated')); } catch (e) {}
                     } catch (e) {}
                   }
                 }
               } catch (e) {
-                // ignore session-info errors
                 console.error('session-info fetch error', e);
               }
 
@@ -239,10 +269,10 @@ export default function MyApp({ Component, pageProps }) {
           }
         }
       } catch (err) {
-        // ignore network errors for this check; fall through to local fallback
+        console.error('readAuth /api/me error', err);
       }
 
-      // fallback: try client-side stored email (older flows)
+      // fallback to client-side stored email if available
       try {
         const clientE = getClientEmail();
         if (clientE) {
@@ -253,7 +283,7 @@ export default function MyApp({ Component, pageProps }) {
         }
       } catch (e) {}
 
-      // not authenticated — clear any leftover key
+      // not authenticated
       try { localStorage.removeItem('nh_user_email'); } catch (e) {}
       setEmail(null);
       try { window.dispatchEvent(new Event('nh_auth_changed')); } catch (err) {}
@@ -277,7 +307,7 @@ export default function MyApp({ Component, pageProps }) {
     };
   }, []);
 
-  // Small helper injection: add a CSS class you can use for a bold Go-to-Homepage link.
+  // small helper class injection for an opt-in bold homepage link
   useEffect(() => {
     const STYLE_ID = 'nova-small-fixes';
     const css = `
@@ -324,7 +354,6 @@ export default function MyApp({ Component, pageProps }) {
     <>
       <Head><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
 
-      {/* Only show compact signed-in bar; anonymous users see no header */}
       {mounted && email ? (
         <div style={{ width: '100%', padding: '10px 16px', boxSizing: 'border-box', background: '#fff', borderBottom: '1px solid rgba(14,20,24,0.04)', position: 'sticky', top: 0, zIndex: 40 }}>
           <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -333,7 +362,6 @@ export default function MyApp({ Component, pageProps }) {
         </div>
       ) : null}
 
-      {/* Global interceptor restored for inline reveals */}
       {mounted && email && typeof window !== 'undefined' && <GlobalRevealInterceptor />}
 
       <ErrorBoundary>
