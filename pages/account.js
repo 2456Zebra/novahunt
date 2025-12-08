@@ -1,7 +1,8 @@
-// Full replacement for pages/account.js
-// - Adds "Back to Homepage" link.
-// - Fetches saved reveals and refreshes on saved-contact events.
-// - Uses defensive endpoints and shows simple messages if endpoints are missing.
+// pages/account.js (improved)
+// - Reads server saved contacts if available.
+// - Falls back to client-local saved contacts stored in localStorage 'nh_saved_contacts'.
+// - "No saved contacts" message changed and greyed.
+// - Listens to nh_saved_contact and storage markers to refresh.
 
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
@@ -62,14 +63,38 @@ export default function AccountPage() {
         }
       }
 
+      // fallback to localStorage 'nh_saved_contacts'
+      try {
+        if (!got) {
+          const raw = localStorage.getItem('nh_saved_contacts') || '[]';
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr) && arr.length > 0) {
+            got = arr;
+          }
+        } else {
+          // also merge local saved (dedupe by email)
+          const raw = localStorage.getItem('nh_saved_contacts') || '[]';
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr) && arr.length > 0) {
+            const emails = new Set((got || []).map(x => (x.email || '').toLowerCase()));
+            for (const item of arr) {
+              if (!emails.has((item.email || '').toLowerCase())) got.unshift(item);
+            }
+          }
+        }
+      } catch (e) {
+        // ignore localStorage parse errors
+      }
+
       if (mounted) {
-        if (got) {
+        if (got && got.length > 0) {
           setSaved(got);
           setLoading(false);
         } else {
           setSaved([]);
           setLoading(false);
-          setError('No saved contacts found or saved-contacts endpoint not available on server.');
+          // show simpler message (grey) when there are no saved contacts
+          setError(null);
         }
       }
     }
@@ -83,7 +108,6 @@ export default function AccountPage() {
     window.addEventListener('nh_saved_contact', savedHandler);
     window.addEventListener('nh_saved_contacts_last_update', savedHandler);
     window.addEventListener('nh_usage_updated', savedHandler);
-
     function storageHandler(e) {
       if (!e || !e.key) return;
       if (['nh_saved_contacts_last_update', 'nh_usage_last_update'].includes(e.key)) {
@@ -120,11 +144,7 @@ export default function AccountPage() {
           <h2 style={{ marginBottom: 8 }}>Saved Reveals</h2>
           {loading ? (
             <div style={{ color: '#6b7280' }}>Loading saved contacts…</div>
-          ) : error ? (
-            <div style={{ color: '#dc2626' }}>{error}</div>
-          ) : (!saved || saved.length === 0) ? (
-            <div style={{ color: '#6b7280' }}>No saved contacts yet.</div>
-          ) : (
+          ) : (saved && saved.length > 0) ? (
             <div style={{ display: 'grid', gap: 12 }}>
               {saved.map((c, i) => (
                 <div key={c.id || c.email || i} style={{ padding: 12, borderRadius: 8, background: '#fff', border: '1px solid #e6edf3' }}>
@@ -142,6 +162,7 @@ export default function AccountPage() {
                           const newSaved = [...saved];
                           newSaved.splice(idx, 1);
                           setSaved(newSaved);
+                          // try server delete endpoints (best-effort)
                           const delEndpoints = ['/api/delete-saved-contact', '/api/remove-saved-contact', '/api/saved-contacts'];
                           for (const url of delEndpoints) {
                             try {
@@ -165,6 +186,8 @@ export default function AccountPage() {
                 </div>
               ))}
             </div>
+          ) : (
+            <div style={{ color: '#9ca3af' }}>No saved contacts found.</div>
           )}
         </section>
 
@@ -173,7 +196,6 @@ export default function AccountPage() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => { Router.push('/plans'); }} style={{ padding: '8px 10px', borderRadius: 8, background: '#fff', border: '1px solid #e6edf3', cursor: 'pointer' }}>Change plan</button>
             <button onClick={async () => {
-              // signout: try server then local cleanup
               try {
                 await fetch('/api/auth/signout', { method: 'POST', credentials: 'same-origin' }).catch(()=>null);
               } catch (e) {}
