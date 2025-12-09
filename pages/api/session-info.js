@@ -1,5 +1,5 @@
 // pages/api/session-info.js
-// Defensive session-info: uses supabase.auth.getUser(token) only and avoids querying public.users fallback.
+// Defensive session-info: validates a token via Supabase auth.getUser and only queries usage/subscription tables.
 // Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars.
 
 import { createClient } from '@supabase/supabase-js';
@@ -41,15 +41,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Use Supabase auth to validate token and get user information
     const { data: userData, error: userErr } = await supabase.auth.getUser(token);
     if (userErr || !userData?.user) {
-      // Token invalid or expired
       return jsonResponse(res, 401, { error: 'invalid session' });
     }
     const user = userData.user;
 
-    // Query subscription & usage (adjust table names to your schema if different)
+    // Query subscription & usage — update table names if your schema is different
     const [{ data: subsRes }, { data: usageRes }] = await Promise.all([
       supabase.from('subscriptions').select('*').eq('user_id', user.id).limit(1).maybeSingle().catch(()=>({ data: null })),
       supabase.from('usage').select('*').eq('user_id', user.id).limit(1).maybeSingle().catch(()=>({ data: null })),
