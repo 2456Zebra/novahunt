@@ -1,7 +1,6 @@
 // pages/success.js
-// Client success page: reads ?session_id=... from URL, asks server for the checkout email,
-// shows 1-2 quick flashes and then redirects to /set-password?email=... (so set-password can auto-signin).
-// If email cannot be obtained, shows a "Sign in" link and a link to go to /set-password manually.
+// Displays two quick flashes, shows a small grey token (truncated session_id) and then redirects to /set-password?email=...
+// Expects ?session_id=... in the URL. Uses /api/stripe-session to retrieve the customer's email server-side.
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -9,49 +8,52 @@ import { useRouter } from 'next/router';
 export default function SuccessPage() {
   const router = useRouter();
   const { session_id } = router.query;
-  const [status, setStatus] = useState('loading'); // loading -> ready -> redirect-failed
-  const [email, setEmail] = useState(null);
+  const [status, setStatus] = useState('loading'); // loading -> ready -> failed
+  const [email, setEmail] = useState('');
+  const [tokenToShow, setTokenToShow] = useState('');
 
   useEffect(() => {
     if (!session_id) return;
     let cancelled = false;
 
-    async function fetchEmailAndRedirect() {
+    async function run() {
+      setStatus('loading');
       try {
-        setStatus('loading');
+        // Fetch customer email from server so we can redirect to /set-password?email=...
         const res = await fetch(`/api/stripe-session?session_id=${encodeURIComponent(session_id)}`, {
           method: 'GET',
           credentials: 'same-origin'
         });
 
         if (!res.ok) {
-          // fallback: show UI and let user click through
-          setStatus('redirect-failed');
+          setStatus('failed');
           return;
         }
-
         const body = await res.json();
         if (cancelled) return;
-        setEmail(body.email || null);
+        setEmail(body.email || '');
 
-        // show first flash quickly, then second, then redirect
+        // Show a small grey token derived from the session id (truncated for display)
+        const tidy = String(session_id).slice(0, 18);
+        setTokenToShow(tidy);
+
+        // first flash
         setStatus('ready');
+        // short pause so user sees the two quick flashes
+        await new Promise(r => setTimeout(r, 700));
+        // second flash (keep status ready, we just pause)
+        await new Promise(r => setTimeout(r, 600));
 
-        // Pause briefly so users see the two quick page flashes you mentioned
-        // First flash: "Payment processed" (we're already on success page)
-        // Second flash: "Redirecting to set password..."
-        await new Promise(r => setTimeout(r, 800)); // short pause
-        // Then redirect to set-password with email prefilled
-        const target = `/set-password?email=${encodeURIComponent(body.email || '')}`;
-        // Use replace so history doesn't keep success page
+        // Redirect to the simple set-password page with email in query
+        const target = `/set-password?email=${encodeURIComponent(body.email || '')}&token=${encodeURIComponent(session_id)}`;
         router.replace(target);
       } catch (err) {
         console.error('success page error', err);
-        setStatus('redirect-failed');
+        if (!cancelled) setStatus('failed');
       }
     }
 
-    fetchEmailAndRedirect();
+    run();
     return () => { cancelled = true; };
   }, [session_id, router]);
 
@@ -60,28 +62,23 @@ export default function SuccessPage() {
       <h1>Payment processed</h1>
 
       {status === 'loading' && (
-        <>
-          <p>Finalizing your account...</p>
-          <p>Please wait — you will be redirected to finish setting your password.</p>
-        </>
+        <p>Finalizing your account...</p>
       )}
 
       {status === 'ready' && (
         <>
           <p>Payment processed</p>
-          <p>Redirecting you to set your password and finish account setup...</p>
+          <p style={{ color: '#666', marginTop: 8 }}>
+            <small style={{ color: '#999' }}>{tokenToShow ? `Token: ${tokenToShow}` : ''}</small>
+          </p>
+          <p style={{ marginTop: 12 }}>Redirecting to set your password...</p>
         </>
       )}
 
-      {status === 'redirect-failed' && (
+      {status === 'failed' && (
         <>
           <p>Payment processed</p>
-          <p>Unable to automatically continue. You can:</p>
-          <ul>
-            <li><a href="/set-password">Set your password (manual)</a></li>
-            <li><a href="/signin">Sign in</a> (if you already set a password)</li>
-          </ul>
-          <p>If you continue to have trouble, contact support.</p>
+          <p>We couldn't continue automatically. Please <a href="/set-password">set your password</a> or contact support.</p>
         </>
       )}
 
