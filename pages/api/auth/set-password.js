@@ -1,28 +1,28 @@
 // pages/api/auth/set-password.js
-// Server endpoint to finalize a new account's password after Stripe Checkout.
-// POST { email, password, token }
-// - Verifies the Stripe Checkout session token (if present) and that the session email matches.
-// - Uses SUPABASE_SERVICE_ROLE_KEY to create the user if missing or update the user's password if present.
-// - If create user fails with "email_exists" the handler will attempt to locate the existing user and update its password.
-// - Returns 200 on success, suitable for the existing client flow that calls /api/auth/signin afterwards.
+// Improved finalize endpoint: tries to create or update a Supabase user using the service-role key.
+// If create fails with an "email exists" error and the user cannot be located, it falls back to sending
+// a password reset email (so the user can set their own password).
 //
 // Required env:
 // - SUPABASE_URL
 // - SUPABASE_SERVICE_ROLE_KEY
-// - STRIPE_SECRET_KEY (recommended; endpoint will validate token if provided)
+// Optional:
+// - STRIPE_SECRET_KEY (for token validation)
+// - POST_RESET_REDIRECT (URL to redirect user to after they click the recovery link; defaults to the set-password page)
 
 import Stripe from 'stripe';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+const POST_RESET_REDIRECT = process.env.POST_RESET_REDIRECT || 'https://www.novahunt.ai/set-password';
 
 function json(res, status, body) {
   res.status(status).json(body);
 }
 
 async function stripeValidateToken(token, email) {
-  if (!STRIPE_SECRET_KEY) return { ok: true, reason: 'no_stripe_key' }; // skip validation if stripe key not present
+  if (!STRIPE_SECRET_KEY) return { ok: true, reason: 'no_stripe_key' };
   const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' });
   try {
     const session = await stripe.checkout.sessions.retrieve(token, { expand: ['customer'] });
@@ -47,10 +47,11 @@ async function findUserByEmail(email) {
   };
   try {
     const res = await fetch(url, { method: 'GET', headers });
+    const text = await res.text().catch(()=>null);
     if (!res.ok) {
-      return { ok: false, status: res.status, body: await res.text().catch(()=>null) };
+      return { ok: false, status: res.status, body: text };
     }
-    const js = await res.json();
+    const js = JSON.parse(text || 'null');
     if (Array.isArray(js) && js.length > 0) return { ok: true, user: js[0] };
     if (js && js.id) return { ok: true, user: js };
     return { ok: false, user: null, body: js };
@@ -101,22 +102,34 @@ async function updateUserPassword(uid, password) {
 }
 
 function parseCreateError(body) {
-  // body may be JSON string or plain text; try to extract error_code/email_exists
   try {
     const parsed = typeof body === 'string' ? JSON.parse(body) : body;
     if (parsed?.error_code) return parsed.error_code;
     if (parsed?.code && parsed?.msg) {
-      // some responses embed a code/msg
       if (typeof parsed.msg === 'string' && parsed.msg.includes('already been registered')) return 'email_exists';
     }
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) {}
   try {
     if (typeof body === 'string' && body.includes('email_exists')) return 'email_exists';
     if (typeof body === 'string' && body.includes('A user with this email address has already been registered')) return 'email_exists';
   } catch (e) {}
   return null;
+}
+
+async function sendPasswordRecover(email) {
+  // Use the Supabase recover endpoint to send a password reset email.
+  const url = `${SUPABASE_URL}/auth/v1/recover`;
+  const headers = { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` };
+  const body = { email, redirect_to: POST_RESET_REDIRECT };
+  try {
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    const text = await res.text().catch(()=>null);
+    if (!res.ok) return { ok: false, status: res.status, body: text };
+    return { ok: true, body: text };
+  } catch (err) {
+    console.error('sendPasswordRecover error', err);
+    return { ok: false, error: err };
+  }
 }
 
 export default async function handler(req, res) {
@@ -146,48 +159,58 @@ export default async function handler(req, res) {
   }
 
   try {
-    // First attempt to locate user
+    // 1) Try to find existing user
     const found = await findUserByEmail(email);
     if (found.ok && found.user) {
       const uid = found.user.id || found.user.user?.id || found.user.uid || null;
       if (!uid) {
         console.warn('user found but no id', found.user);
-        return json(res, 500, { error: 'user_no_id' });
+        // Fall through to try creation and fallback
+      } else {
+        const updated = await updateUserPassword(uid, password);
+        if (!updated.ok) {
+          console.error('updateUserPassword failed', updated);
+          return json(res, 500, { error: 'update_password_failed', details: updated.body || updated });
+        }
+        return json(res, 200, { ok: true, action: 'updated' });
       }
-      const updated = await updateUserPassword(uid, password);
-      if (!updated.ok) {
-        console.error('updateUserPassword failed', updated);
-        return json(res, 500, { error: 'update_password_failed', details: updated.body || updated });
-      }
-      return json(res, 200, { ok: true, action: 'updated' });
     }
 
-    // Not found -> try create
+    // 2) Not found (or missing id) -> attempt create
     const created = await createUser(email, password);
     if (created.ok) {
       return json(res, 200, { ok: true, action: 'created' });
     }
 
-    // If creation failed, try to detect email_exists and then attempt to find + update
+    // 3) Creation failed -> check for email_exists
     const createErrCode = parseCreateError(created.body || created.error || created);
     if (createErrCode === 'email_exists') {
-      // try to find user again and update password
+      // Try to find the user again. If found, update password.
       const found2 = await findUserByEmail(email);
       if (found2.ok && found2.user) {
         const uid2 = found2.user.id || found2.user.user?.id || found2.user.uid || null;
         if (!uid2) {
-          console.warn('user found (after create failure) but no id', found2.user);
-          return json(res, 500, { error: 'user_no_id_after_create' });
+          console.warn('user found after create failure, but no id', found2.user);
+          // Fallback to sending password recovery email
+        } else {
+          const updated2 = await updateUserPassword(uid2, password);
+          if (!updated2.ok) {
+            console.error('updateUserPassword after create failure failed', updated2);
+            // Fallback to sending password recovery email
+          } else {
+            return json(res, 200, { ok: true, action: 'updated_after_create_conflict' });
+          }
         }
-        const updated2 = await updateUserPassword(uid2, password);
-        if (!updated2.ok) {
-          console.error('updateUserPassword after create failure failed', updated2);
-          return json(res, 500, { error: 'update_password_failed_after_create', details: updated2.body || updated2 });
-        }
-        return json(res, 200, { ok: true, action: 'updated_after_create_conflict' });
+      }
+
+      // If we reach here, we couldn't locate the user to update despite Supabase saying the email exists.
+      // As a safe fallback, send a password recovery email so user can set their password themselves.
+      const recover = await sendPasswordRecover(email);
+      if (recover.ok) {
+        return json(res, 200, { ok: true, action: 'password_reset_sent', message: 'Password recovery email sent' });
       } else {
-        console.error('email_exists but user not found after create failure', created);
-        return json(res, 500, { error: 'email_exists_but_user_not_found', details: created.body || created });
+        console.error('password recover failed', recover);
+        return json(res, 500, { error: 'password_recover_failed', details: recover.body || recover });
       }
     }
 
