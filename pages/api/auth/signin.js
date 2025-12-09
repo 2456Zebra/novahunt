@@ -26,16 +26,16 @@ function deriveCookieDomainFromHost(hostHeader) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return sendJson(res, 405, { error: 'method not allowed' });
+    return sendJson(res, 405, { error: 'method_not_allowed' });
   }
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return sendJson(res, 501, { error: 'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.' });
+    return sendJson(res, 501, { error: 'supabase_not_configured' });
   }
 
   const { email, password } = req.body || {};
   if (!email || !password) {
-    return sendJson(res, 400, { error: 'missing email or password' });
+    return sendJson(res, 400, { error: 'missing_email_or_password' });
   }
 
   try {
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
 
     if (error || !data || !data.session) {
       console.warn('signin failed', error);
-      return sendJson(res, 401, { error: 'invalid_credentials' });
+      return sendJson(res, 401, { error: 'invalid_credentials', detail: error?.message || null });
     }
 
     const session = data.session;
@@ -87,10 +87,11 @@ export default async function handler(req, res) {
       cookies.push(`refresh_token=${session.refresh_token}; ${refreshOpts}`);
     }
 
+    // Set cookies (multiple Set-Cookie headers)
     res.setHeader('Set-Cookie', cookies);
-    return sendJson(res, 200, { ok: true });
+    return sendJson(res, 200, { ok: true, session: { expires_at: session.expires_at || null } });
   } catch (err) {
     console.error('signin endpoint error', err);
-    return sendJson(res, 500, { error: 'internal' });
+    return sendJson(res, 500, { error: 'internal', detail: err?.message || String(err) });
   }
 }
