@@ -3,11 +3,12 @@ import ClientOnly from './ClientOnly';
 import RightPanel from './RightPanel';
 
 /**
- * Restored SearchClient with one small, safe addition:
- * - After a successful search it writes the last domain to window.__nh_last_domain and localStorage 'nh_last_domain'
- * - Also dispatches 'nh_usage_updated' and writes nh_usage_last_update so the AccountMenu updates immediately.
+ * SearchClient
  *
- * Otherwise it's identical to your working version.
+ * - Controlled input (no pills)
+ * - performSearch only increments usage on a successful response
+ * - robust error handling so 'Searching…' is cleared on error/timeouts
+ * - emits onResults only for actual searches (so parent won't treat arbitrary clicks as searches)
  */
 
 export default function SearchClient({ onResults }) {
@@ -47,7 +48,7 @@ export default function SearchClient({ onResults }) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
-      const res = await fetch(url, { ...opts, signal: controller.signal, credentials: 'same-origin' });
+      const res = await fetch(url, { ...opts, signal: controller.signal });
       return res;
     } finally {
       clearTimeout(id);
@@ -88,18 +89,6 @@ export default function SearchClient({ onResults }) {
       if (typeof onResults === 'function') {
         try { onResults({ domain, result: { company } }); } catch (e) {}
       }
-
-      // --- Small additions to restore Reveal fallback & header updates ---
-      try {
-        window.__nh_last_domain = domain;
-        localStorage.setItem('nh_last_domain', domain);
-      } catch (e) {}
-
-      try {
-        window.dispatchEvent(new CustomEvent('nh_usage_updated'));
-        localStorage.setItem('nh_usage_last_update', String(Date.now()));
-      } catch (e) {}
-      // --- end additions ---
     } catch (err) {
       if (!mountedRef.current) return;
       console.error('Search error', err);
@@ -207,13 +196,13 @@ export default function SearchClient({ onResults }) {
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                           <div>
                             <div style={{ fontWeight: 700 }}>{c.first_name} {c.last_name}</div>
-                            <div style={{ color: '#6b7280', fontSize: 13 }}>{c._revealed ? (c.email || '') : (c.email ? c.email.replace(/(.{2})(.*)(@.*)/, (m, a, b, d) => `${a}***${d}`) : '')}</div>
+                            <div style={{ color: '#6b7280', fontSize: 13 }}>{c._revealed ? (c.email || '') : maskEmail(c.email)}</div>
                           </div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             <a onClick={() => { const q = encodeURIComponent(`${c.first_name} ${c.last_name} ${result.company.domain} site:linkedin.com`); window.open('https://www.google.com/search?q=' + q, '_blank'); }} style={{ fontSize: 12, color: '#6b7280' }}>source</a>
                             <button onClick={() => {
                               // bubble custom event for parent (home) to handle reveals/persistence consistently
-                              const ev = new CustomEvent('nh_inline_reveal', { detail: { domain: result.company.domain, idx: i, contact: c } });
+                              const ev = new CustomEvent('nh_inline_reveal', { detail: { idx: i } });
                               window.dispatchEvent(ev);
                             }} style={{ padding: '6px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Reveal</button>
                           </div>
