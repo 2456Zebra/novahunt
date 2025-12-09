@@ -1,6 +1,6 @@
 // pages/success.js
-// Displays two quick flashes, shows a small grey token (truncated session_id) and then redirects to /set-password?email=...
-// Expects ?session_id=... in the URL. Uses /api/stripe-session to retrieve the customer's email server-side.
+// Shows two quick flashes, displays a small grey truncated token, then redirects to /set-password?email=...&token=...
+// Expects ?session_id=... in the URL and uses /api/stripe-session to fetch the customer email.
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -19,7 +19,6 @@ export default function SuccessPage() {
     async function run() {
       setStatus('loading');
       try {
-        // Fetch customer email from server so we can redirect to /set-password?email=...
         const res = await fetch(`/api/stripe-session?session_id=${encodeURIComponent(session_id)}`, {
           method: 'GET',
           credentials: 'same-origin'
@@ -33,18 +32,16 @@ export default function SuccessPage() {
         if (cancelled) return;
         setEmail(body.email || '');
 
-        // Show a small grey token derived from the session id (truncated for display)
+        // small grey token (truncated)
         const tidy = String(session_id).slice(0, 18);
         setTokenToShow(tidy);
 
         // first flash
         setStatus('ready');
-        // short pause so user sees the two quick flashes
         await new Promise(r => setTimeout(r, 700));
-        // second flash (keep status ready, we just pause)
+        // second flash pause
         await new Promise(r => setTimeout(r, 600));
 
-        // Redirect to the simple set-password page with email in query
         const target = `/set-password?email=${encodeURIComponent(body.email || '')}&token=${encodeURIComponent(session_id)}`;
         router.replace(target);
       } catch (err) {
