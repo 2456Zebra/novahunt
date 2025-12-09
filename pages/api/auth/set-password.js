@@ -3,16 +3,13 @@
 // POST { email, password, token }
 // - Verifies the Stripe Checkout session token (if present) and that the session email matches.
 // - Uses SUPABASE_SERVICE_ROLE_KEY to create the user if missing or update the user's password if present.
+// - If create user fails with "email_exists" the handler will attempt to locate the existing user and update its password.
 // - Returns 200 on success, suitable for the existing client flow that calls /api/auth/signin afterwards.
 //
 // Required env:
 // - SUPABASE_URL
 // - SUPABASE_SERVICE_ROLE_KEY
 // - STRIPE_SECRET_KEY (recommended; endpoint will validate token if provided)
-//
-// Notes:
-// - This uses Supabase Admin REST endpoints under /auth/v1/admin/users. It requires the service role key.
-// - If you don't want token validation, client may call this without token but that's less secure.
 
 import Stripe from 'stripe';
 
@@ -30,7 +27,6 @@ async function stripeValidateToken(token, email) {
   try {
     const session = await stripe.checkout.sessions.retrieve(token, { expand: ['customer'] });
     const sessionEmail = session.customer_details?.email || session.customer?.email || session.customer_email || null;
-    // Accept if session email matches and payment_status indicates paid (or session.status==='complete')
     const paid = session.payment_status === 'paid' || session.status === 'complete' || !!session.amount_total;
     if (!sessionEmail) return { ok: false, reason: 'stripe_no_email' };
     if (sessionEmail.toLowerCase() !== String(email || '').toLowerCase()) return { ok: false, reason: 'email_mismatch' };
@@ -43,7 +39,6 @@ async function stripeValidateToken(token, email) {
 }
 
 async function findUserByEmail(email) {
-  // Supabase Admin REST: GET /auth/v1/admin/users?email=<email>
   const url = `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`;
   const headers = {
     'Content-Type': 'application/json',
@@ -53,11 +48,9 @@ async function findUserByEmail(email) {
   try {
     const res = await fetch(url, { method: 'GET', headers });
     if (!res.ok) {
-      // 404 or 400 simply means not found / not accessible
       return { ok: false, status: res.status, body: await res.text().catch(()=>null) };
     }
     const js = await res.json();
-    // Supabase may return an array or object — normalize
     if (Array.isArray(js) && js.length > 0) return { ok: true, user: js[0] };
     if (js && js.id) return { ok: true, user: js };
     return { ok: false, user: null, body: js };
@@ -75,11 +68,16 @@ async function createUser(email, password) {
     Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`
   };
   const body = { email, password, email_confirm: true };
-  const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-  const text = await res.text().catch(()=>null);
-  if (!res.ok) return { ok: false, status: res.status, body: text };
-  const js = JSON.parse(text || '{}');
-  return { ok: true, user: js };
+  try {
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    const text = await res.text().catch(()=>null);
+    if (!res.ok) return { ok: false, status: res.status, body: text };
+    const js = JSON.parse(text || '{}');
+    return { ok: true, user: js };
+  } catch (err) {
+    console.error('createUser error', err);
+    return { ok: false, error: err };
+  }
 }
 
 async function updateUserPassword(uid, password) {
@@ -90,11 +88,35 @@ async function updateUserPassword(uid, password) {
     Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`
   };
   const body = { password, email_confirm: true };
-  const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(body) });
-  const text = await res.text().catch(()=>null);
-  if (!res.ok) return { ok: false, status: res.status, body: text };
-  const js = JSON.parse(text || '{}');
-  return { ok: true, user: js };
+  try {
+    const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(body) });
+    const text = await res.text().catch(()=>null);
+    if (!res.ok) return { ok: false, status: res.status, body: text };
+    const js = JSON.parse(text || '{}');
+    return { ok: true, user: js };
+  } catch (err) {
+    console.error('updateUserPassword error', err);
+    return { ok: false, error: err };
+  }
+}
+
+function parseCreateError(body) {
+  // body may be JSON string or plain text; try to extract error_code/email_exists
+  try {
+    const parsed = typeof body === 'string' ? JSON.parse(body) : body;
+    if (parsed?.error_code) return parsed.error_code;
+    if (parsed?.code && parsed?.msg) {
+      // some responses embed a code/msg
+      if (typeof parsed.msg === 'string' && parsed.msg.includes('already been registered')) return 'email_exists';
+    }
+  } catch (e) {
+    // ignore
+  }
+  try {
+    if (typeof body === 'string' && body.includes('email_exists')) return 'email_exists';
+    if (typeof body === 'string' && body.includes('A user with this email address has already been registered')) return 'email_exists';
+  } catch (e) {}
+  return null;
 }
 
 export default async function handler(req, res) {
@@ -116,7 +138,6 @@ export default async function handler(req, res) {
     return json(res, 400, { error: 'password_too_short' });
   }
 
-  // 1) Validate token via Stripe (if provided / if configured)
   if (token) {
     const v = await stripeValidateToken(token, email);
     if (!v.ok) {
@@ -125,36 +146,54 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 2) Find existing user by email
+    // First attempt to locate user
     const found = await findUserByEmail(email);
     if (found.ok && found.user) {
       const uid = found.user.id || found.user.user?.id || found.user.uid || null;
       if (!uid) {
-        // fallback: try to read id from the top-level object
-        const maybeId = found.user.id || null;
-        if (!maybeId) {
-          console.warn('user found but no id', found.user);
-          return json(res, 500, { error: 'user_no_id' });
-        }
+        console.warn('user found but no id', found.user);
+        return json(res, 500, { error: 'user_no_id' });
       }
-      const userId = uid || found.user.id;
-      // 3a) Update user's password
-      const updated = await updateUserPassword(userId, password);
+      const updated = await updateUserPassword(uid, password);
       if (!updated.ok) {
         console.error('updateUserPassword failed', updated);
         return json(res, 500, { error: 'update_password_failed', details: updated.body || updated });
       }
       return json(res, 200, { ok: true, action: 'updated' });
-    } else {
-      // 3b) Create new user
-      const created = await createUser(email, password);
-      if (!created.ok) {
-        console.error('createUser failed', created);
-        // If Supabase returns 400 about existing user, try to parse and surface
-        return json(res, 500, { error: 'create_user_failed', details: created.body || created });
-      }
+    }
+
+    // Not found -> try create
+    const created = await createUser(email, password);
+    if (created.ok) {
       return json(res, 200, { ok: true, action: 'created' });
     }
+
+    // If creation failed, try to detect email_exists and then attempt to find + update
+    const createErrCode = parseCreateError(created.body || created.error || created);
+    if (createErrCode === 'email_exists') {
+      // try to find user again and update password
+      const found2 = await findUserByEmail(email);
+      if (found2.ok && found2.user) {
+        const uid2 = found2.user.id || found2.user.user?.id || found2.user.uid || null;
+        if (!uid2) {
+          console.warn('user found (after create failure) but no id', found2.user);
+          return json(res, 500, { error: 'user_no_id_after_create' });
+        }
+        const updated2 = await updateUserPassword(uid2, password);
+        if (!updated2.ok) {
+          console.error('updateUserPassword after create failure failed', updated2);
+          return json(res, 500, { error: 'update_password_failed_after_create', details: updated2.body || updated2 });
+        }
+        return json(res, 200, { ok: true, action: 'updated_after_create_conflict' });
+      } else {
+        console.error('email_exists but user not found after create failure', created);
+        return json(res, 500, { error: 'email_exists_but_user_not_found', details: created.body || created });
+      }
+    }
+
+    // Other create error: surface it
+    console.error('createUser failed', created);
+    return json(res, 500, { error: 'create_user_failed', details: created.body || created });
   } catch (err) {
     console.error('set-password handler error', err);
     return json(res, 500, { error: 'internal', detail: err?.message || String(err) });
