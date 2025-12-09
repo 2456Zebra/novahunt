@@ -5,10 +5,10 @@
 // - then POSTs to /api/auth/signin to have the server set the HttpOnly cookie
 // - redirects to /account on success
 //
-// NOTES for you before deploying:
+// NOTES:
 // - If your backend already exposes a set-password endpoint, set SET_PASSWORD_API to that path.
 // - Ensure pages/api/auth/signin.js (server) is deployed and COOKIE_DOMAIN is set to ".novahunt.ai" in Vercel.
-// - Adjust styles and any UX to match your app.
+// - Adjust styles and UX to match your app.
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -80,8 +80,8 @@ export default function SetPasswordPage() {
 
       if (!r.ok) {
         const b = await r.json().catch(()=>({}));
-        // Friendly fallback: offer Sign in button / show message
-        setError('Could not sign you in automatically. Please use the Sign in link.');
+        // Generic fallback message — no sign-in link provided here
+        setError('Could not sign you in automatically. Please try again or contact support.');
         console.warn('/api/auth/signin error', r.status, b);
         setLoading(false);
         return;
@@ -141,10 +141,6 @@ export default function SetPasswordPage() {
           {loading ? 'Finishing...' : 'Finish and go to Account'}
         </button>
       </form>
-
-      <div style={{ marginTop: 18 }}>
-        <a href="/signin">Sign in</a> — if auto sign-in fails, you can sign in manually.
-      </div>
     </div>
   );
 }
