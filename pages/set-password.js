@@ -58,7 +58,7 @@ export default function SetPasswordPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
         });
-        // If your set-password endpoint returns 404 or 405, we treat it as "no-server-step" and continue.
+        // If your set-password endpoint returns 404 or 405, treat as "no-server-step" and continue.
         if (resSet.status >= 400 && resSet.status !== 404 && resSet.status !== 405) {
           const txt = await resSet.text().catch(()=>null);
           throw new Error(`Set-password failed (${resSet.status}): ${txt || 'no details'}`);
@@ -79,10 +79,9 @@ export default function SetPasswordPage() {
       });
 
       if (!r.ok) {
-        const b = await r.json().catch(()=>({}));
-        // Generic fallback message — no sign-in link provided here
-        setError('Could not sign you in automatically. Please try again or contact support.');
-        console.warn('/api/auth/signin error', r.status, b);
+        // Provide the requested fallback message and show Sign in link
+        setError('Could not sign you in automatically. Please use the Sign in link.');
+        console.warn('/api/auth/signin error', r.status, await r.text().catch(()=>null));
         setLoading(false);
         return;
       }
@@ -135,7 +134,16 @@ export default function SetPasswordPage() {
           />
         </label>
 
-        {error && <div style={{ color: 'crimson', marginBottom: 12 }}>{error}</div>}
+        {error && (
+          <div style={{ color: 'crimson', marginBottom: 12 }}>
+            {error}
+            {error.includes('Sign in link') && (
+              <div style={{ marginTop: 8 }}>
+                <a href="/signin">Sign in</a>
+              </div>
+            )}
+          </div>
+        )}
 
         <button type="submit" disabled={loading} style={{ padding: '10px 18px' }}>
           {loading ? 'Finishing...' : 'Finish and go to Account'}
