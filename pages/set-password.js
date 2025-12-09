@@ -1,18 +1,16 @@
 // pages/set-password.js
-// Minimal Set Password page with a single password field.
-// Email is read-only (from query) and the page silently calls /api/auth/signin after finalizing password
-// so the user is immediately signed in and redirected to /account.
-// If an optional server-side set-password endpoint exists at SET_PASSWORD_API, it will be called (code tolerates 404).
+// Minimal set-password page: single password field. Email is read-only (prefilled from query).
+// After finalizing password (optional server endpoint), POSTs to /api/auth/signin to set HttpOnly cookies, then redirects to /account.
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
-const SET_PASSWORD_API = '/api/auth/set-password'; // if you have an endpoint to finalize password; tolerated if absent
+const SET_PASSWORD_API = '/api/auth/set-password'; // optional server finalize endpoint; tolerated if 404
 const SIGNIN_API = '/api/auth/signin';
 
 export default function SetPasswordPage() {
   const router = useRouter();
-  const { email: queryEmail } = router.query; // pre-filled from success redirect
+  const { email: queryEmail } = router.query;
 
   const [email, setEmail] = useState(queryEmail || '');
   const [password, setPassword] = useState('');
@@ -53,7 +51,7 @@ export default function SetPasswordPage() {
         // otherwise continue if endpoint missing
       }
 
-      // 2) Sign in server-side to set HttpOnly cookie (server must set Domain=.novahunt.ai and SameSite=None)
+      // 2) Sign in server-side to set HttpOnly cookie
       const r = await fetch(SIGNIN_API, {
         method: 'POST',
         credentials: 'same-origin',
@@ -69,7 +67,7 @@ export default function SetPasswordPage() {
         return;
       }
 
-      // 3) Redirect to account (server set cookie)
+      // 3) Redirect to account (cookie set by server)
       router.replace('/account');
     } catch (err) {
       console.error('Set password error', err);
