@@ -1,5 +1,5 @@
 // pages/api/session-info.js
-// Defensive session-info: validates a token via Supabase auth.getUser and only queries usage/subscription tables.
+// Defensive session-info: validate session token via Supabase and return subscription/usage info.
 // Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars.
 
 import { createClient } from '@supabase/supabase-js';
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 
-  // Extract token from common places
+  // get token from Authorization Bearer or cookies
   const authHeader = req.headers.authorization || '';
   const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   const cookieHeader = req.headers.cookie || '';
@@ -32,22 +32,19 @@ export default async function handler(req, res) {
         return [c.slice(0, i), c.slice(i + 1)];
       })
   );
-  const sessionIdFromBody = req.method === 'POST' && req.body && req.body.session_id ? req.body.session_id : null;
-
-  const token = bearer || cookies['session'] || cookies['session_id'] || cookies['sb:token'] || sessionIdFromBody;
+  const token = bearer || cookies['session'] || cookies['sb:token'] || cookies['session_id'];
 
   if (!token) {
     return jsonResponse(res, 400, { error: 'missing session_id' });
   }
 
   try {
-    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-    if (userErr || !userData?.user) {
+    const { data: userRes, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !userRes?.user) {
       return jsonResponse(res, 401, { error: 'invalid session' });
     }
-    const user = userData.user;
+    const user = userRes.user;
 
-    // Query subscription & usage — update table names if your schema is different
     const [{ data: subsRes }, { data: usageRes }] = await Promise.all([
       supabase.from('subscriptions').select('*').eq('user_id', user.id).limit(1).maybeSingle().catch(()=>({ data: null })),
       supabase.from('usage').select('*').eq('user_id', user.id).limit(1).maybeSingle().catch(()=>({ data: null })),
