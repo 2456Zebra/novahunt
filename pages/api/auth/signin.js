@@ -1,14 +1,6 @@
 // pages/api/auth/signin.js
-//
-// Server-side sign-in endpoint for Next.js that:
-// - Accepts POST { email, password }
-// - Uses SUPABASE_ANON_KEY + SUPABASE_URL to sign in via supabase-js
-// - On success, sets a secure HttpOnly cookie (session) containing the access_token
-// - Returns the signed-in session JSON to the client
-//
-// Required env vars (set in Vercel / hosting):
-// - SUPABASE_URL
-// - SUPABASE_ANON_KEY
+// Server-side sign-in endpoint: POST { email, password } -> sets secure HttpOnly cookies.
+// Requires SUPABASE_URL and SUPABASE_ANON_KEY env vars.
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -36,7 +28,6 @@ export default async function handler(req, res) {
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
-
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error || !data || !data.session) {
