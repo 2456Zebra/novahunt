@@ -1,7 +1,6 @@
 // pages/api/auth/signin.js
-// Server-side sign-in endpoint: POST { email, password } -> sets secure HttpOnly cookies.
-// Uses COOKIE_DOMAIN env var (e.g. ".novahunt.ai") or derives a root domain from request Host.
-// Requires SUPABASE_URL and SUPABASE_ANON_KEY env vars.
+// POST { email, password } -> sign in with Supabase and set secure HttpOnly cookies.
+// Uses COOKIE_DOMAIN env var (recommended ".novahunt.ai") or derives domain from Host header.
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -15,15 +14,11 @@ function sendJson(res, status, body) {
 
 function deriveCookieDomainFromHost(hostHeader) {
   if (!hostHeader) return '';
-  // Remove port if present
   const host = hostHeader.split(':')[0];
-  // If already an apex or has only two labels, prefix with dot
   const parts = host.split('.');
   if (parts.length <= 2) {
     return '.' + host;
   }
-  // For multi-label hosts (like preview-domain or sub.sub.domain),
-  // use the last two labels as the base (e.g. novahunt.ai)
   const root = parts.slice(-2).join('.');
   return '.' + root;
 }
@@ -53,26 +48,24 @@ export default async function handler(req, res) {
     }
 
     const session = data.session;
-    const accessToken = session.access_token || session.accessToken || null;
-    const expiresIn = session.expires_in || 60 * 60 * 24 * 7; // fallback 7 days
+    const accessToken = session.access_token || null;
+    const expiresIn = session.expires_in || 60 * 60 * 24 * 7;
 
     if (!accessToken) {
       return sendJson(res, 500, { error: 'no_access_token' });
     }
 
-    // Decide cookie domain: env var takes precedence, otherwise derive from Host
     let cookieDomain = DEFAULT_COOKIE_DOMAIN && DEFAULT_COOKIE_DOMAIN.trim().length ? DEFAULT_COOKIE_DOMAIN.trim() : '';
     if (!cookieDomain) {
       cookieDomain = deriveCookieDomainFromHost(req.headers.host) || '';
     }
 
-    // Use SameSite=None and Secure to allow cookie after cross-site redirect (Stripe -> your site).
-    const maxAge = Number(expiresIn) || 60 * 60 * 24 * 7; // seconds
+    const maxAge = Number(expiresIn) || 60 * 60 * 24 * 7;
     const baseCookieOpts = [
       'Path=/',
       cookieDomain ? `Domain=${cookieDomain}` : '',
       'HttpOnly',
-      'SameSite=None', // allow cross-site redirects to include cookie
+      'SameSite=None',
       'Secure',
       `Max-Age=${maxAge}`
     ].filter(Boolean).join('; ');
@@ -89,14 +82,13 @@ export default async function handler(req, res) {
         'HttpOnly',
         'SameSite=None',
         'Secure',
-        `Max-Age=${60 * 60 * 24 * 30}` // 30 days
+        `Max-Age=${60 * 60 * 24 * 30}`
       ].filter(Boolean).join('; ');
       cookies.push(`refresh_token=${session.refresh_token}; ${refreshOpts}`);
     }
 
     res.setHeader('Set-Cookie', cookies);
-    // Return session info for debugging (client won't be able to read cookies if HttpOnly)
-    return sendJson(res, 200, { ok: true, session: { expires_at: session.expires_at || null } });
+    return sendJson(res, 200, { ok: true });
   } catch (err) {
     console.error('signin endpoint error', err);
     return sendJson(res, 500, { error: 'internal' });
