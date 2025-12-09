@@ -5,24 +5,19 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "dependencies": {
     "next": "13.5.11",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "stripe": "^12.0.0",
-    "@stripe/stripe-js": "^2.0.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
     "jsonwebtoken": "^9.0.0",
+    "@supabase/supabase-js": "^2.30.0",
+    "stripe": "^12.0.0",
+    "@stripe/stripe-js": "^1.51.0",
     "uuid": "^9.0.0",
     "cookie": "^0.5.0",
-    "cookie-parser": "^1.4.6",
-    "@supabase/supabase-js": "^2.36.0",
-    "@upstash/redis": "^1.21.0",
+    "@upstash/redis": "^1.25.0",
     "axios": "^1.4.0"
-  },
-  "engines": {
-    "node": ">=18"
   }
 }
