@@ -1,136 +1,93 @@
+// pages/success.js
+// Client success page: reads ?session_id=... from URL, asks server for the checkout email,
+// shows 1-2 quick flashes and then redirects to /set-password?email=... (so set-password can auto-signin).
+// If email cannot be obtained, shows a "Sign in" link and a link to go to /set-password manually.
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
-import CheckoutSuccess from '../components/CheckoutSuccess';
 
-/**
- * /success page
- * - Reads ?session_id= from the URL (Stripe Checkout redirect)
- * - Calls /api/session-info?session_id=... to determine whether the customer already has a password
- * - If hasPassword === true => show "Thanks — your password has been registered." + Sign in button
- * - Otherwise => show "Payment successful. Set a password to sign in and access your account." + Set password button
- */
 export default function SuccessPage() {
   const router = useRouter();
   const { session_id } = router.query;
-
-  const [loading, setLoading] = useState(true);
-  const [info, setInfo] = useState(null);
-  const [error, setError] = useState(null);
+  const [status, setStatus] = useState('loading'); // loading -> ready -> redirect-failed
+  const [email, setEmail] = useState(null);
 
   useEffect(() => {
     if (!session_id) return;
+    let cancelled = false;
 
-    let mounted = true;
-    setLoading(true);
-    setError(null);
+    async function fetchEmailAndRedirect() {
+      try {
+        setStatus('loading');
+        const res = await fetch(`/api/stripe-session?session_id=${encodeURIComponent(session_id)}`, {
+          method: 'GET',
+          credentials: 'same-origin'
+        });
 
-    fetch(`/api/session-info?session_id=${encodeURIComponent(session_id)}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((json) => {
-        if (!mounted) return;
-        setInfo(json);
-      })
-      .catch((err) => {
-        console.error('session-info fetch error', err);
-        if (mounted) setError('Unable to verify session. Please try again or contact support.');
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
+        if (!res.ok) {
+          // fallback: show UI and let user click through
+          setStatus('redirect-failed');
+          return;
+        }
 
-    return () => { mounted = false; };
-  }, [session_id]);
+        const body = await res.json();
+        if (cancelled) return;
+        setEmail(body.email || null);
 
-  if (!session_id) {
-    return (
-      <main style={{ maxWidth: 720, margin: '48px auto', padding: '0 16px', textAlign: 'center' }}>
-        <h1>Payment processed</h1>
-        <p>We did not receive a session id. If you were redirected from Stripe, try again or contact support.</p>
-      </main>
-    );
-  }
+        // show first flash quickly, then second, then redirect
+        setStatus('ready');
 
-  if (loading) {
-    return (
-      <main style={{ maxWidth: 720, margin: '48px auto', padding: '0 16px', textAlign: 'center' }}>
-        <h1>Processing…</h1>
-        <p>Verifying your payment details. This will only take a moment.</p>
-      </main>
-    );
-  }
+        // Pause briefly so users see the two quick page flashes you mentioned
+        // First flash: "Payment processed" (we're already on success page)
+        // Second flash: "Redirecting to set password..."
+        await new Promise(r => setTimeout(r, 800)); // short pause
+        // Then redirect to set-password with email prefilled
+        const target = `/set-password?email=${encodeURIComponent(body.email || '')}`;
+        // Use replace so history doesn't keep success page
+        router.replace(target);
+      } catch (err) {
+        console.error('success page error', err);
+        setStatus('redirect-failed');
+      }
+    }
 
-  if (error) {
-    return (
-      <main style={{ maxWidth: 720, margin: '48px auto', padding: '0 16px', textAlign: 'center' }}>
-        <h1>Payment processed</h1>
-        <p style={{ color: 'red' }}>{error}</p>
-        <p>You can try signing in or contact support if you need help.</p>
-        <div style={{ marginTop: 20 }}>
-          <Link href="/signin" passHref><a className="btn">Sign in</a></Link>
-        </div>
-      </main>
-    );
-  }
-
-  const { hasPassword = false, email, setPasswordToken } = info || {};
-
-  if (hasPassword) {
-    return (
-      <main style={{ maxWidth: 720, margin: '48px auto', padding: '0 16px', textAlign: 'center' }}>
-        <h1>Thanks — your password has been registered.</h1>
-        <p>If you'd like to sign in now, click the button below.</p>
-
-        <div style={{ marginTop: 20 }}>
-          <Link href="/signin" passHref>
-            <a className="btn">Sign in</a>
-          </Link>
-        </div>
-
-        {email && (
-          <p style={{ marginTop: 24, color: '#666', fontSize: 13 }}>
-            Account email: <code>{email}</code>
-          </p>
-        )}
-      </main>
-    );
-  }
-
-  const setPasswordHref = setPasswordToken
-    ? `/set-password?token=${encodeURIComponent(setPasswordToken)}`
-    : `/set-password?session_id=${encodeURIComponent(session_id)}`;
+    fetchEmailAndRedirect();
+    return () => { cancelled = true; };
+  }, [session_id, router]);
 
   return (
-    <main style={{ maxWidth: 720, margin: '48px auto', padding: '0 16px', textAlign: 'center' }}>
-      <h1>Payment successful</h1>
+    <div style={{ maxWidth: 780, margin: '28px auto', padding: 20 }}>
+      <h1>Payment processed</h1>
 
-      <p>Set a password to sign in and access your account.</p>
-
-      <div style={{ marginTop: 20 }}>
-        <Link href={setPasswordHref} passHref>
-          <a className="btn">Set password</a>
-        </Link>
-      </div>
-
-      {email && (
-        <p style={{ marginTop: 24, color: '#666', fontSize: 13 }}>
-          Account email: <code>{email}</code>
-        </p>
+      {status === 'loading' && (
+        <>
+          <p>Finalizing your account...</p>
+          <p>Please wait — you will be redirected to finish setting your password.</p>
+        </>
       )}
 
-      <style jsx>{`
-        .btn {
-          display: inline-block;
-          padding: 10px 16px;
-          background: #111;
-          color: #fff;
-          border-radius: 6px;
-          text-decoration: none;
-        }
-      `}</style>
-    </main>
+      {status === 'ready' && (
+        <>
+          <p>Payment processed</p>
+          <p>Redirecting you to set your password and finish account setup...</p>
+        </>
+      )}
+
+      {status === 'redirect-failed' && (
+        <>
+          <p>Payment processed</p>
+          <p>Unable to automatically continue. You can:</p>
+          <ul>
+            <li><a href="/set-password">Set your password (manual)</a></li>
+            <li><a href="/signin">Sign in</a> (if you already set a password)</li>
+          </ul>
+          <p>If you continue to have trouble, contact support.</p>
+        </>
+      )}
+
+      <footer style={{ marginTop: 40, fontSize: 12, color: '#666' }}>
+        © {new Date().getFullYear()} NovaHunt.ai
+      </footer>
+    </div>
   );
 }
