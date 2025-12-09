@@ -1,23 +1,20 @@
 // pages/api/auth/set-password.js
-// Robust finalize endpoint with retries + verbose logs.
+// Robust finalize endpoint with optional emergency disable for password recovery emails.
 // - Validates Stripe session token (optional).
 // - Attempts to create or update the Supabase user using the service role key.
-// - On create failure with "email_exists", retries admin lookup/update several times (to handle eventual consistency).
-// - After successful create/update, exchanges email+password for a session (anon key) and sets HttpOnly cookies.
-// - Falls back to sending a password-recovery email if update/create repeatedly fails.
+// - On success, exchanges email+password for a session (anon key) and sets HttpOnly cookies.
+// - Retries admin lookup when create returns email_exists; falls back to recover email.
+// - Handles Supabase recover rate limits gracefully and supports emergency disable via env.
 //
 // Required Vercel env vars (Preview & Production):
 // - SUPABASE_URL               (e.g. https://xyz.supabase.co)
 // - SUPABASE_SERVICE_ROLE_KEY  (service role)
-// - SUPABASE_ANON_KEY         (anon/public key)
-// - COOKIE_DOMAIN             (e.g. .novahunt.ai)
+// - SUPABASE_ANON_KEY          (anon/public key)
+// - COOKIE_DOMAIN              (e.g. .novahunt.ai) - recommended
 // Optional:
 // - STRIPE_SECRET_KEY
 // - POST_RESET_REDIRECT
-//
-// Notes:
-// - This file logs helpful non-secret responses to Vercel function logs to help debug mismatches.
-// - Do NOT print secrets into logs. This code avoids logging keys/values themselves, only server responses.
+// - DISABLE_PASSWORD_RECOVER   (set to "1" to disable sending recover emails immediately)
 
 import Stripe from 'stripe';
 
@@ -27,6 +24,7 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const DEFAULT_COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '';
 const POST_RESET_REDIRECT = process.env.POST_RESET_REDIRECT || 'https://www.novahunt.ai/set-password';
+const DISABLE_PASSWORD_RECOVER = process.env.DISABLE_PASSWORD_RECOVER === '1';
 
 function json(res, status, body) {
   res.status(status).json(body);
@@ -66,13 +64,11 @@ async function findUserByEmail(email) {
     const res = await fetch(url, { method: 'GET', headers });
     const txt = await res.text().catch(()=>null);
     if (!res.ok) {
-      // Log status + first 1000 chars for debugging (no secrets)
       console.warn('findUserByEmail HTTP', res.status, txt?.slice?.(0,1000));
       return { ok: false, status: res.status, body: txt };
     }
     let js = null;
     try { js = JSON.parse(txt || 'null'); } catch(e) { js = txt; }
-    console.info('findUserByEmail result (truncated)', Array.isArray(js) ? `array(${js.length})` : (js && js.id ? 'object_with_id' : 'no_user'));
     if (Array.isArray(js) && js.length > 0) return { ok: true, user: js[0] };
     if (js && js.id) return { ok: true, user: js };
     return { ok: false, user: null, body: js };
@@ -94,7 +90,6 @@ async function createUser(email, password) {
       return { ok: false, status: res.status, body: txt };
     }
     const js = JSON.parse(txt || '{}');
-    console.info('createUser succeeded', js.id ? 'created user id' : 'created user maybe');
     return { ok: true, user: js };
   } catch (err) {
     console.error('createUser error', err?.message || String(err));
@@ -114,7 +109,6 @@ async function updateUserPassword(uid, password) {
       return { ok: false, status: res.status, body: txt };
     }
     const js = JSON.parse(txt || '{}');
-    console.info('updateUserPassword succeeded', js.id ? 'updated user id' : 'updated user maybe');
     return { ok: true, user: js };
   } catch (err) {
     console.error('updateUserPassword error', err?.message || String(err));
@@ -135,19 +129,29 @@ function parseCreateError(body) {
   return null;
 }
 
+/**
+ * sendPasswordRecover
+ * - Returns { ok:true } on success
+ * - Returns { ok:false, status, body, retryAfter } on failure
+ */
 async function sendPasswordRecover(email) {
+  if (DISABLE_PASSWORD_RECOVER) {
+    // Immediate friendly response — avoids sending further emails while disabled
+    return { ok: false, status: 429, body: 'recover_disabled', retryAfter: 999999 };
+  }
+
   const url = `${SUPABASE_URL}/auth/v1/recover`;
   const headers = { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` };
   const body = { email, redirect_to: POST_RESET_REDIRECT };
   try {
     const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
     const txt = await res.text().catch(()=>null);
-    if (!res.ok) {
-      console.warn('sendPasswordRecover failed HTTP', res.status, txt?.slice?.(0,1000));
-      return { ok: false, status: res.status, body: txt };
+    if (res.ok) {
+      return { ok: true, body: txt };
     }
-    console.info('sendPasswordRecover succeeded (recover email triggered)');
-    return { ok: true, body: txt };
+    const retryAfterHeader = res.headers.get ? res.headers.get('Retry-After') : null;
+    const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 40;
+    return { ok: false, status: res.status, body: txt, retryAfter: retryAfter || 40 };
   } catch (err) {
     console.error('sendPasswordRecover error', err?.message || String(err));
     return { ok: false, error: err };
@@ -202,7 +206,6 @@ async function signInAndSetCookies({ email, password, req, res }) {
     }
 
     res.setHeader('Set-Cookie', cookies);
-    console.info('signInAndSetCookies: cookies set (Domain truncated for logs).');
     return { ok: true, session: { expires_in: maxAge } };
   } catch (err) {
     console.error('signInAndSetCookies error', err?.message || String(err));
@@ -224,25 +227,32 @@ export default async function handler(req, res) {
   if (!email || !password) return json(res, 400, { error: 'missing_email_or_password' });
   if (typeof password !== 'string' || password.length < 8) return json(res, 400, { error: 'password_too_short' });
 
+  // Validate Stripe token if present
   if (token) {
     const v = await stripeValidateToken(token, email);
     if (!v.ok) return json(res, 400, { error: 'invalid_token', reason: v.reason, detail: v.detail || null });
   }
 
   try {
-    // Try locate user
+    // 1) Try to locate user
     let found = await findUserByEmail(email);
     if (found.ok && found.user) {
       const uid = found.user.id || found.user.user?.id || found.user.uid || null;
       if (uid) {
         const updated = await updateUserPassword(uid, password);
         if (!updated.ok) {
-          console.warn('updateUserPassword returned not ok, attempting recover fallback.');
+          // Fallback to recover; handle rate-limit or disabled recover gracefully
           const recover = await sendPasswordRecover(email);
           if (recover.ok) return json(res, 200, { ok: true, action: 'password_reset_sent', message: 'Password recovery email sent' });
+          if (recover.status === 429) {
+            return json(res, 200, { ok: true, action: 'password_reset_rate_limited', retry_after: recover.retryAfter || 40, message: 'Password recovery has been requested recently. Please check your email or try again in a bit.' });
+          }
+          if (recover.body === 'recover_disabled') {
+            return json(res, 200, { ok: true, action: 'password_reset_disabled', message: 'Password recovery temporarily disabled. Contact support.' });
+          }
           return json(res, 500, { error: 'update_password_failed', details: updated.body || updated });
         }
-        // attempt to create session and set cookies
+        // After update, create session & set cookies
         const signed = await signInAndSetCookies({ email, password, req, res });
         if (!signed.ok) {
           return json(res, 200, { ok: true, action: 'updated', warning: 'session_not_created', details: signed.body || signed });
@@ -251,7 +261,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Not found -> try create
+    // 2) Not found -> try create
     const created = await createUser(email, password);
     if (created.ok) {
       const signed = await signInAndSetCookies({ email, password, req, res });
@@ -261,15 +271,14 @@ export default async function handler(req, res) {
       return json(res, 200, { ok: true, action: 'created', session: signed.session || null });
     }
 
-    // Creation failed: maybe email_exists — retry find/update with retries
+    // 3) Creation failed: check for email_exists
     const createErrCode = parseCreateError(created.body || created.error || created);
     if (createErrCode === 'email_exists') {
-      console.warn('createUser reported email_exists, will retry admin lookup/update (retries=5)');
+      // retry admin lookup/update with backoff
       const attempts = 5;
       for (let i = 0; i < attempts; i++) {
-        await sleep(500 * (i+1)); // progressive backoff
+        await sleep(500 * (i+1));
         const f = await findUserByEmail(email);
-        console.info(`retry ${i+1} findUserByEmail -> ok=${!!f.ok} user=${!!f.user}`);
         if (f.ok && f.user) {
           const uid2 = f.user.id || f.user.user?.id || f.user.uid || null;
           if (uid2) {
@@ -280,23 +289,24 @@ export default async function handler(req, res) {
                 return json(res, 200, { ok: true, action: 'updated_after_create_conflict', warning: 'session_not_created', details: signed2.body || signed2 });
               }
               return json(res, 200, { ok: true, action: 'updated_after_create_conflict', session: signed2.session || null });
-            } else {
-              console.warn('updateUserPassword after find (retry) failed', updated2);
-              // continue retries
             }
           }
         }
       }
 
-      // After retries still not found or updated -> send recover
-      console.warn('Retries exhausted - sending password recovery as fallback');
+      // After retries still not found or updated -> send recover (but respect disable and rate limits)
       const recover = await sendPasswordRecover(email);
       if (recover.ok) return json(res, 200, { ok: true, action: 'password_reset_sent', message: 'Password recovery email sent' });
+      if (recover.status === 429) {
+        return json(res, 200, { ok: true, action: 'password_reset_rate_limited', retry_after: recover.retryAfter || 40, message: 'Password recovery has been requested recently. Please check your email or try again in a bit.' });
+      }
+      if (recover.body === 'recover_disabled') {
+        return json(res, 200, { ok: true, action: 'password_reset_disabled', message: 'Password recovery temporarily disabled. Contact support.' });
+      }
       return json(res, 500, { error: 'password_recover_failed', details: recover.body || recover });
     }
 
     // Other create errors
-    console.error('createUser failed with unexpected error', created);
     return json(res, 500, { error: 'create_user_failed', details: created.body || created });
   } catch (err) {
     console.error('set-password handler critical error', err?.message || String(err));
