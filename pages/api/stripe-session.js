@@ -1,6 +1,6 @@
 // pages/api/stripe-session.js
-// Server-side helper to fetch a Stripe Checkout Session and return the customer email.
-// Requires STRIPE_SECRET_KEY in env. Only server-side; do NOT expose secret to the client.
+// Server endpoint to safely fetch Stripe Checkout Session details and return non-sensitive fields (customer email).
+// Requires STRIPE_SECRET_KEY.
 
 import Stripe from 'stripe';
 
@@ -19,15 +19,9 @@ export default async function handler(req, res) {
     const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' });
     const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['customer'] });
 
-    // Prefer the customer_email field (works when customer is not expanded)
     const email = session.customer_details?.email || session.customer?.email || session.customer_email || null;
+    if (!email) return sendJson(res, 404, { error: 'email_not_found' });
 
-    if (!email) {
-      // If no email found, return 404 so client can show fallback
-      return sendJson(res, 404, { error: 'email_not_found' });
-    }
-
-    // You can optionally include any other non-sensitive info the client needs
     return sendJson(res, 200, { email });
   } catch (err) {
     console.error('stripe-session error', err);
