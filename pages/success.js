@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { createClient } from '@supabase/supabase-js';
 
-// Client-side Supabase keys (set these in Vercel as NEXT_PUBLIC_*)
-// NEXT_PUBLIC_SUPABASE_URL
-// NEXT_PUBLIC_SUPABASE_ANON_KEY
+// Optional auto sign-in (requires NEXT_PUBLIC_SUPABASE_ANON_KEY)
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export default function SuccessPage() {
@@ -18,25 +16,47 @@ export default function SuccessPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
+  // Poll /api/get-checkout-session a few times if it initially fails (Stripe redirect/back-end latency).
   useEffect(() => {
     if (!session_id) return;
-    setFetching(true);
-    fetch(`/api/get-checkout-session?session_id=${encodeURIComponent(session_id)}`)
-      .then((r) => r.json())
-      .then((json) => {
-        if (json?.error) {
-          setError(json.message || json.error || 'Could not fetch session');
-        } else {
+    let cancelled = false;
+
+    async function fetchSession(attemptNum = 0) {
+      setFetching(true);
+      setError('');
+      try {
+        const res = await fetch(`/api/get-checkout-session?session_id=${encodeURIComponent(session_id)}`);
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          // If session not yet available, we retry (Stripe may not have finished)
+          throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
+        }
+        const json = await res.json();
+        if (json?.error) throw new Error(json.error || json.message);
+        if (!cancelled) {
           setEmail(json.email || '');
           setPaid(Boolean(json.paid));
+          setFetching(false);
         }
-      })
-      .catch((err) => {
-        console.error('get-checkout-session error', err);
-        setError('Failed to fetch checkout session');
-      })
-      .finally(() => setFetching(false));
+      } catch (err) {
+        console.warn('get-checkout-session attempt failed', attemptNum, err);
+        if (cancelled) return;
+        if (attemptNum < 4) {
+          // Exponential backoff: wait 1s, 2s, 4s, 8s...
+          const wait = Math.pow(2, attemptNum) * 1000;
+          setTimeout(() => fetchSession(attemptNum + 1), wait);
+          setAttempt(attemptNum + 1);
+        } else {
+          setError('Failed to fetch checkout session. If you completed payment, wait a moment and try again or contact support.');
+          setFetching(false);
+        }
+      }
+    }
+
+    fetchSession(0);
+    return () => { cancelled = true; };
   }, [session_id]);
 
   async function handleSubmit(e) {
@@ -59,21 +79,22 @@ export default function SuccessPage() {
         return;
       }
 
-      // Optionally auto sign-in the user via Supabase client (requires NEXT_PUBLIC_SUPABASE_ANON_KEY)
+      // Optionally auto sign-in via Supabase client if anon key is set
       try {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email: json.email || email,
-          password,
-        });
-        if (signInError) {
-          // Not fatal: account was created, but sign-in failed (user can sign in manually)
-          console.warn('Auto sign-in failed', signInError);
-          setDone(true);
+        if (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+          const { data, error: signInError } = await supabase.auth.signInWithPassword({
+            email: json.email || email,
+            password,
+          });
+          if (signInError) {
+            console.warn('Auto sign-in failed', signInError);
+            setDone(true);
+          } else {
+            router.replace('/app');
+            return;
+          }
         } else {
-          // Signed in successfully
-          // Redirect to app landing (adjust path as needed)
-          router.replace('/app');
-          return;
+          setDone(true);
         }
       } catch (err) {
         console.error('supabase sign in error', err);
@@ -103,9 +124,19 @@ export default function SuccessPage() {
       <h1>Complete account setup</h1>
 
       {fetching ? (
-        <p>Loading checkout details…</p>
+        <p>Loading checkout details… (this may take a few seconds)</p>
       ) : error ? (
-        <div style={{ color: 'red' }}>{error}</div>
+        <div style={{ color: 'red' }}>
+          <p>{error}</p>
+          <p style={{ marginTop: 12 }}>
+            Helpful actions:
+            <ul>
+              <li>Open the link you were redirected from and copy the session_id (if present) and paste it here.</li>
+              <li>Run a direct Stripe API check (see instructions below) to confirm the session exists.</li>
+              <li>Contact support with the session_id in the URL.</li>
+            </ul>
+          </p>
+        </div>
       ) : (
         <>
           <p>
