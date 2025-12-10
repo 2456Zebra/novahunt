@@ -7,11 +7,10 @@
 // SUPABASE_URL
 // SUPABASE_SERVICE_ROLE_KEY
 //
-// Important: Next.js API route must receive raw body for signature verification.
-// This file disables body parsing via export config below.
+// This version does NOT depend on 'micro' and reads the raw body using Node streams.
+// Note: keep bodyParser disabled (export config below).
 
 import Stripe from 'stripe';
-import { buffer } from 'micro';
 import { createClient } from '@supabase/supabase-js';
 
 export const config = { api: { bodyParser: false } };
@@ -29,6 +28,17 @@ const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABAS
 //   created_at timestamptz DEFAULT now()
 // );
 
+async function getRawBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', (chunk) => {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', (err) => reject(err));
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
@@ -37,8 +47,8 @@ export default async function handler(req, res) {
 
   let event;
   try {
-    const buf = await buffer(req);
-    event = stripe.webhooks.constructEvent(buf.toString(), sig, process.env.STRIPE_WEBHOOK_SECRET);
+    const buf = await getRawBody(req); // Buffer
+    event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error('Webhook signature verification failed', err);
     return res.status(400).send(`Webhook Error: ${err.message}`);
