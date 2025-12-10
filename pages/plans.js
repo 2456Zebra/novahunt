@@ -1,218 +1,126 @@
-import CheckoutButton from '../components/CheckoutButton';
-import { useEffect } from 'react';
-
-const PLANS = [
-  {
-    id: 'free',
-    priceId: null,
-    title: 'NovaHunt Free',
-    priceLabel: 'Free',
-    subtitle: 'Explore NovaHunt with limited monthly searches',
-    features: ['5 searches / 3 reveals per month', 'Community support'],
-    badge: 'Free',
-    recommended: false,
-  },
-  {
-    id: 'starter',
-    priceId: process.env.NEXT_PUBLIC_PRICE_STARTER || null,
-    title: 'NovaHunt Starter',
-    priceLabel: '$9.99 / month',
-    subtitle: 'For individuals getting started with prospecting',
-    features: ['100 searches / 50 reveals per month', 'Email support'],
-    badge: 'Popular',
-    recommended: false,
-  },
-  {
-    id: 'pro',
-    priceId: process.env.NEXT_PUBLIC_PRICE_PRO || null,
-    title: 'NovaHunt Pro',
-    priceLabel: '$49.99 / month',
-    subtitle: 'Advanced search volume and priority support',
-    features: ['1,000 searches / 500 reveals per month', 'Priority support', 'CSV export'],
-    badge: 'Most popular',
-    recommended: true,
-  },
-  {
-    id: 'enterprise',
-    priceId: process.env.NEXT_PUBLIC_PRICE_ENTERPRISE || null,
-    title: 'NovaHunt Enterprise',
-    priceLabel: '$199.00 / month',
-    subtitle: 'Full power for teams and heavy usage',
-    features: ['3,000 searches / 1,500 reveals per month', 'Dedicated support', 'CSV export'],
-    badge: 'Enterprise',
-    recommended: false,
-  },
-];
-
-const containerStyle = {
-  padding: '2rem',
-  maxWidth: 1100,
-  margin: '0 auto',
-  background: '#f7f7f8', // page light grey background
-  minHeight: '100vh',
-};
-
-const gridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-  gap: '1rem',
-};
-
-const cardBase = {
-  border: '1px solid #e8e8e8',
-  borderRadius: 12,
-  padding: '1.25rem',
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'space-between',
-  background: '#fff', // white for all cards by default
-  minHeight: 240,
-};
+import { useState } from 'react';
 
 export default function PlansPage() {
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      console.log('Plans page loaded');
+  const [loadingId, setLoadingId] = useState(null);
+  const [error, setError] = useState(null);
+
+  // Replace these price IDs if you change them in Stripe
+  const PRICES = {
+    starter: 'price_1SZHGGGyuj9BgGEUftoqaGC8',
+    pro: 'price_1SZHJGGyuj9BgGEUQ4uccDvB',
+    enterprise: 'price_1SZHKzGyuj9BgGEUh5aCmugi',
+  };
+
+  async function startCheckout(priceId) {
+    setError(null);
+    setLoadingId(priceId);
+    try {
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceId }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        console.error('Server error creating checkout session:', json);
+        setError(json?.message || json?.error || 'Could not start checkout');
+        setLoadingId(null);
+        return;
+      }
+
+      const url = json?.url;
+      if (!url) {
+        console.error('No checkout URL returned from server', json);
+        setError('No checkout URL returned from server');
+        setLoadingId(null);
+        return;
+      }
+
+      // IMPORTANT: stripe.redirectToCheckout has been removed.
+      // Use a normal browser redirect to the Checkout session URL:
+      window.location.href = url;
+    } catch (e) {
+      console.error('Failed to start checkout', e);
+      setError(String(e?.message || e));
+      setLoadingId(null);
     }
-  }, []);
+  }
 
   return (
-    <main style={containerStyle}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <header style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h1 style={{ margin: 0 }}>Choose a plan</h1>
-            <p style={{ marginTop: '.5rem', color: '#555' }}>
-              Start free or pick a plan that fits your prospecting needs. Upgrade or cancel anytime.
-            </p>
-          </div>
+    <div style={{ maxWidth: 980, margin: '48px auto', padding: 20 }}>
+      <h1>Choose a plan</h1>
+      <p>Select a plan to begin checkout. Stripe will collect your email during Checkout.</p>
 
-          <div>
-            <a
-              href="/"
-              style={{ color: '#0b74ff', textDecoration: 'none', fontWeight: 600 }}
-              aria-label="Back to Home"
-            >
-              Back to Home
-            </a>
-          </div>
-        </header>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 16 }}>
+        <PlanCard
+          title="Starter"
+          price="$9.99 / mo"
+          description="Basic access"
+          onSelect={() => startCheckout(PRICES.starter)}
+          loading={loadingId === PRICES.starter}
+        />
 
-        <section aria-label="Pricing plans" style={gridStyle}>
-          {PLANS.map((plan) => {
-            const proPeach =
-              plan.id === 'pro'
-                ? { background: 'linear-gradient(180deg, #fff4ef, #fff6f2)', border: '1px solid rgba(255,160,120,0.18)' }
-                : {};
+        <PlanCard
+          title="Pro"
+          price="$49.99 / mo"
+          description="Pro features"
+          onSelect={() => startCheckout(PRICES.pro)}
+          loading={loadingId === PRICES.pro}
+        />
 
-            const recommendedGlow = plan.recommended
-              ? { boxShadow: '0 12px 36px rgba(138,43,226,0.06), 0 6px 18px rgba(11,116,255,0.04)' }
-              : {};
-
-            const cardStyle = { ...cardBase, ...proPeach, ...recommendedGlow };
-
-            return (
-              <article key={plan.id} style={cardStyle} aria-labelledby={`plan-${plan.id}-title`}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <h2 id={`plan-${plan.id}-title`} style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>
-                      {plan.title}
-                    </h2>
-
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 800, color: '#111', marginBottom: 6 }}>{plan.priceLabel}</div>
-                      <div style={{ fontSize: '.85rem', color: '#666' }}>{plan.subtitle}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: '.75rem', display: 'flex', gap: '.5rem', alignItems: 'center' }}>
-                    {plan.recommended && (
-                      <span
-                        style={{
-                          background: 'linear-gradient(90deg,#8a2be2,#6b8cff)',
-                          color: '#fff',
-                          padding: '4px 8px',
-                          borderRadius: 999,
-                          fontSize: '.8rem',
-                          fontWeight: 700,
-                        }}
-                      >
-                        Recommended
-                      </span>
-                    )}
-
-                    <span
-                      style={{
-                        background: '#f3f4f6',
-                        color: '#333',
-                        padding: '4px 8px',
-                        borderRadius: 999,
-                        fontSize: '.8rem',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {plan.badge}
-                    </span>
-                  </div>
-
-                  <ul style={{ marginTop: '1rem', paddingLeft: '1.2rem', color: '#333' }}>
-                    {plan.features.map((f, i) => (
-                      <li key={i} style={{ marginBottom: 6 }}>{f}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div style={{ marginTop: '1rem' }}>
-                  {plan.priceId ? (
-                    <div style={{ display: 'flex', gap: '.5rem' }}>
-                      <div style={{ borderRadius: 10, overflow: 'hidden' }}>
-                        <CheckoutButton priceId={plan.priceId}>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '10px 18px',
-                              minWidth: 160,
-                              textAlign: 'center',
-                              fontWeight: 800,
-                              color: '#fff',
-                              background: 'linear-gradient(90deg,#0b74ff,#6b8cff)',
-                              borderRadius: 10,
-                              boxShadow: '0 8px 22px rgba(11,116,255,0.12)',
-                              textDecoration: 'none',
-                            }}
-                          >
-                            {`Sign Up — ${plan.priceLabel.split(' ')[0]}`}
-                          </span>
-                        </CheckoutButton>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '.5rem' }}>
-                      <a
-                        href="/signup"
-                        style={{
-                          display: 'inline-block',
-                          padding: '10px 14px',
-                          borderRadius: 10,
-                          textDecoration: 'none',
-                          background: '#0b74ff',
-                          color: '#fff',
-                          fontWeight: 700,
-                          minWidth: 140,
-                          textAlign: 'center',
-                        }}
-                        aria-label="Get started for free"
-                      >
-                        Get started — Free
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </section>
+        <PlanCard
+          title="Enterprise"
+          price="$199.00 / mo"
+          description="Full access for teams"
+          onSelect={() => startCheckout(PRICES.enterprise)}
+          loading={loadingId === PRICES.enterprise}
+        />
       </div>
-    </main>
+
+      {error && (
+        <div style={{ marginTop: 20, color: 'crimson' }}>
+          Could not start checkout: {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlanCard({ title, price, description, onSelect, loading }) {
+  return (
+    <div style={{
+      border: '1px solid #e6e6e6',
+      borderRadius: 8,
+      padding: 16,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between'
+    }}>
+      <div>
+        <h3 style={{ margin: '0 0 8px 0' }}>{title}</h3>
+        <div style={{ fontSize: 18, fontWeight: 600 }}>{price}</div>
+        <p style={{ color: '#666' }}>{description}</p>
+      </div>
+
+      <div>
+        <button
+          onClick={onSelect}
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '10px 12px',
+            background: loading ? '#ddd' : '#0070f3',
+            color: loading ? '#333' : '#fff',
+            border: 'none',
+            borderRadius: 6,
+            cursor: loading ? 'default' : 'pointer'
+          }}
+        >
+          {loading ? 'Redirecting…' : 'Choose plan'}
+        </button>
+      </div>
+    </div>
   );
 }
