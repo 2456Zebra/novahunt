@@ -1,6 +1,6 @@
 // pages/api/complete-signup.js
 // POST { session_id, password }
-// - Verifies Stripe checkout session server-side
+// - Verifies Stripe checkout session server-side (expands customer)
 // - Ensures session not consumed
 // - Creates Supabase user via service_role key
 // - Marks session as used in checkout_sessions_used table
@@ -9,7 +9,6 @@
 // SUPABASE_URL
 // SUPABASE_SERVICE_ROLE_KEY
 // STRIPE_SECRET_KEY
-// NEXT_PUBLIC_BASE_URL (optional)
 
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
@@ -34,11 +33,11 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { session_id, password } = req.body || {};
-  if (!session_id || !password) return res.status(400).json({ error: 'missing session_id_or_password' });
+  if (!session_id || !password) return res.status(400).json({ error: 'missing_session_id_or_password' });
 
   try {
-    // 1) Retrieve Stripe Checkout Session
-    const session = await stripe.checkout.sessions.retrieve(session_id, { expand: ['subscription'] });
+    // 1) Retrieve Stripe Checkout Session and expand customer for fallback email
+    const session = await stripe.checkout.sessions.retrieve(session_id, { expand: ['subscription', 'customer'] });
 
     // 2) Verify payment/subscription success
     const paid = session.payment_status === 'paid' ||
@@ -46,10 +45,11 @@ export default async function handler(req, res) {
 
     if (!paid) return res.status(400).json({ error: 'payment_not_completed' });
 
-    const email = session.customer_email;
-    if (!email) return res.status(400).json({ error: 'no_email_in_session' });
+    // Prefer session.customer_email, fallback to expanded customer.email
+    const email = session.customer_email || (session.customer && session.customer.email) || null;
+    if (!email) return res.status(400).json({ error: 'no_email_in_session', message: 'No email available in Stripe session or customer' });
 
-    // 3) Check if this session_id has already been consumed
+    // 3) Check if this session_id has already been consumed (prevent replay)
     const { data: existing, error: selectErr } = await supabaseAdmin
       .from('checkout_sessions_used')
       .select('id')
@@ -66,16 +66,15 @@ export default async function handler(req, res) {
     }
 
     // 4) Create the user in Supabase Auth (service role)
-    // Note: using admin.createUser to create the account with password
     const { data: createUserData, error: createUserErr } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // optional: mark email confirmed immediately
+      email_confirm: true,
     });
 
     if (createUserErr) {
       console.error('Supabase create user error', createUserErr);
-      // If the email already exists, consider linking or returning a specific error
+      // If user exists, return a clear error so the front-end can direct to sign-in
       return res.status(500).json({ error: 'create_user_failed', message: createUserErr.message });
     }
 
@@ -86,14 +85,17 @@ export default async function handler(req, res) {
 
     if (insertErr) {
       console.error('Supabase insert used session error', insertErr);
-      // Optionally: rollback user creation here if you need strict atomicity
+      // Optionally: you may want to rollback the user creation here if strict atomicity required
       return res.status(500).json({ error: 'db_insert_failed' });
     }
 
-    // 6) Return success. Client should now sign the user in using Supabase client.
+    // 6) Return success. Client should sign the user in using Supabase client.
     return res.status(200).json({ ok: true, email, user: createUserData?.user || null });
   } catch (err) {
     console.error('complete-signup error', err);
+    if (String(err?.message || '').toLowerCase().includes('no such checkout.session')) {
+      return res.status(404).json({ error: 'not_found', message: String(err?.message || err) });
+    }
     return res.status(500).json({ error: 'server_error', message: String(err?.message || err) });
   }
 }
