@@ -6,20 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --ext js,jsx"
+    "lint": "next lint"
   },
   "dependencies": {
-    "next": "^13.5.11",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "framer-motion": "^10.12.16",
-    "axios": "^1.6.0",
-    "cookie": "^0.6.0",
-    "stripe": "^12.10.0",
-    "uuid": "^9.0.0",
-    "@upstash/redis": "^1.28.0"
+    "@supabase/supabase-js": "^2.45.0",
+    "@upstash/redis": "^1.31.0",
+    "next": "13.5.11",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "stripe": "^14.21.0"
   },
   "devDependencies": {
-    "eslint": "^8.50.0"
+    "eslint": "8.57.1",
+    "eslint-config-next": "13.5.11"
   }
 }
