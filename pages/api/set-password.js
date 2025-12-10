@@ -1,94 +1,58 @@
-// Endpoint to set a password using a one-time token created after checkout.
-// Body: { token: "<token>", password: "<new-password>" }
-// Returns: { ok: true, nh_session } on success.
-import { getKV } from './_kv-wrapper';
-const kv = getKV();
-import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 
-function hashPassword(password, salt = null) {
-  const iterations = 150000;
-  const saltBuf = salt ? Buffer.from(salt, 'hex') : crypto.randomBytes(16);
-  const derived = crypto.pbkdf2Sync(password, saltBuf, iterations, 64, 'sha512');
-  return {
-    salt: saltBuf.toString('hex'),
-    iterations,
-    derived: derived.toString('hex'),
-    algorithm: 'pbkdf2-sha512',
-  };
-}
+const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const anon = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
-function makeSessionString(email) {
-  const payload = {
-    email,
-    created_at: new Date().toISOString(),
-  };
-  return JSON.stringify(payload);
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+async function waitForUser(email, attempts = 15) {
+  for (let i = 0; i < attempts; i++) {
+    const { data } = await supabaseAdmin.auth.admin.listUsers();
+    const user = data.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    if (user) return user;
+    await delay(600 * Math.pow(1.6, i));
+  }
+  throw new Error('User never appeared');
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).end('Method Not Allowed');
-  }
+  if (req.method !== 'POST') return res.status(405).end();
 
+  const { email, password } = req.body;
+  if (!email || !password || password.length < 8)
+    return res.status(400).json({ error: 'Invalid request' });
+
+  let user;
   try {
-    const { token, password } = req.body || {};
-    if (!token || !password) return res.status(400).json({ error: 'token and password required' });
-    if (typeof password !== 'string' || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
-
-    const tokenKey = `user:setpw:${token}`;
-    let tokenRecord;
-    try {
-      if (!kv) return res.status(500).json({ error: 'KV not available' });
-      tokenRecord = await kv.get(tokenKey);
-    } catch (e) {
-      console.warn('KV read error (set-password token)', e?.message || e);
-      return res.status(500).json({ error: 'KV read error' });
-    }
-
-    if (!tokenRecord || !tokenRecord.email) return res.status(400).json({ error: 'Invalid or expired token' });
-
-    const emailKey = tokenRecord.email.toLowerCase();
-
-    // Hash and store password on user record
-    const hashed = hashPassword(password);
-    try {
-      const existing = (await kv.get(`user:${emailKey}`)) || {};
-      const updated = {
-        ...existing,
-        email: emailKey,
-        has_password: true,
-        password: {
-          hash: hashed.derived,
-          salt: hashed.salt,
-          iterations: hashed.iterations,
-          algorithm: hashed.algorithm,
-        },
-        updated_at: new Date().toISOString(),
-      };
-      await kv.set(`user:${emailKey}`, updated);
-      // delete the token
-      await kv.del(tokenKey);
-    } catch (e) {
-      console.error('KV write error (set password)', e?.message || e);
-      return res.status(500).json({ error: 'Could not save password' });
-    }
-
-    // create nh_session and persist local session record
-    const nhSessionString = makeSessionString(emailKey);
-    try {
-      await kv.set(`local:session:${emailKey}`, { nhSession: nhSessionString, created_at: new Date().toISOString() }, { ex: 60 * 60 * 24 * 30 });
-    } catch (e) {
-      console.warn('KV write (local session) failed', e?.message || e);
-    }
-
-    const cookieValue = encodeURIComponent(nhSessionString);
-    const cookie = `nh_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
-    res.setHeader('Set-Cookie', cookie);
-
-    return res.status(200).json({ ok: true, email: emailKey, nh_session: nhSessionString });
-  } catch (err) {
-    console.error('set-password error', err?.message || err);
-    return res.status(500).json({ error: 'Server error' });
+    user = await waitForUser(email);
+  } catch (e) {
+    console.error('[set-password] User not found after retries');
+    return res.status(500).json({ error: 'User not ready' });
   }
+
+  // Update password
+  const { error: upd } = await supabaseAdmin.auth.admin.updateUserById(user.id, { password });
+  if (upd) {
+    console.error('[set-password] updateUser failed', upd);
+    return res.status(500).json({ error: 'Password update failed' });
+  }
+
+  // Sign in + set HttpOnly cookies
+  const { data, error } = await anon.auth.signInWithPassword({ email, password });
+  if (error || !data.session) {
+    console.error('[set-password] signIn failed', error);
+    return res.status(500).json({ error: 'Login failed' });
+  }
+
+  const { access_token, refresh_token, expires_in } = data.session;
+
+  res.setHeader('Set-Cookie', [
+    `sb-access-token=${access_token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${expires_in}`,
+    `sb-refresh-token=${refresh_token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${60*60*24*365}`,
+  ]);
+
+  console.log('[set-password] SUCCESS – auto-signed in');
+  res.status(200).json({ success: true });
 }
+
+export const config = { api: { bodyParser: true } };
