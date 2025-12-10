@@ -1,6 +1,8 @@
 // pages/api/create-checkout-session.js
-// Temporary fallback/debug version: logs incoming body and supports env-based price map.
-// Add to repo, commit, push, deploy. Check Vercel logs for "create-checkout-session incoming" lines.
+// Accepts { priceId | plan, email? }
+// - Logs incoming body for debugging
+// - Resolves plan -> price via PRICE_MAP env var if needed
+// - Makes email optional (Stripe will collect it during Checkout if absent)
 
 import Stripe from 'stripe';
 
@@ -22,7 +24,7 @@ export default async function handler(req, res) {
     console.log('create-checkout-session incoming', {
       method: req.method,
       contentType: req.headers['content-type'],
-      bodyPreview: JSON.stringify(req.body).slice(0, 1000)
+      bodyPreview: JSON.stringify(req.body).slice(0, 2000)
     });
 
     if (req.method !== 'POST') {
@@ -32,29 +34,30 @@ export default async function handler(req, res) {
     const body = req.body || {};
     let { priceId, plan, email } = body;
 
+    // Resolve via PRICE_MAP if plan was passed
     if (!priceId && plan) {
       priceId = getPriceFromEnvMap(plan);
-      console.log('create-checkout-session: resolved priceId from PRICE_MAP', { plan, priceId });
+      console.log('resolved priceId from PRICE_MAP', { plan, priceId });
     }
 
     if (!priceId) {
-      console.error('create-checkout-session: missing priceId after fallback', { body });
-      return res.status(400).json({ error: 'missing priceId or email', reason: 'missing_price_or_email', received: Object.keys(body) });
+      console.error('create-checkout-session: missing priceId', { body });
+      return res.status(400).json({ error: 'missing priceId', reason: 'missing_priceId', received: Object.keys(body) });
     }
 
-    if (!email) {
-      console.error('create-checkout-session: missing email', { body });
-      return res.status(400).json({ error: 'missing priceId or email', reason: 'missing_price_or_email', received: Object.keys(body) });
-    }
-
-    const session = await stripe.checkout.sessions.create({
+    // Build session params; make customer_email optional
+    const sessionParams = {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
-      customer_email: email,
-      mode: 'subscription',
+      mode: 'subscription', // change to 'payment' if you're doing one-offs
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.novahunt.ai'}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.novahunt.ai'}/plans`,
-    });
+    };
+    if (email) {
+      sessionParams.customer_email = email;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return res.status(200).json({ url: session.url });
   } catch (err) {
