@@ -4,7 +4,7 @@ export default function SignUp() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSignUp = async (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -14,26 +14,29 @@ export default function SignUp() {
         body: JSON.stringify({ email }),
       });
       const { url } = await res.json();
-      window.location.href = url; // This replaces the old redirectToCheckout
+      window.location.href = url; // Flawless redirect to Stripe
     } catch (err) {
-      alert('Signup failed');
+      alert('Signup error');
     }
     setLoading(false);
   };
 
   return (
-    <form onSubmit={handleSignUp} style={{ maxWidth: 400, margin: '100px auto' }}>
-      <input 
-        type="email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
-        placeholder="Enter your email" 
-        required 
-        style={{ width: '100%', padding: 12, margin: '10px 0' }} 
-      />
-      <button type="submit" disabled={loading} style={{ width: '100%', padding: 12 }}>
-        {loading ? 'Starting...' : 'Sign Up & Pay'}
-      </button>
-    </form>
+    <div style={{ maxWidth: 400, margin: '100px auto' }}>
+      <h1>Sign Up</h1>
+      <form onSubmit={handleSignup}>
+        <input 
+          type="email" 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)} 
+          placeholder="Enter email" 
+          required 
+          style={{ width: '100%', padding: 12, margin: '10px 0' }} 
+        />
+        <button type="submit" disabled={loading} style={{ width: '100%', padding: 12 }}>
+          {loading ? 'Starting...' : 'Sign Up & Pay'}
+        </button>
+      </form>
+    </div>
   );
 }
