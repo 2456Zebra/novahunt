@@ -5,6 +5,7 @@ export default function Pricing() {
   const [loading, setLoading] = useState(false);
 
   const startCheckout = async (priceId) => {
+    if (!email) return alert('Please enter your email');
     setLoading(true);
     try {
       const res = await fetch('/api/create-checkout-session', {
@@ -15,44 +16,56 @@ export default function Pricing() {
       const { url } = await res.json();
       window.location.href = url;
     } catch (err) {
-      alert('Checkout failed');
+      alert('Checkout failed – please try again');
     }
     setLoading(false);
   };
 
   return (
-    <div style={{ maxWidth: 800, margin: '100px auto', textAlign: 'center' }}>
+    <div style={{ maxWidth: 900, margin: '80px auto', textAlign: 'center' }}>
       <h1>Choose Your Plan</h1>
       <input
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="Enter your email"
+        placeholder="your@email.com"
         required
-        style={{ width: 300, padding: 12, margin: '20px 0', display: 'block', marginLeft: 'auto', marginRight: 'auto' }}
+        style={{ width: 340, padding: 14, margin: '20px auto', display: 'block', fontSize: 16 }}
       />
 
-      <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-        <div style={{ border: '1px solid #ccc', padding: 20, borderRadius: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 30, flexWrap: 'wrap' }}>
+        <div style={{ border: '2px solid #e0e0e0', padding: 30, borderRadius: 12, width: 240 }}>
           <h2>Starter</h2>
-          <p>$9/month</p>
-          <button onClick={() => startCheckout('price_1SZHGGGyuj9BgGEUftoqaGC8')} disabled={loading || !email}>
+          <p style={{ fontSize: 28, margin: '10px 0' }}>$9<span style={{ fontSize: 16 }}>/month</span></p>
+          <button
+            onClick={() => startCheckout('price_1SZHGGGyuj9BgGEUftoqaGC8')}
+            disabled={loading}
+            style={{ width: '100%', padding: 14, background: '#0066ff', color: 'white', border: 'none', borderRadius: 8, fontSize: 16 }}
+          >
             {loading ? 'Starting...' : 'Choose Starter'}
           </button>
         </div>
 
-        <div style={{ border: '1px solid #ccc', padding: 20, borderRadius: 8 }}>
+        <div style={{ border: '2px solid #0066ff', padding: 30, borderRadius: 12, width: 240, boxShadow: '0 4px 20px rgba(0,102,255,0.2)' }}>
           <h2>Pro</h2>
-          <p>$19/month</p>
-          <button onClick={() => startCheckout('price_1SZHJGGyuj9BgGEUQ4uccDvB')} disabled={loading || !email}>
+          <p style={{ fontSize: 28, margin: '10px 0' }}>$19<span style={{ fontSize: 16 }}>/month</span></p>
+          <button
+            onClick={() => startCheckout('price_1SZHJGGyuj9BgGEUQ4uccDvB')}
+            disabled={loading}
+            style={{ width: '100%', padding: 14, background: '#0066ff', color: 'white', border: 'none', borderRadius: 8, fontSize: 16 }}
+          >
             {loading ? 'Starting...' : 'Choose Pro'}
           </button>
         </div>
 
-        <div style={{ border: '1px solid #ccc', padding: 20, borderRadius: 8 }}>
+        <div style={{ border: '2px solid #e0e0e0', padding: 30, borderRadius: 12, width: 240 }}>
           <h2>Enterprise</h2>
-          <p>$49/month</p>
-          <button onClick={() => startCheckout('price_1SZHKzGyuj9BgGEUh5aCmugi')} disabled={loading || !email}>
+          <p style={{ fontSize: 28, margin: '10px 0' }}>$49<span style={{ fontSize: 16 }}>/month</span></p>
+          <button
+            onClick={() => startCheckout('price_1SZHKzGyuj9BgGEUh5aCmugi')}
+            disabled={loading}
+            style={{ width: '100%', padding: 14, background: '#0066ff', color: 'white', border: 'none', borderRadius: 8, fontSize: 16 }}
+          >
             {loading ? 'Starting...' : 'Choose Enterprise'}
           </button>
         </div>
