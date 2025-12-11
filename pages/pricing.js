@@ -1,4 +1,4 @@
-'use client'; // ← This forces Next.js 13+ App Router client component (100% safe)
+'use client';
 
 import { useState } from 'react';
 
