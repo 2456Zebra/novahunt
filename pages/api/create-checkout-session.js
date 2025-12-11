@@ -6,23 +6,17 @@ export default async function handler(req, res) {
 
   const { email, priceId } = req.body;
 
-  if (!priceId || !email) {
-    return res.status(400).json({ error: 'Missing email or priceId' });
-  }
+  if (!priceId) return res.status(400).json({ error: 'Missing priceId' });
 
   try {
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',                 // ← This fixes the error
+      mode: 'subscription',
       payment_method_types: ['card'],
-      customer_email: email,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: `${req.headers.origin}/set-password?email=${encodeURIComponent(email)}&session_id={CHECKOUT_SESSION_ID}`,
+      customer_email: email || undefined, // works even if email is empty
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${req.headers.origin}/set-password?email=${email ? encodeURIComponent(email) : '{CHECKOUT_SESSION_CLIENT_REFERENCE_ID}'}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin}/pricing`,
+      client_reference_id: email || undefined,
     });
 
     res.status(200).json({ url: session.url });
