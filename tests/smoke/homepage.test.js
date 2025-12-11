@@ -15,12 +15,13 @@ async function testHomepage() {
   const port = process.env.TEST_PORT || 3000;
   
   return new Promise((resolve, reject) => {
+    const timeout = parseInt(process.env.TEST_TIMEOUT) || 5000;
     const options = {
       hostname,
       port,
       path: '/',
       method: 'GET',
-      timeout: 5000
+      timeout
     };
 
     const req = http.request(options, (res) => {
