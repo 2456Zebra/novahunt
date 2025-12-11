@@ -18,7 +18,7 @@ export default function SuccessPage() {
   const [done, setDone] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
-  // Poll /api/get-checkout-session a few times if it initially fails (Stripe redirect/back-end latency).
+  // Poll /api/get-checkout-session with retries (exponential backoff)
   useEffect(() => {
     if (!session_id) return;
     let cancelled = false;
@@ -29,8 +29,8 @@ export default function SuccessPage() {
       try {
         const res = await fetch(`/api/get-checkout-session?session_id=${encodeURIComponent(session_id)}`);
         if (!res.ok) {
+          // If not ok, throw so we can retry
           const json = await res.json().catch(() => ({}));
-          // If session not yet available, we retry (Stripe may not have finished)
           throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
         }
         const json = await res.json();
@@ -44,7 +44,6 @@ export default function SuccessPage() {
         console.warn('get-checkout-session attempt failed', attemptNum, err);
         if (cancelled) return;
         if (attemptNum < 4) {
-          // Exponential backoff: wait 1s, 2s, 4s, 8s...
           const wait = Math.pow(2, attemptNum) * 1000;
           setTimeout(() => fetchSession(attemptNum + 1), wait);
           setAttempt(attemptNum + 1);
@@ -72,14 +71,15 @@ export default function SuccessPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id, password }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
+        // Surface the server error message if present
         setError(json?.message || json?.error || 'Signup failed');
         setLoading(false);
         return;
       }
 
-      // Optionally auto sign-in via Supabase client if anon key is set
+      // If we can auto-sign-in via Supabase client, try that; otherwise do a full-page redirect.
       try {
         if (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
           const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -87,21 +87,27 @@ export default function SuccessPage() {
             password,
           });
           if (signInError) {
+            // Auto sign-in failed -> fall back to full-page redirect to /app
             console.warn('Auto sign-in failed', signInError);
-            setDone(true);
+            // Use full page load to avoid Next.js _next/data mismatch issues
+            window.location.href = '/app';
+            return;
           } else {
-            router.replace('/app');
+            // On success, perform a full navigation to the app to ensure fresh server state
+            window.location.href = '/app';
             return;
           }
         } else {
-          setDone(true);
+          // No client anon key configured — do a full page navigation to /app
+          window.location.href = '/app';
+          return;
         }
       } catch (err) {
-        console.error('supabase sign in error', err);
-        setDone(true);
+        console.error('Auto sign-in error', err);
+        // Ensure a full-page navigation even if sign-in step throws
+        window.location.href = '/app';
+        return;
       }
-
-      setDone(true);
     } catch (err) {
       console.error('complete-signup request failed', err);
       setError('Server error during signup');
@@ -131,9 +137,8 @@ export default function SuccessPage() {
           <p style={{ marginTop: 12 }}>
             Helpful actions:
             <ul>
-              <li>Open the link you were redirected from and copy the session_id (if present) and paste it here.</li>
-              <li>Run a direct Stripe API check (see instructions below) to confirm the session exists.</li>
-              <li>Contact support with the session_id in the URL.</li>
+              <li>Copy the session_id from the URL and paste it when contacting support.</li>
+              <li>Try again in a few moments — webhooks may take a moment to arrive.</li>
             </ul>
           </p>
         </div>
