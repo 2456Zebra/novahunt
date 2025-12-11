@@ -1,6 +1,6 @@
 // pages/api/get-checkout-session.js
-// GET ?session_id=... -> returns { session_id, email, paid }
-// Requires STRIPE_SECRET_KEY in Vercel Production envs.
+// GET ?session_id=...  -> returns { session_id, email, paid }
+// Server-side only: requires STRIPE_SECRET_KEY
 
 import Stripe from 'stripe';
 
@@ -13,13 +13,14 @@ export default async function handler(req, res) {
   if (!session_id) return res.status(400).json({ error: 'missing session_id' });
 
   try {
-    // Expand customer & subscription so we can inspect email and subscription status
+    // Expand customer so we can read customer.email when session.customer_email is null
     const session = await stripe.checkout.sessions.retrieve(session_id, { expand: ['subscription', 'customer'] });
 
     let paid = false;
     if (session.payment_status === 'paid') paid = true;
     if (session.subscription && session.subscription.status === 'active') paid = true;
 
+    // Prefer session.customer_email but fall back to expanded customer.email
     const email = session.customer_email || (session.customer && session.customer.email) || null;
 
     return res.status(200).json({
