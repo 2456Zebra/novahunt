@@ -2,16 +2,21 @@
 // POST { session_id, password } -> creates user in Supabase and marks session consumed
 // Requires STRIPE_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY in envs.
 
+// Use Stripe normally
 import Stripe from 'stripe';
-import fetch from 'node-fetch';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' });
+
+// Use the global fetch available in Node 18+ (Vercel build images provide this).
+// This avoids bundling `node-fetch` which was causing the build error.
+const fetcher = globalThis.fetch;
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function supabaseRpc(path, body) {
-  const res = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+  if (!fetcher) throw new Error('fetch is not available in this runtime');
+  const res = await fetcher(`${supabaseUrl}/rest/v1/${path}`, {
     method: 'POST',
     headers: {
       apikey: supabaseKey,
