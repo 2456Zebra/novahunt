@@ -1,6 +1,6 @@
 // pages/api/get-checkout-session.js
-// GET ?session_id=...  -> returns { session_id, email, paid }
-// Server-side only: requires STRIPE_SECRET_KEY
+// GET ?session_id=... -> returns { session_id, email, paid }
+// Requires STRIPE_SECRET_KEY in Vercel Production envs.
 
 import Stripe from 'stripe';
 
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   if (!session_id) return res.status(400).json({ error: 'missing session_id' });
 
   try {
-    // Expand customer so we can read email when session.customer_email is null
+    // Expand customer & subscription so we can inspect email and subscription status
     const session = await stripe.checkout.sessions.retrieve(session_id, { expand: ['subscription', 'customer'] });
 
     let paid = false;
@@ -29,9 +29,10 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('get-checkout-session error', err?.message || err);
-    if (String(err?.message || '').toLowerCase().includes('no such checkout.session')) {
-      return res.status(404).json({ error: 'not_found', message: String(err?.message || err) });
+    const msg = String(err?.message || err);
+    if (msg.toLowerCase().includes('no such checkout.session')) {
+      return res.status(404).json({ error: 'not_found', message: msg });
     }
-    return res.status(500).json({ error: 'stripe_error', message: String(err?.message || err) });
+    return res.status(500).json({ error: 'stripe_error', message: msg });
   }
 }
