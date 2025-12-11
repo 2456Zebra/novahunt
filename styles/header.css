@@ -1,0 +1,41 @@
+/* styles/header.css */
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+  gap: 12px;
+}
+
+.brand a { font-weight: 700; color: #0b5fff; text-decoration: none; font-size: 18px; }
+
+.site-nav a { margin-right: 12px; text-decoration: none; color: #333; }
+
+.auth-area { display: flex; align-items: center; gap: 12px; }
+
+.btn { padding: 8px 12px; background: #0b5fff; color: #fff; border-radius: 6px; text-decoration: none; font-weight: 600; }
+
+/* Account area */
+.account-area { display: flex; align-items: center; gap: 12px; }
+.header-user { display:flex; align-items:center; gap:12px; }
+.header-user-info { text-align: right; margin-right: 8px; }
+.header-user-name { font-weight: 600; }
+.header-user-plan { font-size: 12px; color: #6b7280; }
+
+/* Progress bars */
+.header-progress { display:flex; flex-direction:column; gap:6px; min-width:180px; }
+.header-progress label.progress-label { font-size:12px; color:#475569; }
+.header-progress progress { width: 180px; height: 12px; -webkit-appearance: none; appearance: none; }
+.header-progress small { color:#6b7280; font-size:11px; }
+
+/* Account menu */
+.account-wrapper { position: relative; display: inline-block; }
+.account-toggle { background: none; border: 0; cursor: pointer; padding: 6px 8px; font: inherit; color: inherit; }
+.account-menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 160px; background: white; border: 1px solid #ddd; box-shadow: 0 6px 18px rgba(0,0,0,0.08); padding: 8px; border-radius: 6px; z-index: 60; }
+.account-menu.hidden { display: none; }
+.account-menu.visible { display: block; }
+.account-menu a, .account-menu button { display:block; text-align:left; width:100%; padding:8px 10px; border:0; background:transparent; text-decoration:none; color:#0b1220; cursor:pointer; }
+.account-menu a:hover, .account-menu button:hover { background:#f5f7fb; }

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Upgrade — NovaHunt</title>
+
+  <!-- Inline critical styles to avoid FOUC while client JS loads -->
+  <style>
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial, sans-serif;}
+    body{display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e6eef8;min-height:100vh;}
+    .nh-root{width:100%;max-width:900px;padding:28px;box-sizing:border-box;}
+    .nh-header{display:flex;align-items:center;gap:12px;}
+    .nh-logo{width:120px;height:auto;}
+    .upgrade-card{background:linear-gradient(180deg,#071033 0%,#0b1330 100%);padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,.6);}
+    .upgrade-title{font-size:1.125rem;margin:0 0 8px 0;}
+    .cta{display:flex;gap:10px;margin-top:12px;}
+    .btn{background:#06b6d4;color:#04263a;padding:10px 16px;border-radius:8px;font-weight:600;text-decoration:none;}
+  </style>
+
+  <link rel="preload" href="/public/index.js" as="script">
+</head>
+<body>
+  <main class="nh-root">
+    <header class="nh-header">
+      <img src="/favicon.ico" alt="NovaHunt" class="nh-logo" />
+      <h1 class="upgrade-title">Upgrade your NovaHunt plan</h1>
+    </header>
+
+    <section class="upgrade-card">
+      <p>Get pro features and priority access.</p>
+      <div class="cta">
+        <a class="btn" href="/api/create-checkout-session">Checkout</a>
+        <a class="btn" href="/signup">Sign up</a>
+      </div>
+    </section>
+  </main>
+
+  <script src="/public/index.js" defer></script>
+</body>
+</html>
