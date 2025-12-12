@@ -6,16 +6,36 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export async function POST(req) {
   const { email, password, session_id } = await req.json();
-  if (!email || !password || !session_id) return new Response('Missing data', { status: 400 });
+
+  if (!email || !password || !session_id) {
+    return new Response('Missing data', { status: 400 });
+  }
 
   try {
+    // Verify Stripe payment
     const session = await stripe.checkout.sessions.retrieve(session_id);
-    if (session.payment_status !== 'paid') return new Response('Payment not completed', { status: 400 });
+    if (session.payment_status !== 'paid') {
+      return new Response('Payment not completed', { status: 400 });
+    }
 
-    const { data: signInData } = await supabase.auth.signInWithPassword({ email, password });
-    if (!signInData.session) throw new Error('Login failed');
+    // Find the user (created by webhook)
+    const { data: { users } } = await supabase.auth.admin.listUsers();
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
-    const { access_token, refresh_token, expires_in } = signInData.session;
+    if (!user) throw new Error('User not found');
+
+    // Update password
+    await supabase.auth.admin.updateUserById(user.id, { password });
+
+    // Now sign in (this will work)
+    const { data: { session: authSession } } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (!authSession) throw new Error('Login failed');
+
+    const { access_token, refresh_token, expires_in } = authSession;
 
     const headers = new Headers();
     headers.append('Set-Cookie', `sb-access-token=${access_token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${expires_in}`);
@@ -23,7 +43,7 @@ export async function POST(req) {
 
     return new Response(JSON.stringify({ success: true }), { status: 200, headers });
   } catch (err) {
-    console.error(err);
+    console.error('Set-password error:', err);
     return new Response('Verification failed', { status: 500 });
   }
 }
