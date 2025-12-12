@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 
 export default function SetPassword() {
   const router = useRouter();
-  const { email, session_id } = router.query; // ← THIS LINE IS THE FIX
+  const { email, session_id } = router.query;  // ← This captures the real session_id from Stripe
 
   const [pw, setPw] = useState('');
   const [msg, setMsg] = useState('');
@@ -18,13 +18,18 @@ export default function SetPassword() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ email, password: pw, session_id }), // ← passes session_id
+      body: JSON.stringify({
+        email,
+        password: pw,
+        session_id: session_id || null,   // ← This is the fix
+      }),
     });
 
     if (res.ok) {
       router.push('/dashboard');
     } else {
-      setMsg('Verification failed – please try again');
+      const error = await res.text();
+      setMsg('Verification failed: ' + error);
     }
   };
 
