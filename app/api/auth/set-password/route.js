@@ -12,25 +12,24 @@ export async function POST(req) {
   }
 
   try {
-    // 1. Verify payment
+    // Verify payment
     const session = await stripe.checkout.sessions.retrieve(session_id);
     if (session.payment_status !== 'paid') {
       return new Response('Payment not completed', { status: 400 });
     }
 
-    // 2. Find user
+    // Find user
     const { data: { users } } = await supabase.auth.admin.listUsers();
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (!user) return new Response('User not found', { status: 400 });
 
-    // 3. Set password
+    // Set password
     await supabase.auth.admin.updateUserById(user.id, { password });
 
-    // 4. Generate a fresh session using service role (bypasses all client checks)
+    // Sign in
     const { data: { session: authSession } } = await supabase.auth.signInWithPassword({ email, password });
     if (!authSession) throw new Error('Login failed');
 
-    // 5. Set cookies + REDIRECT TO DASHBOARD (NO SIGN-IN PAGE)
     const headers = new Headers();
     headers.append('Set-Cookie', `sb-access-token=${authSession.access_token}; Path=/; Domain=.novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=${authSession.expires_in}`);
     headers.append('Set-Cookie', `sb-refresh-token=${authSession.refresh_token}; Path=/; Domain=.novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=31536000`);
@@ -38,7 +37,7 @@ export async function POST(req) {
 
     return new Response(null, { status: 302, headers });
   } catch (err) {
-    console.error('Set-password final error:', err);
+    console.error('Set-password error:', err);
     return new Response('Failed', { status: 500 });
   }
 }
