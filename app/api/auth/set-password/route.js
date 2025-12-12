@@ -1,0 +1,29 @@
+import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+export async function POST(req) {
+  const { email, password, session_id } = await req.json();
+  if (!email || !password || !session_id) return new Response('Missing data', { status: 400 });
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    if (session.payment_status !== 'paid') return new Response('Payment not completed', { status: 400 });
+
+    const { data: signInData } = await supabase.auth.signInWithPassword({ email, password });
+    if (!signInData.session) throw new Error('Login failed');
+
+    const { access_token, refresh_token, expires_in } = signInData.session;
+
+    const headers = new Headers();
+    headers.append('Set-Cookie', `sb-access-token=${access_token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${expires_in}`);
+    headers.append('Set-Cookie', `sb-refresh-token=${refresh_token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=31536000`);
+
+    return new Response(JSON.stringify({ success: true }), { status: 200, headers });
+  } catch (err) {
+    console.error(err);
+    return new Response('Verification failed', { status: 500 });
+  }
+}
