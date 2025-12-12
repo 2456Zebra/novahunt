@@ -12,36 +12,33 @@ export async function POST(req) {
   }
 
   try {
-    // Verify Stripe payment
+    // Verify payment
     const session = await stripe.checkout.sessions.retrieve(session_id);
     if (session.payment_status !== 'paid') {
       return new Response('Payment not completed', { status: 400 });
     }
 
-    // Find the user (created by webhook)
+    // Find user (created by webhook)
     const { data: { users } } = await supabase.auth.admin.listUsers();
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
     if (!user) throw new Error('User not found');
 
-    // Update password
+    // Set password
     await supabase.auth.admin.updateUserById(user.id, { password });
 
-    // Now sign in (this will work)
-    const { data: { session: authSession } } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // Sign in and get session
+    const { data: { session: authSession } } = await supabase.auth.signInWithPassword({ email, password });
 
     if (!authSession) throw new Error('Login failed');
 
-    const { access_token, refresh_token, expires_in } = authSession;
-
     const headers = new Headers();
-    headers.append('Set-Cookie', `sb-access-token=${access_token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${expires_in}`);
-    headers.append('Set-Cookie', `sb-refresh-token=${refresh_token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=31536000`);
+    headers.append('Set-Cookie', `sb-access-token=${authSession.access_token}; Path=/; Domain=.novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=${authSession.expires_in}`);
+    headers.append('Set-Cookie', `sb-refresh-token=${authSession.refresh_token}; Path=/; Domain=.novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=31536000`);
 
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers });
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers,
+    });
   } catch (err) {
     console.error('Set-password error:', err);
     return new Response('Verification failed', { status: 500 });
