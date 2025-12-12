@@ -33,7 +33,7 @@ export async function POST(req) {
     const headers = new Headers();
     headers.append('Set-Cookie', `sb-access-token=${authSession.access_token}; Path=/; Domain=.novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=${authSession.expires_in}`);
     headers.append('Set-Cookie', `sb-refresh-token=${authSession.refresh_token}; Path=/; Domain=.novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=31536000`);
-    headers.append('Location', '/dashboard');
+    headers.append('Location', '/account');
 
     return new Response(null, { status: 302, headers });
   } catch (err) {
