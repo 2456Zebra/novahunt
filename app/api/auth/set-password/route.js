@@ -15,7 +15,7 @@ export async function POST(req) {
     // Verify payment
     const session = await stripe.checkout.sessions.retrieve(session_id);
     if (session.payment_status !== 'paid') {
-      return new Response('Payment failed', { status: 400 });
+      return new Response('Payment not completed', { status: 400 });
     }
 
     // Find user
@@ -26,18 +26,24 @@ export async function POST(req) {
     // Set password
     await supabase.auth.admin.updateUserById(user.id, { password });
 
-    // Sign in
-    const { data: { session: authSession } } = await supabase.auth.signInWithPassword({ email, password });
-    if (!authSession) throw new Error('Login failed');
+    // Sign in with the new password
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error || !signInData.session) {
+      console.error('Sign in error:', error);
+      return new Response('Login failed after setting password', { status: 500 });
+    }
+
+    const { access_token, refresh_token, expires_in } = signInData.session;
 
     const headers = new Headers();
-    headers.append('Set-Cookie', `sb-access-token=${authSession.access_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=${authSession.expires_in}`);
-    headers.append('Set-Cookie', `sb-refresh-token=${authSession.refresh_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=31536000`);
-    headers.append('Location', '/account'); // or '/' for homepage
+    headers.append('Set-Cookie', `sb-access-token=${access_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=${expires_in}`);
+    headers.append('Set-Cookie', `sb-refresh-token=${refresh_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=31536000`);
+    headers.append('Location', '/account');
 
     return new Response(null, { status: 302, headers });
   } catch (err) {
-    console.error('set-password error:', err);
+    console.error('Set-password error:', err);
     return new Response('Failed', { status: 500 });
   }
 }
