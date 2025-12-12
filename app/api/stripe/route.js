@@ -10,8 +10,8 @@ export async function POST(req) {
     payment_method_types: ['card'],
     customer_email: email,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${process.env.NEXT_PUBLIC_URL || req.headers.get('origin')}/set-password?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_URL || req.headers.get('origin')}/checkout`,
+    success_url: `${req.headers.get('origin')}/set-password?email=${encodeURIComponent(email)}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${req.headers.get('origin')}/checkout`,
   });
 
   return new Response(JSON.stringify({ url: session.url }), { status: 200 });
