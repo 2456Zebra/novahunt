@@ -18,39 +18,38 @@ export async function POST(req) {
       return new Response('Payment not completed', { status: 400 });
     }
 
-    // Find or create user
+    // Find the user (created by webhook)
     const { data: { users } } = await supabase.auth.admin.listUsers();
-    let user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
-      const { data: newUser } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-      });
-      user = newUser.user;
-    } else {
-      await supabase.auth.admin.updateUserById(user.id, { password });
+      return new Response('User not found', { status: 400 });
     }
 
-    // Force login using service role (bypasses all client issues)
-    const { data: { session: authSession } } = await supabase.auth.admin.generateLink({
-      type: 'signin',
-      email,
-      password,
-    });
+    // SET THE PASSWORD FIRST (this was missing)
+    const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, { password });
+    if (updateError) {
+      console.error('Update password error:', updateError);
+      return new Response('Password update failed', { status: 500 });
+    }
 
-    if (!authSession) throw new Error('Login failed');
+    // Now sign in with the new password
+    const { data: { session: authSession } } = await supabase.auth.signInWithPassword({ email, password });
 
-    // Set cookies and redirect directly to dashboard
+    if (!authSession) {
+      return new Response('Login failed', { status: 500 });
+    }
+
+    const { access_token, refresh_token, expires_in } = authSession;
+
     const headers = new Headers();
-    headers.append('Set-Cookie', `sb-access-token=${authSession.access_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=Lax; Max-Age=${authSession.expires_in || 3600}`);
-    headers.append('Set-Cookie', `sb-refresh-token=${authSession.refresh_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`);
+    headers.append('Set-Cookie', `sb-access-token=${access_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=Lax; Max-Age=${expires_in}`);
+    headers.append('Set-Cookie', `sb-refresh-token=${refresh_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`);
     headers.append('Location', '/dashboard');
 
     return new Response(null, { status: 302, headers });
   } catch (err) {
-    console.error(err);
-    return new Response('Failed', { status: 500 });
+    console.error('Set-password error:', err);
+    return new Response('Verification failed', { status: 500 });
   }
 }
