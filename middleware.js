@@ -1,47 +1,27 @@
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 
-/**
- * Server-side middleware to protect routes and avoid client-side redirect flashes.
- *
- * Behavior:
- * - If the request path is a protected route (e.g. /dashboard, /account, /settings),
- *   and there is no auth cookie, middleware performs a server redirect to /signin.
- * - Skips static and API paths.
- *
- * Adjust `protectedPaths` to match the pages you want server-protected.
- */
-export function middleware(req) {
-  const { pathname } = req.nextUrl;
+export async function middleware(req) {
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
 
-  // Skip next internals, static files, and API endpoints
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.includes('.') // static assets like .css, .png
-  ) {
-    return NextResponse.next();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  // If user is NOT signed in and trying to access /dashboard → redirect to signin
+  if (!session && req.nextUrl.pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/signin', req.url));
   }
 
-  // Define protected paths - adjust as needed
-  const protectedPaths = ['/dashboard', '/account', '/settings'];
-  const isProtected = protectedPaths.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`)
-  );
-
-  if (!isProtected) {
-    return NextResponse.next();
+  // If user IS signed in and on /signin → redirect to dashboard
+  if (session && req.nextUrl.pathname === '/signin') {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
-  // Read auth cookie set by your set-password API ("auth")
-  const token = req.cookies.get && req.cookies.get('auth') ? req.cookies.get('auth').value : null;
-
-  if (!token) {
-    // Redirect unauthenticated users to signin with redirect back
-    const signinUrl = new URL('/signin', req.url);
-    signinUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(signinUrl);
-  }
-
-  // If token exists, allow request to continue.
-  return NextResponse.next();
+  return res;
 }
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/signin'],
+};
