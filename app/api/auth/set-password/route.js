@@ -33,25 +33,24 @@ export async function POST(req) {
       await supabase.auth.admin.updateUserById(user.id, { password });
     }
 
-    // Sign in
-    const { data: { session: authSession } } = await supabase.auth.signInWithPassword({ email, password });
+    // Force login using service role (bypasses all client issues)
+    const { data: { session: authSession } } = await supabase.auth.admin.generateLink({
+      type: 'signin',
+      email,
+      password,
+    });
 
     if (!authSession) throw new Error('Login failed');
 
+    // Set cookies and redirect directly to dashboard
     const headers = new Headers();
-    headers.append('Set-Cookie', `sb-access-token=${authSession.access_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=Lax; Max-Age=${authSession.expires_in}`);
+    headers.append('Set-Cookie', `sb-access-token=${authSession.access_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=Lax; Max-Age=${authSession.expires_in || 3600}`);
     headers.append('Set-Cookie', `sb-refresh-token=${authSession.refresh_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`);
+    headers.append('Location', '/dashboard');
 
-    // Redirect directly to dashboard — NO sign-in page
-    return new Response(null, {
-      status: 302,
-      headers: {
-        ...Object.fromEntries(headers),
-        Location: '/dashboard',
-      },
-    });
+    return new Response(null, { status: 302, headers });
   } catch (err) {
-    console.error('Set-password error:', err);
-    return new Response('Verification failed', { status: 500 });
+    console.error(err);
+    return new Response('Failed', { status: 500 });
   }
 }
