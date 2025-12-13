@@ -4,46 +4,43 @@ import Stripe from 'stripe';
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-export async function POST(req) {
-  const { email, password, session_id } = await req.json();
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end();
+
+  const { email, password, session_id } = req.body;
 
   if (!email || !password || !session_id) {
-    return new Response('Missing data', { status: 400 });
+    return res.status(400).json({ error: 'Missing data' });
   }
 
   try {
     // Verify payment
     const session = await stripe.checkout.sessions.retrieve(session_id);
     if (session.payment_status !== 'paid') {
-      return new Response('Payment not completed', { status: 400 });
+      return res.status(400).json({ error: 'Payment not completed' });
     }
 
     // Find user
     const { data: { users } } = await supabase.auth.admin.listUsers();
     const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-    if (!user) return new Response('User not found', { status: 400 });
+    if (!user) return res.status(400).json({ error: 'User not found' });
 
     // Set password
     await supabase.auth.admin.updateUserById(user.id, { password });
 
-    // Sign in with the new password
-    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
+    // Sign in with new password
+    const { data: { session: authSession } } = await supabase.auth.signInWithPassword({ email, password });
+    if (!authSession) throw new Error('Login failed');
 
-    if (error || !signInData.session) {
-      console.error('Sign in error:', error);
-      return new Response('Login failed after setting password', { status: 500 });
-    }
+    // Set cookies
+    res.setHeader('Set-Cookie', [
+      `sb-access-token=${authSession.access_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=${authSession.expires_in}`,
+      `sb-refresh-token=${authSession.refresh_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=31536000`,
+    ]);
 
-    const { access_token, refresh_token, expires_in } = signInData.session;
-
-    const headers = new Headers();
-    headers.append('Set-Cookie', `sb-access-token=${access_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=${expires_in}`);
-    headers.append('Set-Cookie', `sb-refresh-token=${refresh_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=31536000`);
-    headers.append('Location', '/account');
-
-    return new Response(null, { status: 302, headers });
+    return res.redirect(302, '/account');
   } catch (err) {
     console.error('Set-password error:', err);
-    return new Response('Failed', { status: 500 });
+    return res.status(500).json({ error: 'Failed' });
   }
 }
