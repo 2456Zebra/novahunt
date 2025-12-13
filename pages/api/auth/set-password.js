@@ -23,7 +23,7 @@ export default async function handler(req, res) {
           return res.status(400).send('Stripe session email mismatch');
         }
       } catch (err) {
-        // Continue even if verification fails (helps testing). In production you may choose to fail.
+        // Continue for preview/testing; in production you can fail here if desired.
         console.warn('Stripe session verify failed', err?.message);
       }
     }
