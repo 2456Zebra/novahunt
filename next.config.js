@@ -1,15 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // This tells Next.js to prefer the old "pages" directory for the root route
-  // So your perfect pages/index.js homepage wins — no conflict
-  async rewrites() {
-    return [
-      {
-        source: '/',
-        destination: '/index',
-      },
-    ];
-  },
+  // Keep any other config you need here.
+  // Removed the explicit rewrite from '/' -> '/index' so the pages router
+  // serves pages/index.js directly. This avoids the preview 404 issue.
+  // If you need custom rewrites later, add only the specific ones required.
+  // (No homepage content changes.)
+  reactStrictMode: true,
 };
 
 module.exports = nextConfig;
