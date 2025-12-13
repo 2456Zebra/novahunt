@@ -1,0 +1,240 @@
+*** Begin Patch
+*** Add File: pages/checkout.js
++import React, { useState } from 'react';
++
++export default function CheckoutPage() {
++  const [email, setEmail] = useState('');
++  const [loading, setLoading] = useState(false);
++
++  const plans = [
++    { name: 'Starter', priceId: 'price_1SZHGGGyuj9BgGEUftoqaGC8', price: '$9' },
++    { name: 'Pro', priceId: 'price_1SZHJGGyuj9BgGEUQ4uccDvB', price: '$19', popular: true },
++    { name: 'Enterprise', priceId: 'price_1SZHKzGyuj9BgGEUh5aCmugi', price: '$49' },
++  ];
++
++  const startCheckout = async (priceId) => {
++    if (!email || !email.includes('@')) return alert('Please enter a valid email');
++    setLoading(true);
++    try {
++      const res = await fetch('/api/stripe', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ email: email.trim(), priceId }),
++      });
++      const data = await res.json();
++      if (data.url) window.location.href = data.url;
++      else alert(data.error || 'Checkout failed');
++    } catch (err) {
++      alert('Network error');
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  return (
++    <div style={{ padding: '60px 20px', textAlign: 'center', fontFamily: 'system-ui' }}>
++      <h1 style={{ fontSize: 48, marginBottom: 20 }}>Choose Your Plan</h1>
++      <input
++        type="email"
++        value={email}
++        onChange={(e) => setEmail(e.target.value)}
++        placeholder="your@email.com"
++        style={{ width: 380, padding: 16, fontSize: 18, borderRadius: 8, border: '2px solid #ccc', marginBottom: 50, display: 'block', margin: '0 auto' }}
++      />
++      <div style={{ display: 'flex', justifyContent: 'center', gap: 50, flexWrap: 'wrap' }}>
++        {plans.map((plan) => (
++          <div
++            key={plan.priceId}
++            style={{
++              padding: 40,
++              borderRadius: 16,
++              width: 300,
++              background: plan.popular ? '#0066ff' : '#fff',
++              color: plan.popular ? 'white' : 'black',
++              boxShadow: plan.popular ? '0 15px 40px rgba(0,102,255,0.4)' : '0 10px 30px rgba(0,0,0,0.1)',
++              transform: plan.popular ? 'scale(1.08)' : 'scale(1)',
++            }}
++          >
++            <h2 style={{ fontSize: 32 }}>{plan.name}</h2>
++            <p style={{ fontSize: 40, fontWeight: 'bold' }}>
++              {plan.price}
++              <span style={{ fontSize: 20 }}>/mo</span>
++            </p>
++            <button
++              onClick={() => startCheckout(plan.priceId)}
++              disabled={loading || !email.includes('@')}
++              style={{
++                width: '100%',
++                padding: 16,
++                marginTop: 20,
++                background: plan.popular ? 'white' : '#0066ff',
++                color: plan.popular ? '#0066ff' : 'white',
++                border: 'none',
++                borderRadius: 8,
++                fontSize: 18,
++                fontWeight: 'bold',
++                cursor: 'pointer',
++              }}
++            >
++              {loading ? 'Loading...' : `Choose ${plan.name}`}
++            </button>
++          </div>
++        ))}
++      </div>
++    </div>
++  );
++}
++
+*** End Patch
+*** Begin Patch
+*** Add File: pages/set-password.js
++import React, { useState, useEffect } from 'react';
++import { useRouter } from 'next/router';
++
++export default function SetPassword() {
++  const router = useRouter();
++  const { email: qemail, session_id: qsession } = router.query || {};
++
++  const email = Array.isArray(qemail) ? qemail[0] : qemail || '';
++  const sessionId = Array.isArray(qsession) ? qsession[0] : qsession || '';
++
++  const [pw, setPw] = useState('');
++  const [msg, setMsg] = useState('');
++  const [loading, setLoading] = useState(false);
++
++  useEffect(() => {
++    // no-op; router keeps query updated
++  }, [router]);
++
++  const submit = async (e) => {
++    e.preventDefault();
++    if (pw.length < 8) return setMsg('Password too short');
++    setLoading(true);
++    try {
++      const res = await fetch('/api/auth/set-password', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ email, password: pw, session_id: sessionId }),
++      });
++      if (!res.ok) {
++        const txt = await res.text();
++        setMsg('Verification failed: ' + txt);
++        setLoading(false);
++        return;
++      }
++
++      // Client-side sign-in for Supabase (fast preview flow)
++      if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
++        const { createClient } = await import('@supabase/supabase-js');
++        const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
++        const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
++        if (error) {
++          setMsg('Sign-in failed: ' + error.message);
++          setLoading(false);
++          return;
++        }
++      }
++
++      router.push('/account');
++    } catch (err) {
++      setMsg('Network error');
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  return (
++    <div style={{ maxWidth: 420, margin: '100px auto', textAlign: 'center' }}>
++      <h1>Set Password</h1>
++      <p>Welcome <strong>{email}</strong></p>
++      <form onSubmit={submit}>
++        <input type="password" value={pw} onChange={e => setPw(e.target.value)} required minLength={8} placeholder="Choose password" style={{ width: '100%', padding: 14, margin: '10px 0' }} />
++        <button type="submit" style={{ width: '100%', padding: 14, background: '#0066ff', color: 'white', border: 'none' }} disabled={loading}>
++          {loading ? 'Working…' : 'Continue → Account'}
++        </button>
++      </form>
++      {msg && <p style={{ color: 'red', marginTop: 20 }}>{msg}</p>}
++    </div>
++  );
++}
++
+*** End Patch
+*** Begin Patch
+*** Add File: pages/api/stripe.js
++import Stripe from 'stripe';
++
++const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
++
++export default async function handler(req, res) {
++  if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
++  try {
++    const { email, priceId } = req.body || {};
++    if (!email || !priceId) return res.status(400).json({ error: 'Missing data' });
++
++    const origin = req.headers.origin || (req.headers.host ? `https://${req.headers.host}` : '');
++
++    const session = await stripe.checkout.sessions.create({
++      mode: 'subscription',
++      payment_method_types: ['card'],
++      customer_email: email,
++      line_items: [{ price: priceId, quantity: 1 }],
++      success_url: `${origin}/set-password?email=${encodeURIComponent(email)}&session_id={CHECKOUT_SESSION_ID}`,
++      cancel_url: `${origin}/checkout`,
++    });
++
++    res.status(200).json({ url: session.url });
++  } catch (err) {
++    console.error('stripe handler error', err);
++    res.status(500).json({ error: 'Internal error' });
++  }
++}
++
+*** End Patch
+*** Begin Patch
+*** Add File: pages/api/auth/set-password.js
++import Stripe from 'stripe';
++import { createClient } from '@supabase/supabase-js';
++
++const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
++const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
++
++export default async function handler(req, res) {
++  if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
++  try {
++    const { email, password, session_id } = req.body || {};
++    if (!email || !password) return res.status(400).send('Missing email or password');
++
++    if (session_id) {
++      try {
++        const s = await stripe.checkout.sessions.retrieve(session_id);
++        if (s.customer_email && s.customer_email !== email) {
++          return res.status(400).send('Stripe session email mismatch');
++        }
++      } catch (err) {
++        console.warn('Stripe verify failed', err && err.message);
++        // proceed or return error depending on your preference
++      }
++    }
++
++    try {
++      await supabaseAdmin.auth.admin.createUser({
++        email,
++        password,
++        email_confirm: true,
++      });
++    } catch (err) {
++      if (!/already exists/i.test(err?.message || '')) {
++        console.error('supabase createUser error', err);
++        return res.status(500).send('Failed to create user');
++      }
++      // else ignore user-exists
++    }
++
++    res.status(200).send('OK');
++  } catch (err) {
++    console.error('set-password API error', err);
++    res.status(500).send('Internal error');
++  }
++}
++
+*** End Patch
