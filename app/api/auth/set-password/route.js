@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     // Set password
     await supabase.auth.admin.updateUserById(user.id, { password });
 
-    // Sign in with new password
+    // Sign in
     const { data: { session: authSession } } = await supabase.auth.signInWithPassword({ email, password });
     if (!authSession) throw new Error('Login failed');
 
@@ -38,6 +38,7 @@ export default async function handler(req, res) {
       `sb-refresh-token=${authSession.refresh_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=31536000`,
     ]);
 
+    // Redirect to account
     return res.redirect(302, '/account');
   } catch (err) {
     console.error('Set-password error:', err);
