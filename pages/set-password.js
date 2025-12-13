@@ -35,7 +35,7 @@ export default function SetPassword() {
       // Client-side sign-in to populate client session used by your account header.
       // Requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in preview envs.
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        // If public keys not provided, redirect to /account anyway (server approach could set cookie but we avoid touching homepage auth flows)
+        // If public keys not provided, redirect to /account anyway
         router.push('/account');
         return;
       }
