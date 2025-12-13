@@ -1,5 +1,7 @@
+'use client';
+
 import { useEffect, useState } from 'react';
-import CheckoutButton from '../components/CheckoutButton';
+import CheckoutButton from '../../components/CheckoutButton';
 
 export default function CheckoutPage() {
   // Use the env test price if set, otherwise fall back to a clearly-visible placeholder
@@ -17,7 +19,7 @@ export default function CheckoutPage() {
         Current priceId: <strong>{priceId}</strong>
       </p>
       <p style={{ color: '#a00' }}>
-        If this shows "price_xxx", replace NEXT_PUBLIC_TEST_PRICE_ID in your environment with a real Price ID.
+        If this shows &quot;price_xxx&quot;, replace NEXT_PUBLIC_TEST_PRICE_ID in your environment with a real Price ID.
       </p>
       <CheckoutButton priceId={priceId}>Buy now</CheckoutButton>
     </main>
