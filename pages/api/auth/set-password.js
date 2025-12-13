@@ -14,37 +14,31 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Verify Stripe payment
+    // Verify Stripe payment
     const session = await stripe.checkout.sessions.retrieve(session_id);
     if (session.payment_status !== 'paid') {
       return res.status(400).json({ error: 'Payment not completed' });
     }
 
-    // 2. Find or create user
+    // Find user
     const { data: { users } } = await supabase.auth.admin.listUsers();
-    let user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    if (!user) return res.status(400).json({ error: 'User not found' });
 
-    if (!user) {
-      const { data: newUser } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-      });
-      user = newUser.user;
-    } else {
-      // Update password if user exists
-      await supabase.auth.admin.updateUserById(user.id, { password });
-    }
+    // Set password
+    await supabase.auth.admin.updateUserById(user.id, { password });
 
-    // 3. Sign in and set cookies
+    // Sign in and get session
     const { data: { session: authSession } } = await supabase.auth.signInWithPassword({ email, password });
     if (!authSession) throw new Error('Login failed');
 
+    // Set cookies
     res.setHeader('Set-Cookie', [
       `sb-access-token=${authSession.access_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=${authSession.expires_in}`,
       `sb-refresh-token=${authSession.refresh_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=31536000`,
     ]);
 
+    // Redirect to account
     return res.redirect(302, '/account');
   } catch (err) {
     console.error('Set-password error:', err);
