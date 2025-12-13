@@ -23,7 +23,7 @@ All four files mentioned in the problem statement exist and are properly impleme
 | set-password.js (Page) | ✅ | 7,268 bytes | pages/set-password.js |
 | create-checkout-session.js | ✅ | 908 bytes | pages/api/create-checkout-session.js |
 
-### 3. Configuration Verification ✅
+### Configuration Verification ✅
 
 | Check | Status | Details |
 |-------|--------|---------|
@@ -31,6 +31,9 @@ All four files mentioned in the problem statement exist and are properly impleme
 | next.config.js | ✅ | No `output: 'export'` setting |
 | out/ directory | ✅ | Does not exist |
 | Build successful | ✅ | `npm run build` completed successfully |
+| Stripe version | ✅ | stripe@12.18.0 (as specified in package.json: "^12.0.0") |
+
+Note: package-lock.json was regenerated during build verification, which is expected for dependency installation.
 
 ### 4. Known Issue ⚠️
 
