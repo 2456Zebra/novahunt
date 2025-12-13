@@ -2,30 +2,62 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export default function Account() {
   const [user, setUser] = useState(null);
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUser(session.user);
+      } else {
+        // Force refresh if no session (fixes the "Not signed in" bug)
+        const { data } = await supabase.auth.refreshSession();
+        if (data.session) {
+          setUser(data.session.user);
+        }
+      }
+      setLoading(false);
+    };
+    getUser();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => listener.subscription.unsubscribe();
   }, []);
 
-  return (
-    <div style={{ padding: 60, textAlign: 'center', fontFamily: 'system-ui', maxWidth: 800, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 42 }}>Account</h1>
-      {user ? (
-        <div style={{ background: '#f0f8ff', padding: 30, borderRadius: 16, margin: '40px 0' }}>
-          <p style={{ fontSize: 20 }}>Signed in as</p>
-          <p style={{ fontSize: 28, fontWeight: 'bold' }}>{user.email}</p>
-        </div>
-      ) : (
-        <p>Loading...</p>
-      )}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 20 }}>
-        <a href="/" style={{ padding: 16, background: '#0066ff', color: 'white', borderRadius: 8, textDecoration: 'none' }}>Back to Homepage</a>
-        <button onClick={() => supabase.auth.signOut()} style={{ padding: 16, background: '#333', color: 'white', borderRadius: 8 }}>Sign Out</button>
+  if (loading) return <p>Loading...</p>;
+
+  if (!user) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center' }}>
+        <h1>Account</h1>
+        <p>Not signed in</p>
+        <a href="/">Back to Homepage</a>
       </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: 60, textAlign: 'center' }}>
+      <h1>Account</h1>
+      <p>Signed in as <strong>{user.email}</strong></p>
+      <p>Saved Reveals</p>
+      <p>No saved contacts found.</p>
+      <div>
+        <button onClick={() => router.push('/pricing')}>Change plan</button>
+        <button onClick={() => supabase.auth.signOut()}>Sign out</button>
+      </div>
+      <p><a href="/">Back to Homepage</a></p>
     </div>
   );
 }
