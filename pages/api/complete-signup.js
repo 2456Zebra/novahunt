@@ -54,7 +54,6 @@ export default async function handler(req, res) {
     if (!email) return res.status(400).json({ error: 'no_email_in_session' });
 
     // Try to insert a "consumed session" row to prevent replay
-    // Assumes table checkout_sessions_used exists with primary key session_id
     const insertRes = await supabaseRpc('checkout_sessions_used', {
       session_id,
       email,
@@ -63,7 +62,6 @@ export default async function handler(req, res) {
 
     if (!insertRes.ok) {
       const text = await insertRes.text().catch(() => '');
-      // If conflict (already exists), return a helpful code
       if (insertRes.status === 409) {
         return res.status(409).json({ error: 'session_already_used' });
       }
@@ -71,8 +69,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'db_error', message: text });
     }
 
-    // Create a Supabase user using Admin RPC (example: call your own endpoint or use service role)
-    // If you have a dedicated RPC to create users, call it here. We'll return success with email.
     return res.status(200).json({ email, session_id, status: 'ok' });
   } catch (err) {
     console.error('complete-signup error', err?.message || err);

@@ -1,6 +1,5 @@
 // pages/success.js
 // Client success page that calls the get-checkout-session API and shows clear messages.
-// This variant avoids client-side router.replace issues by using full-page navigation when redirecting.
 
 import { useEffect, useState } from 'react';
 
@@ -12,7 +11,6 @@ export default function SuccessPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Read session_id from URL
   useEffect(() => {
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
     const session_id = params.get('session_id');
@@ -61,7 +59,6 @@ export default function SuccessPage() {
         setLoading(false);
         return;
       }
-      // Use full-page nav to avoid client-side mismatch issues
       window.location.href = '/app';
     } catch (err) {
       setError('Server error during signup');
