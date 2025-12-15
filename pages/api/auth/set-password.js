@@ -20,7 +20,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Payment not completed' });
     }
 
-    // Find user
+    // Find user (created by webhook)
     const { data: { users } } = await supabase.auth.admin.listUsers();
     const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
     if (!user) return res.status(400).json({ error: 'User not found' });
@@ -28,17 +28,15 @@ export default async function handler(req, res) {
     // Set password
     await supabase.auth.admin.updateUserById(user.id, { password });
 
-    // Sign in and get session
+    // Sign in and set cookies
     const { data: { session: authSession } } = await supabase.auth.signInWithPassword({ email, password });
     if (!authSession) throw new Error('Login failed');
 
-    // Set cookies
     res.setHeader('Set-Cookie', [
       `sb-access-token=${authSession.access_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=${authSession.expires_in}`,
       `sb-refresh-token=${authSession.refresh_token}; Path=/; Domain=novahunt.ai; HttpOnly; Secure; SameSite=None; Max-Age=31536000`,
     ]);
 
-    // Redirect to account
     return res.redirect(302, '/account');
   } catch (err) {
     console.error('Set-password error:', err);
