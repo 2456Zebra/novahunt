@@ -380,12 +380,12 @@ export default function HomePage() {
 
             <div style={{ alignSelf: 'flex-start', fontSize: 13 }}>
               <nav style={{ display: 'flex', gap: 12 }}>
-                <Link href="/"><a style={{ textDecoration: 'underline', color: '#2563eb' }}>Home</a></Link>
-                <Link href="/plans"><a style={{ textDecoration: 'underline', color: '#2563eb' }}>Plans</a></Link>
-                <Link href="/about"><a style={{ textDecoration: 'underline', color: '#2563eb' }}>About</a></Link>
-                <Link href="/signin"><a style={{ textDecoration: 'underline', color: '#2563eb' }}>SignIn</a></Link>
+                <Link href="/" style={{ textDecoration: 'underline', color: '#2563eb' }}>Home</Link>
+                <Link href="/plans" style={{ textDecoration: 'underline', color: '#2563eb' }}>Plans</Link>
+                <Link href="/about" style={{ textDecoration: 'underline', color: '#2563eb' }}>About</Link>
+                <Link href="/signin" style={{ textDecoration: 'underline', color: '#2563eb' }}>SignIn</Link>
                 {/* SignUp link changed to /plans as requested */}
-                <Link href="/plans"><a style={{ textDecoration: 'underline', color: '#2563eb' }}>SignUp</a></Link>
+                <Link href="/plans" style={{ textDecoration: 'underline', color: '#2563eb' }}>SignUp</Link>
               </nav>
             </div>
           </header>
@@ -403,9 +403,7 @@ export default function HomePage() {
                           Showing {company.shown || (company.contacts && company.contacts.length) || 0} of {company.total || (company.contacts && company.contacts.length) || 0} results.
                         </span>
 
-                        <Link href="/plans">
-                          <a style={{ color: '#ff6b00', textDecoration: 'underline', marginLeft: 6 }}>Upgrade to see all</a>
-                        </Link>
+                        <Link href="/plans" style={{ color: '#ff6b00', textDecoration: 'underline', marginLeft: 6 }}>Upgrade to see all</Link>
                       </>
                     ) : <span>Showing results</span>}
                   </div>
