@@ -1,9 +1,14 @@
+'use client';
+
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function SetPasswordPage() {
   const router = useRouter();
-  const { email: qEmail, token: qToken } = router.query || {};
+  const searchParams = useSearchParams();
+  const qEmail = searchParams.get('email');
+  const qToken = searchParams.get('token');
+  
   const [email, setEmail] = useState(qEmail || '');
   const [token, setToken] = useState(qToken || '');
   const [password, setPassword] = useState('');
@@ -86,7 +91,7 @@ export default function SetPasswordPage() {
   return (
     <main style={{ maxWidth: 700, margin: '2rem auto', fontFamily: 'system-ui, sans-serif', padding: '0 1rem' }}>
       <h1>Set your password</h1>
-      <p>If you were redirected here after checkout, enter the password you'd like to use for this account.</p>
+      <p>If you were redirected here after checkout, enter the password you&apos;d like to use for this account.</p>
 
       <form onSubmit={handleSubmit}>
         <label style={{ display: 'block', marginBottom: 8 }}>
